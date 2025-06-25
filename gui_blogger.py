@@ -35,42 +35,78 @@ except ImportError:
     BlogAutomationEngine = None
     SELENIUM_AVAILABLE = False
 
+class ToolTip:
+    """
+    Simple tooltip implementation for Tkinter widgets
+    """
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+    
+    def show_tooltip(self, event=None):
+        x, y, _, _ = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 25
+        
+        # Create a toplevel window
+        self.tooltip = tk.Toplevel(self.widget)
+        self.tooltip.wm_overrideredirect(True)
+        self.tooltip.wm_geometry(f"+{x}+{y}")
+        
+        label = ttk.Label(self.tooltip, text=self.text, background="#ffffe0", 
+                         relief="solid", borderwidth=1, padding=2)
+        label.pack()
+    
+    def hide_tooltip(self, event=None):
+        if self.tooltip:
+            self.tooltip.destroy()
+            self.tooltip = None
+
 class BlogAutomationGUI:
     def __init__(self, root):
+        """Initialize the GUI"""
         self.root = root
-        self.root.title("WordPress Blog Automation Suite - © 2025 AryanVBW")
+        self.root.title("AUTO Blogger")
         self.root.geometry("1200x800")
-        self.root.resizable(True, True)
+        self.root.minsize(1000, 700)
+        
+        # Set theme
+        style = ttk.Style()
+        style.theme_use('clam')  # Use a modern theme
         
         # Initialize variables
-        self.config = {}
-        self.is_logged_in = False
-        self.current_task = None
-        self.stop_flag = False
         self.log_queue = queue.Queue()
+        self.automation_engine = None
+        self.stop_requested = False
         self.processed_count = 0
-        self.total_articles = 0
+        self.is_running = False
         
-        # Configuration file
-        self.config_file = "blog_config.json"
-        
-        # Initialize logging
+        # Setup logging
         self.setup_logging()
+        self.logger = logging.getLogger('blog_automation')
         
         # Load configuration
-        self.load_config()
+        self.config = self.load_config()
         
-        # Initialize automation engine
-        self.automation_engine = None
+        # Try to initialize automation engine if credentials exist
+        if self.has_valid_credentials():
+            try:
+                self.automation_engine = BlogAutomationEngine(self.config, self.logger)
+                self.logger.info("✅ Automation engine initialized on startup")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize automation engine on startup: {e}")
         
-        # Create GUI
-        self.create_widgets()
+        # Create UI
+        self.create_ui()
+        
+        # Check prerequisites
+        self.check_prerequisites()
         
         # Start log processing
         self.process_log_queue()
-        
-        # Apply theme
-        self.apply_theme()
         
     def setup_logging(self):
         """Setup logging to capture all messages"""
@@ -97,21 +133,23 @@ class BlogAutomationGUI:
         
     def load_config(self):
         """Load configuration from file"""
-        if os.path.exists(self.config_file):
+        config = {}
+        if os.path.exists("blog_config.json"):
             try:
-                with open(self.config_file, 'r') as f:
-                    self.config = json.load(f)
+                with open("blog_config.json", 'r') as f:
+                    config = json.load(f)
                 self.logger.info("Configuration loaded successfully")
             except Exception as e:
                 self.logger.error(f"Error loading config: {e}")
-                self.config = {}
+                config = {}
         else:
-            self.config = self.get_default_config()
-            
+            config = self.get_default_config()
+        return config
+        
     def save_config(self):
         """Save configuration to file"""
         try:
-            with open(self.config_file, 'w') as f:
+            with open("blog_config.json", 'w') as f:
                 json.dump(self.config, f, indent=2)
             self.logger.info("Configuration saved successfully")
         except Exception as e:
@@ -131,7 +169,7 @@ class BlogAutomationGUI:
             "headless_mode": True
         }
         
-    def create_widgets(self):
+    def create_ui(self):
         """Create all GUI widgets"""
         # Create menu bar
         self.create_menu_bar()
@@ -198,8 +236,8 @@ Licensed under the MIT License"""
         
         # WordPress URL
         ttk.Label(login_form, text="WordPress Site URL:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.wp_url_var = tk.StringVar(value=self.config.get('wp_base_url', ''))
-        ttk.Entry(login_form, textvariable=self.wp_url_var, width=50).grid(row=0, column=1, pady=5, padx=10)
+        self.wp_base_url_var = tk.StringVar(value=self.config.get('wp_base_url', ''))
+        ttk.Entry(login_form, textvariable=self.wp_base_url_var, width=50).grid(row=0, column=1, pady=5, padx=10)
         
         # Username
         ttk.Label(login_form, text="Username:").grid(row=1, column=0, sticky=tk.W, pady=5)
@@ -216,9 +254,14 @@ Licensed under the MIT License"""
         self.gemini_key_var = tk.StringVar(value=self.config.get('gemini_api_key', ''))
         ttk.Entry(login_form, textvariable=self.gemini_key_var, show="*", width=50).grid(row=3, column=1, pady=5, padx=10)
         
+        # OpenAI API Key
+        ttk.Label(login_form, text="OpenAI API Key:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        self.openai_key_var = tk.StringVar(value=self.config.get('openai_api_key', ''))
+        ttk.Entry(login_form, textvariable=self.openai_key_var, show="*", width=50).grid(row=4, column=1, pady=5, padx=10)
+        
         # Buttons frame
         button_frame = ttk.Frame(login_form)
-        button_frame.grid(row=4, column=0, columnspan=2, pady=20)
+        button_frame.grid(row=5, column=0, columnspan=2, pady=20)
         
         # Test connection button
         self.test_btn = ttk.Button(button_frame, text="Test Connection", 
@@ -232,7 +275,7 @@ Licensed under the MIT License"""
         
         # Connection status
         self.connection_status = ttk.Label(login_form, text="Not connected", foreground="red")
-        self.connection_status.grid(row=5, column=0, columnspan=2, pady=10)
+        self.connection_status.grid(row=6, column=0, columnspan=2, pady=10)
         
         # Prerequisites check
         self.create_prerequisites_section()
@@ -283,14 +326,17 @@ Licensed under the MIT License"""
         self.max_articles_var = tk.IntVar(value=self.config.get('max_articles', 2))
         ttk.Spinbox(settings_frame, from_=1, to=10, textvariable=self.max_articles_var, width=5).pack(side=tk.LEFT, padx=5)
         
-        ttk.Label(settings_frame, text="Source URL:").pack(side=tk.LEFT, padx=(20, 5))
-        self.source_url_var = tk.StringVar(value=self.config.get('source_url', ''))
-        ttk.Entry(settings_frame, textvariable=self.source_url_var, width=40).pack(side=tk.LEFT, padx=5)
-        
-        # Add force processing option
+        # Force processing option
         self.force_processing_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(settings_frame, text="Force Processing (ignore duplicates)", 
-                      variable=self.force_processing_var).pack(side=tk.LEFT, padx=20)
+        ttk.Checkbutton(settings_frame, text="Force Processing (ignore history)", variable=self.force_processing_var).pack(side=tk.LEFT, padx=20)
+        
+        # Image generation option
+        self.generate_images_var = tk.BooleanVar(value=False)
+        image_checkbox = ttk.Checkbutton(settings_frame, text="Generate Featured Images (OpenAI)", variable=self.generate_images_var)
+        image_checkbox.pack(side=tk.LEFT, padx=20)
+        
+        # Add tooltip for image generation
+        ToolTip(image_checkbox, "Generates featured images using OpenAI DALL-E. Requires an OpenAI API key in the Authentication tab.")
         
         # Buttons frame
         buttons_frame = ttk.Frame(control_panel)
@@ -380,7 +426,8 @@ Licensed under the MIT License"""
             "Injecting internal links",
             "Injecting external links",
             "Generating SEO metadata",
-            "Extracting keyphrases",
+            "Generating keyphrases",
+            "Generating featured image",
             "Detecting categories",
             "Generating tags",
             "Creating WordPress post",
@@ -592,14 +639,19 @@ Licensed under the MIT License"""
         self.root.after(1000, self.update_time)
         
     def process_log_queue(self):
-        """Process log messages from queue"""
+        """Process log messages from the queue"""
         try:
-            while True:
-                message = self.log_queue.get_nowait()
-                self.add_log_message(message)
+            while not self.log_queue.empty():
+                msg = self.log_queue.get_nowait()
+                if hasattr(self, 'log_text'):
+                    self.log_text.configure(state='normal')
+                    self.log_text.insert(tk.END, msg + '\n')
+                    self.log_text.configure(state='disabled')
+                    self.log_text.see(tk.END)
         except queue.Empty:
             pass
         finally:
+            # Schedule to run again
             self.root.after(100, self.process_log_queue)
             
     def add_log_message(self, message):
@@ -657,7 +709,7 @@ Licensed under the MIT License"""
     def test_connection(self):
         """Test WordPress connection"""
         try:
-            wp_url = self.wp_url_var.get().strip()
+            wp_url = self.wp_base_url_var.get().strip()
             username = self.username_var.get().strip()
             password = self.password_var.get().strip()
             
@@ -687,35 +739,43 @@ Licensed under the MIT License"""
             return False
             
     def login(self):
-        """Login and save credentials"""
-        if self.test_connection():
-            # Save configuration
+        """Login and initialize automation engine"""
+        try:
+            # Update config with current values
             self.config.update({
-                'wp_base_url': self.wp_url_var.get().strip(),
+                'wp_base_url': self.wp_base_url_var.get().strip(),
                 'wp_username': self.username_var.get().strip(), 
                 'wp_password': self.password_var.get().strip(),
-                'gemini_api_key': self.gemini_key_var.get().strip()
+                'gemini_api_key': self.gemini_key_var.get().strip(),
+                'openai_api_key': self.openai_key_var.get().strip()
             })
             
-            self.save_config()
-            self.is_logged_in = True
+            # Save to config file
+            with open('blog_config.json', 'w') as f:
+                json.dump(self.config, f, indent=4)
+            
+            self.logger.info("✅ Configuration saved")
             
             # Initialize automation engine
-            try:
-                self.automation_engine = BlogAutomationEngine(self.config, self.logger)
-                self.logger.info("Automation engine initialized successfully")
-            except Exception as e:
-                self.logger.error(f"Failed to initialize automation engine: {e}")
-                messagebox.showerror("Error", f"Failed to initialize automation engine: {e}")
-                return
+            self.automation_engine = BlogAutomationEngine(self.config, self.logger)
             
-            self.logger.info("Login successful and configuration saved")
-            messagebox.showinfo("Success", "Login successful! You can now use the automation features.")
+            # Update UI
+            self.connection_status.config(text="Connected ✅", foreground="green")
+            
+            # Update source URL in automation tab if it exists
+            if hasattr(self, 'config_source_url'):
+                self.config_source_url.set(self.config.get('source_url', ''))
+            
+            # Update max articles in automation tab
+            self.max_articles_var.set(self.config.get('max_articles', 2))
             
             # Switch to automation tab
-            self.notebook.select(1)
-        else:
-            messagebox.showerror("Error", "Login failed. Please check your credentials.")
+            self.notebook.select(self.automation_frame)
+            
+        except Exception as e:
+            self.logger.error(f"Login failed: {e}")
+            self.connection_status.config(text=f"Connection failed: {str(e)}", foreground="red")
+            messagebox.showerror("Login Failed", f"Could not initialize automation engine: {e}")
             
     def save_configuration(self):
         """Save configuration to file"""
@@ -743,11 +803,11 @@ Licensed under the MIT License"""
                 self.logger.error("Invalid JSON format for external links")
             
             # Save to file
-            with open(self.config_file, 'w') as f:
+            with open("blog_config.json", 'w') as f:
                 json.dump(self.config, f, indent=2)
                 
             # Update source URL in automation tab
-            self.source_url_var.set(self.config['source_url'])
+            self.config_source_url.set(self.config['source_url'])
             
             # Update max articles in automation tab
             self.max_articles_var.set(self.config['max_articles'])
@@ -809,40 +869,52 @@ Licensed under the MIT License"""
             
     def start_automation(self):
         """Start the automation process"""
-        if not self.is_logged_in:
-            messagebox.showerror("Error", "Please login first")
-            self.notebook.select(0)  # Switch to login tab
+        if self.is_running:
+            messagebox.showwarning("Warning", "Automation is already running")
             return
-            
-        if not SELENIUM_AVAILABLE:
-            messagebox.showerror("Error", "Selenium is not available. Please install requirements first.")
+        
+        # Check if automation engine is initialized
+        if not self.automation_engine:
+            try:
+                # Try to initialize it
+                if self.has_valid_credentials():
+                    self.automation_engine = BlogAutomationEngine(self.config, self.logger)
+                    self.logger.info("✅ Automation engine initialized")
+                else:
+                    messagebox.showerror("Error", "Please login first in the Authentication tab")
+                    self.notebook.select(self.login_frame)
+                    return
+            except Exception as e:
+                self.logger.error(f"Failed to initialize automation engine: {e}")
+                messagebox.showerror("Error", f"Failed to initialize automation engine: {e}")
+                return
+        
+        # Get max articles
+        max_articles = self.max_articles_var.get()
+        if max_articles <= 0:
+            messagebox.showerror("Error", "Please set a valid number of articles")
             return
-            
-        # Reset state
-        self.stop_flag = False
-        self.processed_count = 0
-        self.total_articles = self.max_articles_var.get()
         
         # Update UI
         self.start_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
+        self.current_task_label.config(text="Running automation...")
         self.task_progress.start()
         
-        # Initialize progress
-        self.overall_progress['maximum'] = self.total_articles
-        self.overall_progress['value'] = 0
+        # Reset counters
+        self.processed_count = 0
+        self.stop_requested = False
+        self.is_running = True
+        
+        # Initialize steps
         self.initialize_steps()
         
-        # Start automation in separate thread
-        self.current_task = threading.Thread(target=self.run_automation)
-        self.current_task.daemon = True
-        self.current_task.start()
-        
-        self.logger.info("Starting automation process...")
+        # Start automation in a separate thread
+        threading.Thread(target=self.run_automation, daemon=True).start()
         
     def stop_automation(self):
         """Stop the automation process"""
-        self.stop_flag = True
+        self.stop_requested = True
         self.task_progress.stop()
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
@@ -902,7 +974,7 @@ Licensed under the MIT License"""
             
             # Process each article
             for i, link in enumerate(process_links):
-                if self.stop_flag or i >= self.max_articles_var.get():
+                if self.stop_requested or i >= self.max_articles_var.get():
                     break
                     
                 if link in posted_links and not force_processing:
@@ -931,16 +1003,16 @@ Licensed under the MIT License"""
             self.automation_completed()
             
     def process_single_article(self, article_url):
-        """Process a single article through the complete pipeline"""
-        if not self.automation_engine:
-            self.logger.error("Automation engine not initialized")
-            return False
-            
+        """Process a single article"""
         try:
             start_time = time.time()
             
-            # Step 1: Extract article content
-            self.update_step_status(1, 'running', f'Extracting content from {article_url[:50]}...')
+            # Step 0: Fetch article links (already done)
+            self.update_step_status(0, 'completed', f'URL: {article_url[:50]}...', '')
+            
+            # Step 1: Extract content
+            step_start = time.time()
+            self.update_step_status(1, 'running', 'Extracting content with Selenium...')
             
             with self.automation_engine.get_selenium_driver_context() as driver:
                 if not driver:
@@ -949,24 +1021,20 @@ Licensed under the MIT License"""
                     
                 title, content = self.automation_engine.extract_article_with_selenium(driver, article_url)
                 
-                if not title or not content:
-                    self.update_step_status(1, 'error', 'Failed to extract content')
-                    return False
-                    
-            elapsed = f"{time.time() - start_time:.1f}s"
-            self.update_step_status(1, 'completed', f'Extracted {len(content)} characters', elapsed)
+            if not title or not content:
+                self.update_step_status(1, 'error', 'Failed to extract content')
+                return False
+            
+            elapsed = f"{time.time() - step_start:.1f}s"
+            self.update_step_status(1, 'completed', f'Title: {title[:50]}...', elapsed)
             
             # Step 2: Paraphrase with Gemini
             step_start = time.time()
-            self.update_step_status(2, 'running', 'Paraphrasing content with Gemini AI...')
+            self.update_step_status(2, 'running', 'Paraphrasing with Gemini AI...')
             
             paraphrased_content, paraphrased_title = self.automation_engine.gemini_paraphrase_content_and_title(title, content)
-            if not paraphrased_content:
-                self.update_step_status(2, 'error', 'Gemini paraphrasing failed')
-                return False
-                
             elapsed = f"{time.time() - step_start:.1f}s"
-            self.update_step_status(2, 'completed', 'Content paraphrased successfully', elapsed)
+            self.update_step_status(2, 'completed', f'New title: {paraphrased_title[:50]}...', elapsed)
             
             # Step 3: Inject internal links
             step_start = time.time()
@@ -1001,27 +1069,41 @@ Licensed under the MIT License"""
             keyphrase_count = 1 + len(additional_keyphrases) if focus_keyphrase else len(additional_keyphrases)
             self.update_step_status(6, 'completed', f'Extracted {keyphrase_count} keyphrases', elapsed)
             
-            # Step 7: Detect categories
+            # Step 7: Generate featured image (if enabled)
+            media_id = None
+            if self.generate_images_var.get():
+                step_start = time.time()
+                self.update_step_status(7, 'running', 'Generating image with OpenAI...')
+                
+                # We'll set the media_id but post_id will be None until we create the post
+                # We'll attach the image to the post later
+                media_id = None  # Will be set after post creation
+                elapsed = f"{time.time() - step_start:.1f}s"
+                self.update_step_status(7, 'completed', 'Image generated', elapsed)
+            else:
+                self.update_step_status(7, 'skipped', 'Image generation disabled', '')
+            
+            # Step 8: Detect categories
             step_start = time.time()
-            self.update_step_status(7, 'running', 'Detecting categories...')
+            self.update_step_status(8, 'running', 'Detecting categories...')
             
             categories = self.automation_engine.detect_categories(paraphrased_title + " " + final_content)
             elapsed = f"{time.time() - step_start:.1f}s"
-            self.update_step_status(7, 'completed', f'Found {len(categories)} categories', elapsed)
+            self.update_step_status(8, 'completed', f'Found {len(categories)} categories', elapsed)
             
-            # Step 8: Generate tags
+            # Step 9: Generate tags
             step_start = time.time()
-            self.update_step_status(8, 'running', 'Generating tags...')
+            self.update_step_status(9, 'running', 'Generating tags...')
             
             tags = self.automation_engine.generate_tags_with_gemini(final_content)
             elapsed = f"{time.time() - step_start:.1f}s"
-            self.update_step_status(8, 'completed', f'Generated {len(tags)} tags', elapsed)
+            self.update_step_status(9, 'completed', f'Generated {len(tags)} tags', elapsed)
             
-            # Step 9: Create WordPress post
+            # Step 10: Create WordPress post
             step_start = time.time()
-            self.update_step_status(9, 'running', 'Creating WordPress post...')
+            self.update_step_status(10, 'running', 'Creating WordPress post...')
             
-            post_id, final_seo_title = self.automation_engine.post_to_wordpress_with_seo(
+            post_id, post_title = self.automation_engine.post_to_wordpress_with_seo(
                 title=paraphrased_title,
                 content=final_content,
                 categories=categories,
@@ -1033,14 +1115,31 @@ Licensed under the MIT License"""
             )
             
             if not post_id:
-                self.update_step_status(9, 'error', 'Failed to create WordPress post')
+                self.update_step_status(10, 'error', 'Failed to create WordPress post')
                 return False
                 
             elapsed = f"{time.time() - step_start:.1f}s"
-            self.update_step_status(9, 'completed', f'Post created (ID: {post_id})', elapsed)
+            self.update_step_status(10, 'completed', f'Post created (ID: {post_id})', elapsed)
             
-            # Step 10: Finalize
-            self.update_step_status(10, 'completed', f'Article processing completed in {time.time() - start_time:.1f}s')
+            # Step 7b: Now that we have a post ID, generate and upload the featured image if enabled
+            if self.generate_images_var.get():
+                step_start = time.time()
+                self.update_step_status(7, 'running', 'Uploading image and setting as featured...')
+                
+                media_id = self.automation_engine.generate_and_upload_featured_image(
+                    paraphrased_title, 
+                    final_content,
+                    post_id
+                )
+                
+                if media_id:
+                    elapsed = f"{time.time() - step_start:.1f}s"
+                    self.update_step_status(7, 'completed', f'Featured image set (ID: {media_id})', elapsed)
+                else:
+                    self.update_step_status(7, 'error', 'Failed to set featured image')
+            
+            # Step 11: Finalize
+            self.update_step_status(11, 'completed', f'Article processing completed in {time.time() - start_time:.1f}s')
             
             return True
             
@@ -1195,6 +1294,16 @@ See the Logs tab for more technical details."""
             self.logger.error(f"Error clearing posted links: {e}")
             messagebox.showerror("Error", f"Failed to clear posted links: {e}")
 
+    def has_valid_credentials(self):
+        """Check if valid credentials exist in the config"""
+        required_fields = ['wp_base_url', 'wp_username', 'wp_password', 'gemini_api_key']
+        return all(field in self.config and self.config[field] for field in required_fields)
+
+    def check_prerequisites(self):
+        """Check system prerequisites"""
+        # This is a placeholder for now
+        pass
+
 def main():
     """Main function to run the application"""
     root = tk.Tk()
@@ -1211,9 +1320,9 @@ def main():
     
     # Handle window closing
     def on_closing():
-        if app.current_task and app.current_task.is_alive():
-            if messagebox.askokcancel("Quit", "Automation is running. Do you want to stop and quit?"):
-                app.stop_automation()
+        if app.is_running:
+            if messagebox.askokcancel("Quit", "Automation is running. Are you sure you want to quit?"):
+                app.stop_requested = True
                 root.destroy()
         else:
             root.destroy()

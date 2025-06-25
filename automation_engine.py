@@ -831,9 +831,6 @@ Article Content:
                 else:
                     excerpt = clean
 
-            # Extract keyphrases
-            focus_keyphrase, additional_keyphrases = self.extract_keyphrases_with_gemini(title, content)
-
             # Prepare post payload
             payload = {
                 "title": title,
@@ -1146,3 +1143,113 @@ ADDITIONAL: keyphrase1, keyphrase2, keyphrase3, keyphrase4, keyphrase5
         self.logger.info(f"Fallback additional keyphrases: {additional_keyphrases}")
         
         return focus_keyphrase, additional_keyphrases
+
+    def generate_and_upload_featured_image(self, title: str, content: str, post_id: int) -> Optional[int]:
+        """Generate an image using OpenAI and upload it as a featured image to WordPress"""
+        try:
+            openai_api_key = self.config.get('openai_api_key', '')
+            if not openai_api_key:
+                self.logger.error("OpenAI API key not configured")
+                return None
+            
+            # Clean content for prompt creation
+            clean_content = re.sub(r'<[^>]+>', '', content[:500])
+            clean_title = re.sub(r'<[^>]+>', '', title)
+            
+            # Create a prompt for image generation
+            prompt = f"Create a realistic, professional image for a football article with title: {clean_title}. The image should be suitable as a featured image for a sports blog, showing relevant football/soccer imagery. Make it look like a professional sports photograph."
+            
+            self.logger.info(f"🎨 Generating image with OpenAI for: {clean_title[:50]}...")
+            
+            # Make OpenAI API request
+            import base64
+            import requests
+            from io import BytesIO
+            
+            response = requests.post(
+                "https://api.openai.com/v1/images/generations",
+                headers={
+                    "Authorization": f"Bearer {openai_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "dall-e-3",
+                    "prompt": prompt,
+                    "n": 1,
+                    "size": "1024x1024",
+                    "response_format": "b64_json"
+                },
+                timeout=60
+            )
+            
+            if response.status_code != 200:
+                self.logger.error(f"❌ OpenAI API error: {response.status_code} - {response.text}")
+                return None
+            
+            # Get the image data
+            image_data = response.json()["data"][0]["b64_json"]
+            image_bytes = base64.b64decode(image_data)
+            
+            # Upload to WordPress
+            wp_base_url = self.config.get('wp_base_url', '')
+            username = self.config.get('wp_username', '')
+            password = self.config.get('wp_password', '')
+            
+            if not all([wp_base_url, username, password]):
+                self.logger.error("WordPress credentials not properly configured")
+                return None
+            
+            auth = HTTPBasicAuth(username, password)
+            
+            # Generate a filename based on the post title
+            import hashlib
+            import time
+            
+            title_hash = hashlib.md5(clean_title.encode()).hexdigest()[:10]
+            timestamp = int(time.time())
+            filename = f"ai-generated-{title_hash}-{timestamp}.png"
+            
+            # Upload the image to WordPress
+            media_url = f"{wp_base_url}/media"
+            
+            upload_response = requests.post(
+                media_url,
+                auth=auth,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Content-Type": "image/png"
+                },
+                data=image_bytes,
+                timeout=30
+            )
+            
+            if upload_response.status_code not in [200, 201]:
+                self.logger.error(f"❌ WordPress media upload error: {upload_response.status_code} - {upload_response.text}")
+                return None
+            
+            media_id = upload_response.json().get("id")
+            if not media_id:
+                self.logger.error("❌ Media uploaded but ID not returned")
+                return None
+            
+            # Set as featured image for the post
+            if post_id:
+                update_url = f"{wp_base_url}/posts/{post_id}"
+                update_response = requests.post(
+                    update_url,
+                    auth=auth,
+                    json={"featured_media": media_id},
+                    timeout=10
+                )
+                
+                if update_response.status_code not in [200, 201]:
+                    self.logger.error(f"❌ Failed to set featured image: {update_response.status_code} - {update_response.text}")
+                    return None
+                
+                self.logger.info(f"✅ Featured image set for post ID {post_id}")
+            
+            return media_id
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error generating/uploading image: {e}")
+            return None
