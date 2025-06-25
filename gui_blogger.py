@@ -287,6 +287,11 @@ Licensed under the MIT License"""
         self.source_url_var = tk.StringVar(value=self.config.get('source_url', ''))
         ttk.Entry(settings_frame, textvariable=self.source_url_var, width=40).pack(side=tk.LEFT, padx=5)
         
+        # Add force processing option
+        self.force_processing_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(settings_frame, text="Force Processing (ignore duplicates)", 
+                      variable=self.force_processing_var).pack(side=tk.LEFT, padx=20)
+        
         # Buttons frame
         buttons_frame = ttk.Frame(control_panel)
         buttons_frame.pack(fill=tk.X, pady=10)
@@ -437,32 +442,62 @@ Licensed under the MIT License"""
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         
+        # Main config form
+        config_form = ttk.LabelFrame(scrollable_frame, text="Configuration Settings", padding=20)
+        config_form.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+        
         # Source configuration
-        source_frame = ttk.LabelFrame(scrollable_frame, text="Source Configuration", padding=10)
-        source_frame.pack(fill=tk.X, padx=10, pady=5)
+        source_frame = ttk.LabelFrame(config_form, text="Source Settings", padding=10)
+        source_frame.pack(fill=tk.X, pady=10)
         
-        ttk.Label(source_frame, text="Source URL:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(source_frame, text="Source URL:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.config_source_url = tk.StringVar(value=self.config.get('source_url', ''))
-        ttk.Entry(source_frame, textvariable=self.config_source_url, width=60).grid(row=0, column=1, pady=2, padx=10)
+        ttk.Entry(source_frame, textvariable=self.config_source_url, width=50).grid(row=0, column=1, pady=5, padx=10)
         
-        ttk.Label(source_frame, text="Article Selector:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(source_frame, text="Article Selector:").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.config_selector = tk.StringVar(value=self.config.get('article_selector', ''))
-        ttk.Entry(source_frame, textvariable=self.config_selector, width=60).grid(row=1, column=1, pady=2, padx=10)
+        ttk.Entry(source_frame, textvariable=self.config_selector, width=50).grid(row=1, column=1, pady=5, padx=10)
         
         # Processing configuration
-        process_frame = ttk.LabelFrame(scrollable_frame, text="Processing Configuration", padding=10)
-        process_frame.pack(fill=tk.X, padx=10, pady=5)
+        proc_frame = ttk.LabelFrame(config_form, text="Processing Settings", padding=10)
+        proc_frame.pack(fill=tk.X, pady=10)
         
-        ttk.Label(process_frame, text="Timeout (seconds):").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(proc_frame, text="Default Max Articles:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.config_max_articles = tk.IntVar(value=self.config.get('max_articles', 2))
+        ttk.Spinbox(proc_frame, from_=1, to=20, textvariable=self.config_max_articles, width=10).grid(row=0, column=1, sticky=tk.W, pady=5, padx=10)
+        
+        ttk.Label(proc_frame, text="Timeout (seconds):").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.config_timeout = tk.IntVar(value=self.config.get('timeout', 10))
-        ttk.Spinbox(process_frame, from_=5, to=60, textvariable=self.config_timeout, width=10).grid(row=0, column=1, sticky=tk.W, pady=2, padx=10)
+        ttk.Spinbox(proc_frame, from_=5, to=60, textvariable=self.config_timeout, width=10).grid(row=1, column=1, sticky=tk.W, pady=5, padx=10)
         
-        ttk.Label(process_frame, text="Headless Mode:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(proc_frame, text="Headless Mode:").grid(row=2, column=0, sticky=tk.W, pady=5)
         self.config_headless = tk.BooleanVar(value=self.config.get('headless_mode', True))
-        ttk.Checkbutton(process_frame, variable=self.config_headless).grid(row=1, column=1, sticky=tk.W, pady=2, padx=10)
+        ttk.Checkbutton(proc_frame, variable=self.config_headless).grid(row=2, column=1, sticky=tk.W, pady=5, padx=10)
+        
+        # Data management frame
+        data_frame = ttk.LabelFrame(config_form, text="Data Management", padding=10)
+        data_frame.pack(fill=tk.X, pady=10)
+        
+        # Add button to clear posted links history
+        ttk.Label(data_frame, text="Posted Links:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        
+        posted_links_count = 0
+        try:
+            if os.path.exists("posted_links.json"):
+                with open("posted_links.json", "r") as f:
+                    posted_links_count = len(json.load(f))
+        except:
+            pass
+        
+        posted_links_label = ttk.Label(data_frame, text=f"{posted_links_count} articles in history")
+        posted_links_label.grid(row=0, column=1, sticky=tk.W, pady=5, padx=10)
+        
+        clear_links_btn = ttk.Button(data_frame, text="Clear History", 
+                                   command=self.clear_posted_links)
+        clear_links_btn.grid(row=0, column=2, sticky=tk.W, pady=5, padx=10)
         
         # Links configuration - create text areas for complex configs
-        links_frame = ttk.LabelFrame(scrollable_frame, text="Links Configuration", padding=10)
+        links_frame = ttk.LabelFrame(config_form, text="Links Configuration", padding=10)
         links_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         # Internal links
@@ -477,9 +512,17 @@ Licensed under the MIT License"""
         self.external_links_text.pack(fill=tk.X, pady=5)
         self.external_links_text.insert(tk.END, json.dumps(self.get_external_links(), indent=2))
         
-        # Save button
-        ttk.Button(scrollable_frame, text="Save Configuration", 
-                  command=self.save_configuration, style="Accent.TButton").pack(pady=20)
+        # Buttons
+        button_frame = ttk.Frame(config_form)
+        button_frame.pack(pady=20)
+        
+        save_btn = ttk.Button(button_frame, text="Save Configuration", 
+                            command=self.save_configuration, style="Accent.TButton")
+        save_btn.pack(side=tk.LEFT, padx=10)
+        
+        cancel_btn = ttk.Button(button_frame, text="Cancel", 
+                              command=lambda: self.load_config())
+        cancel_btn.pack(side=tk.LEFT, padx=10)
         
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
@@ -675,35 +718,46 @@ Licensed under the MIT License"""
             messagebox.showerror("Error", "Login failed. Please check your credentials.")
             
     def save_configuration(self):
-        """Save configuration from config tab"""
+        """Save configuration to file"""
         try:
-            # Update basic config
-            self.config.update({
-                'source_url': self.config_source_url.get(),
-                'article_selector': self.config_selector.get(),
-                'timeout': self.config_timeout.get(),
-                'headless_mode': self.config_headless.get()
-            })
+            # Update config from UI
+            self.config['source_url'] = self.config_source_url.get()
+            self.config['article_selector'] = self.config_selector.get()
+            self.config['timeout'] = self.config_timeout.get()
+            self.config['headless_mode'] = self.config_headless.get()
+            self.config['max_articles'] = self.config_max_articles.get()
             
-            # Parse and save link configurations
+            # Try to parse and update internal/external links
             try:
-                internal_links = json.loads(self.internal_links_text.get(1.0, tk.END))
-                external_links = json.loads(self.external_links_text.get(1.0, tk.END))
+                internal_links = json.loads(self.internal_links_text.get("1.0", tk.END))
+                if isinstance(internal_links, dict):
+                    self.automation_engine.INTERNAL_LINKS = internal_links
+            except:
+                self.logger.error("Invalid JSON format for internal links")
                 
-                self.config['internal_links'] = internal_links
-                self.config['external_links'] = external_links
+            try:
+                external_links = json.loads(self.external_links_text.get("1.0", tk.END))
+                if isinstance(external_links, dict):
+                    self.automation_engine.EXTERNAL_LINKS = external_links
+            except:
+                self.logger.error("Invalid JSON format for external links")
+            
+            # Save to file
+            with open(self.config_file, 'w') as f:
+                json.dump(self.config, f, indent=2)
                 
-            except json.JSONDecodeError as e:
-                messagebox.showerror("Error", f"Invalid JSON format in links configuration: {e}")
-                return
-                
-            self.save_config()
-            messagebox.showinfo("Success", "Configuration saved successfully!")
-            self.logger.info("Configuration updated and saved")
+            # Update source URL in automation tab
+            self.source_url_var.set(self.config['source_url'])
+            
+            # Update max articles in automation tab
+            self.max_articles_var.set(self.config['max_articles'])
+            
+            self.logger.info("Configuration saved successfully")
+            messagebox.showinfo("Success", "Configuration saved successfully")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save configuration: {e}")
             self.logger.error(f"Error saving configuration: {e}")
+            messagebox.showerror("Error", f"Failed to save configuration: {e}")
             
     def clear_logs(self):
         """Clear the logs text area"""
@@ -815,18 +869,43 @@ Licensed under the MIT License"""
                 return
                 
             self.update_step_status(0, 'completed', f'Found {len(article_links)} articles')
-            self.total_articles = min(len(article_links), self.max_articles_var.get())
+            
+            # Load posted links to avoid duplicates (unless force processing is enabled)
+            posted_links = set()
+            force_processing = self.force_processing_var.get()
+            
+            if not force_processing:
+                posted_links = self.automation_engine.load_posted_links()
+            
+            # Check if all articles have already been processed
+            new_articles = [link for link in article_links if link not in posted_links]
+            
+            if not new_articles and not force_processing:
+                self.logger.warning("⚠️ All articles have already been processed.")
+                self.logger.info("💡 Enable 'Force Processing' option to reprocess articles.")
+                messagebox.showinfo("No New Articles", 
+                    "All available articles have already been processed.\n\n"
+                    "To reprocess articles, check the 'Force Processing' option in the Automation tab.")
+                self.automation_completed()
+                return
+            
+            # Use all articles if force processing, otherwise only new ones
+            process_links = article_links if force_processing else new_articles
+            
+            self.total_articles = min(len(process_links), self.max_articles_var.get())
             self.overall_progress['maximum'] = self.total_articles
             
-            # Load posted links to avoid duplicates
-            posted_links = self.automation_engine.load_posted_links()
+            if force_processing:
+                self.logger.info(f"🔄 Force processing enabled - reprocessing {self.total_articles} articles")
+            else:
+                self.logger.info(f"✅ Found {len(new_articles)} new articles to process")
             
             # Process each article
-            for i, link in enumerate(article_links):
+            for i, link in enumerate(process_links):
                 if self.stop_flag or i >= self.max_articles_var.get():
                     break
                     
-                if link in posted_links:
+                if link in posted_links and not force_processing:
                     self.logger.info(f"Skipping already posted article: {link}")
                     continue
                     
@@ -1089,6 +1168,33 @@ See the Logs tab for more technical details."""
         # Run test in separate thread to avoid blocking UI
         threading.Thread(target=run_test, daemon=True).start()
         
+    def clear_posted_links(self):
+        """Clear the posted links history"""
+        try:
+            if os.path.exists("posted_links.json"):
+                # Ask for confirmation
+                confirm = messagebox.askyesno(
+                    "Confirm Clear History",
+                    "Are you sure you want to clear the posted links history?\n\n"
+                    "This will allow all articles to be processed again, even if they were processed before.",
+                    icon="warning"
+                )
+                
+                if confirm:
+                    # Create empty file
+                    with open("posted_links.json", "w") as f:
+                        json.dump([], f)
+                    
+                    self.logger.info("✅ Posted links history cleared")
+                    messagebox.showinfo("Success", "Posted links history has been cleared.")
+                    
+                    # Refresh the configuration tab
+                    self.notebook.select(self.config_frame)
+                    self.create_config_tab()
+        except Exception as e:
+            self.logger.error(f"Error clearing posted links: {e}")
+            messagebox.showerror("Error", f"Failed to clear posted links: {e}")
+
 def main():
     """Main function to run the application"""
     root = tk.Tk()
