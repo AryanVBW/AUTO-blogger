@@ -17,16 +17,25 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Banner
-echo -e "${BLUE}"
-echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║                                                           ║"
-echo "║              AUTO-blogger Installation Script             ║"
-echo "║                                                           ║"
-echo "║                 Copyright © 2025 AryanVBW                 ║"
-echo "║           GitHub: https://github.com/AryanVBW            ║"
-echo "║                                                           ║"
-echo "╚═══════════════════════════════════════════════════════════╝"
-echo -e "${NC}"
+#!/bin/bash
+
+echo -e "\033[96m+===========================================================================+\033[0m"
+echo -e "\033[96m| █████   █████  ███                       █████         █████   ███   █████ |\033[0m"
+echo -e "\033[96m|░░███   ░░███  ░░░                       ░░███         ░░███   ░███  ░░███  |\033[0m"
+echo -e "\033[96m| ░███    ░███  ████  █████ █████  ██████  ░███ █████    ░███   ░███   ░███  |\033[0m"
+echo -e "\033[96m| ░███    ░███ ░░███ ░░███ ░░███  ███░░███ ░███░░███     ░███   ░███   ░███  |\033[0m"
+echo -e "\033[96m| ░░███   ███   ░███  ░███  ░███ ░███████  ░██████░      ░░███  █████  ███   |\033[0m"
+echo -e "\033[96m|  ░░░█████░    ░███  ░░███ ███  ░███░░░   ░███░░███      ░░░█████░█████░    |\033[0m"
+echo -e "\033[96m|    ░░███      █████  ░░█████   ░░██████  ████ █████       ░░███ ░░███      |\033[0m"
+echo -e "\033[96m|     ░░░      ░░░░░    ░░░░░     ░░░░░░  ░░░░ ░░░░░         ░░░   ░░░       |\033[0m"
+echo -e "\033[95m|                                                                            |\033[0m"
+echo -e "\033[95m|                           🔥GitHub:    github.com/AryanVBW                 |\033[0m"
+echo -e "\033[95m|                               Copyright © 2025 AryanVBW                    |\033[0m"
+echo -e "\033[95m|                           💖Instagram: Aryan_Technolog1es                  |\033[0m"
+echo -e "\033[95m|                           📧Email:    vivek.aryanvbw@gmail.com             |\033[0m"
+echo -e "\033[32m+===========================================================================+\033[0m"
+echo -e "\033[93m|                            Welcome to AUTO Blogger!                        |\033[0m"
+
 
 # Define installation directory
 INSTALL_DIR="$HOME/AUTO-blogger"
@@ -52,6 +61,29 @@ detect_os() {
   fi
 }
 
+# Check and install Homebrew on macOS
+install_homebrew() {
+  echo -e "${YELLOW}Checking Homebrew installation...${NC}"
+  
+  if ! command -v brew &> /dev/null; then
+    echo -e "${YELLOW}Installing Homebrew...${NC}"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    # Add Homebrew to PATH for the current session
+    if [[ "$(uname -m)" == "arm64" ]]; then
+      # For Apple Silicon Macs
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    else
+      # For Intel Macs
+      eval "$(/usr/local/bin/brew shellenv)"
+    fi
+    
+    echo -e "${GREEN}Homebrew installed successfully.${NC}"
+  else
+    echo -e "${GREEN}Homebrew is already installed.${NC}"
+  fi
+}
+
 # Check if Python is installed and install if not
 check_python() {
   echo -e "${YELLOW}Checking Python installation...${NC}"
@@ -73,14 +105,11 @@ check_python() {
         exit 1
       fi
     elif [[ "$OS" == "macos" ]]; then
-      if command -v brew &> /dev/null; then
-        echo -e "${YELLOW}Installing Python 3 using Homebrew...${NC}"
-        brew install python
-      else
-        echo -e "${RED}Homebrew not found. Installing Homebrew...${NC}"
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        brew install python
-      fi
+      # Install Homebrew first if needed
+      install_homebrew
+      # Then use Homebrew to install Python
+      echo -e "${YELLOW}Installing Python 3 using Homebrew...${NC}"
+      brew install python
     elif [[ "$OS" == "windows" ]]; then
       echo -e "${RED}Please install Python 3 manually from https://www.python.org/downloads/${NC}"
       exit 1
@@ -109,10 +138,18 @@ check_python() {
         exit 1
       fi
     elif [[ "$OS" == "macos" ]]; then
-      echo -e "${YELLOW}Installing pip...${NC}"
-      curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-      python3 get-pip.py
-      rm get-pip.py
+      echo -e "${YELLOW}Setting up pip...${NC}"
+      # Install Homebrew first if needed
+      install_homebrew
+      
+      # Check if Python is installed via Homebrew, which should include pip
+      if brew list python &>/dev/null; then
+        echo -e "${GREEN}Using Homebrew's Python pip...${NC}"
+        # pip should already be installed with Homebrew Python
+      else
+        echo -e "${YELLOW}Installing Python via Homebrew which includes pip...${NC}"
+        brew install python
+      fi
     fi
   else
     echo -e "${GREEN}pip is already installed.${NC}"
@@ -140,13 +177,11 @@ check_git() {
         exit 1
       fi
     elif [[ "$OS" == "macos" ]]; then
-      if command -v brew &> /dev/null; then
-        echo -e "${YELLOW}Installing Git using Homebrew...${NC}"
-        brew install git
-      else
-        echo -e "${RED}Homebrew not found. Please install Git manually.${NC}"
-        exit 1
-      fi
+      # Install Homebrew first if needed
+      install_homebrew
+      
+      echo -e "${YELLOW}Installing Git using Homebrew...${NC}"
+      brew install git
     elif [[ "$OS" == "windows" ]]; then
       echo -e "${RED}Please install Git manually from https://git-scm.com/download/win${NC}"
       exit 1
@@ -230,18 +265,69 @@ EOF
     # Determine shell configuration file
     if [[ "$SHELL" == *"zsh"* ]]; then
       CONFIG_FILE="$HOME/.zshrc"
-    else
+    elif [[ "$SHELL" == *"bash"* ]]; then
       CONFIG_FILE="$HOME/.bashrc"
+    elif [[ "$OS" == "macos" ]]; then
+      # Default to zshrc on macOS since it's the default shell since Catalina
+      CONFIG_FILE="$HOME/.zshrc"
+      echo -e "${YELLOW}macOS detected. Using .zshrc as default shell config.${NC}"
+    else
+      # Default to bashrc if shell can't be determined
+      CONFIG_FILE="$HOME/.bashrc"
+      echo -e "${YELLOW}Could not determine shell type. Using .bashrc as default.${NC}"
     fi
     
     # Check if alias already exists and remove it
-    sed -i.bak '/alias autoV=/d' "$CONFIG_FILE" 2>/dev/null || true
+    if [[ -f "$CONFIG_FILE" ]]; then
+      # macOS sed requires a backup extension, Linux sed can work without it
+      if [[ "$OS" == "macos" ]]; then
+        sed -i '' '/alias autoV=/d' "$CONFIG_FILE" 2>/dev/null || true
+      else
+        sed -i '/alias autoV=/d' "$CONFIG_FILE" 2>/dev/null || true
+      fi
+    fi
     
     # Add alias to shell configuration
     echo "alias autoV='bash $INSTALL_DIR/autoV.sh'" >> "$CONFIG_FILE"
     
     echo -e "${GREEN}Alias 'autoV' created successfully.${NC}"
-    echo -e "${YELLOW}Please run 'source $CONFIG_FILE' or restart your terminal to use the command.${NC}"
+    
+    # Create standalone executable in appropriate bin directory (requires sudo)
+    echo -e "${YELLOW}Creating system-wide command...${NC}"
+    cat > /tmp/autov << EOF
+#!/bin/bash
+bash "$INSTALL_DIR/autoV.sh"
+EOF
+    
+    chmod +x /tmp/autov
+    echo -e "${YELLOW}You may be asked for your password to install the command system-wide.${NC}"
+    
+    # Use the appropriate bin directory for macOS
+    if [[ "$OS" == "macos" ]]; then
+      if [[ -d "/usr/local/bin" ]]; then
+        BIN_DIR="/usr/local/bin"
+      elif [[ -d "/opt/homebrew/bin" ]]; then
+        # For Apple Silicon Macs where Homebrew might install to /opt
+        BIN_DIR="/opt/homebrew/bin"
+      else
+        BIN_DIR="/usr/local/bin"
+      fi
+    else
+      BIN_DIR="/usr/local/bin"
+    fi
+    
+    sudo mv /tmp/autov "$BIN_DIR/autoV" 2>/dev/null || {
+      echo -e "${YELLOW}Could not create system-wide command. You can still use the alias.${NC}"
+    }
+    
+    # Source the configuration file to make alias available immediately
+    if [[ -f "$CONFIG_FILE" ]]; then
+      echo -e "${YELLOW}Activating alias in current shell...${NC}"
+      source "$CONFIG_FILE" 2>/dev/null || {
+        echo -e "${YELLOW}Could not source $CONFIG_FILE automatically.${NC}"
+        echo -e "${YELLOW}Please run 'source $CONFIG_FILE' or restart your terminal to use the 'autoV' command.${NC}"
+      }
+    fi
   elif [[ "$OS" == "windows" ]]; then
     # Create batch file for Windows
     cat > "$INSTALL_DIR/autoV.bat" << EOF
@@ -270,6 +356,12 @@ set_permissions() {
 # Run all installation steps
 run_installation() {
   detect_os
+  
+  # Install Homebrew first if on macOS
+  if [[ "$OS" == "macos" ]]; then
+    install_homebrew
+  fi
+  
   check_python
   check_git
   clone_repository
@@ -281,7 +373,26 @@ run_installation() {
   echo -e "${BLUE}=================================${NC}"
   echo -e "${GREEN}AUTO-blogger has been installed successfully.${NC}"
   echo -e "${YELLOW}To start AUTO-blogger, type 'autoV' in your terminal.${NC}"
-  echo -e "${YELLOW}For Windows users, run '$INSTALL_DIR/autoV.bat'${NC}"
+  
+  # Provide immediate execution instructions
+  if [[ "$OS" == "linux" ]] || [[ "$OS" == "macos" ]]; then
+    echo -e "${YELLOW}If 'autoV' command is not working, you can run it directly with:${NC}"
+    echo -e "${GREEN}bash $INSTALL_DIR/autoV.sh${NC}"
+    
+    if [[ "$OS" == "macos" ]]; then
+      echo -e "${YELLOW}For macOS users: You may need to restart your terminal or run:${NC}"
+      echo -e "${GREEN}source $CONFIG_FILE${NC}"
+      echo -e "${YELLOW}To enable the autoV command.${NC}"
+      
+      # Check if terminal requires additional permissions
+      if [[ -n "$TERM_PROGRAM" && "$TERM_PROGRAM" == "Apple_Terminal" ]]; then
+        echo -e "${YELLOW}Note: If Terminal asks for disk access permissions, please allow it.${NC}"
+      fi
+    fi
+  elif [[ "$OS" == "windows" ]]; then
+    echo -e "${YELLOW}For Windows users, run '$INSTALL_DIR/autoV.bat'${NC}"
+  fi
+  
   echo -e "${BLUE}=================================${NC}"
 }
 
