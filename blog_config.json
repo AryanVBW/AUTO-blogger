@@ -5,8 +5,9 @@
     "wp_username": "Vivek",
     "wp_password": "cEfE Ki7D gubO 3A6u DnD0 Hsqb",
     "gemini_api_key": "AIzaSyAReIvt63-8a6xgYl9vbL4Tax3AuEn3ZHo",
-    "max_articles": 2,
+    "max_articles": 1,
     "timeout": 10,
     "headless_mode": true,
-    "openai_api_key": "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"
+    "openai_api_key": "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",
+    "google_api_key": "AIzaSyAReIvt63-8a6xgYl9vbL4Tax3AuEn3ZHo"
 }

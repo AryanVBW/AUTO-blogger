@@ -108,12 +108,26 @@ class BlogAutomationGUI:
         # Start log processing
         self.process_log_queue()
         
+        # Add startup test logs to verify logging is working
+        self.logger.info("🎯 AUTO Blogger GUI started successfully")
+        self.logger.debug("🔧 Debug logging is working")
+        self.logger.warning("⚠️ Warning logging is working")
+        self.logger.error("❌ Error logging is working (this is just a test)")
+        self.logger.info("📋 Check logs tab to view all application logs")
+        
     def setup_logging(self):
         """Setup logging to capture all messages"""
+        # Setup root logger to capture everything
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.DEBUG)
+        
+        # Setup our specific logger
         self.logger = logging.getLogger('BlogAutomation')
         self.logger.setLevel(logging.DEBUG)
         
-        # Remove existing handlers
+        # Clear any existing handlers
+        for handler in root_logger.handlers[:]:
+            root_logger.removeHandler(handler)
         for handler in self.logger.handlers[:]:
             self.logger.removeHandler(handler)
         
@@ -124,12 +138,32 @@ class BlogAutomationGUI:
                 self.log_queue = log_queue
                 
             def emit(self, record):
-                self.log_queue.put(self.format(record))
+                try:
+                    msg = self.format(record)
+                    self.log_queue.put(msg)
+                except Exception:
+                    pass  # Don't let logging errors break the app
         
-        handler = QueueHandler(self.log_queue)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        # Create file handler for persistent logging
+        file_handler = logging.FileHandler('blog_automation.log')
+        file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(file_formatter)
+        
+        # Create queue handler for GUI
+        queue_handler = QueueHandler(self.log_queue)
+        gui_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        queue_handler.setFormatter(gui_formatter)
+        
+        # Add handlers to root logger to catch everything
+        root_logger.addHandler(file_handler)
+        root_logger.addHandler(queue_handler)
+        
+        # Also add to our specific logger
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(queue_handler)
+        
+        # Log startup message
+        self.logger.info("🚀 Logging system initialized - capturing all logs")
         
     def load_config(self):
         """Load configuration from file"""
@@ -330,13 +364,22 @@ Licensed under the MIT License"""
         self.force_processing_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(settings_frame, text="Force Processing (ignore history)", variable=self.force_processing_var).pack(side=tk.LEFT, padx=20)
         
-        # Image generation option
-        self.generate_images_var = tk.BooleanVar(value=False)
-        image_checkbox = ttk.Checkbutton(settings_frame, text="Generate Featured Images (OpenAI)", variable=self.generate_images_var)
-        image_checkbox.pack(side=tk.LEFT, padx=20)
+        # Image generation options
+        image_frame = ttk.LabelFrame(settings_frame, text="Featured Images", padding=10)
+        image_frame.pack(side=tk.LEFT, padx=20, fill=tk.BOTH)
         
-        # Add tooltip for image generation
-        ToolTip(image_checkbox, "Generates featured images using OpenAI DALL-E. Requires an OpenAI API key in the Authentication tab.")
+        self.image_source_var = tk.StringVar(value="none")
+        
+        # Radio buttons for image source selection
+        ttk.Radiobutton(image_frame, text="No Images", variable=self.image_source_var, value="none").pack(anchor=tk.W)
+        openai_radio = ttk.Radiobutton(image_frame, text="Generate with OpenAI DALL-E", variable=self.image_source_var, value="openai")
+        openai_radio.pack(anchor=tk.W)
+        getty_radio = ttk.Radiobutton(image_frame, text="Getty Images Editorial", variable=self.image_source_var, value="getty")
+        getty_radio.pack(anchor=tk.W)
+        
+        # Add tooltips
+        ToolTip(openai_radio, "Generates featured images using OpenAI DALL-E. Requires an OpenAI API key in the Authentication tab.")
+        ToolTip(getty_radio, "Fetches editorial images from Getty Images and embeds them using standard Getty embed code. No API key required.")
         
         # Buttons frame
         buttons_frame = ttk.Frame(control_panel)
@@ -427,7 +470,7 @@ Licensed under the MIT License"""
             "Injecting external links",
             "Generating SEO metadata",
             "Generating keyphrases",
-            "Generating featured image",
+            "Processing images",
             "Detecting categories",
             "Generating tags",
             "Creating WordPress post",
@@ -457,8 +500,10 @@ Licensed under the MIT License"""
                                       values=["DEBUG", "INFO", "WARNING", "ERROR"], 
                                       width=10, state="readonly")
         log_level_combo.pack(side=tk.LEFT, padx=5)
+        log_level_combo.bind('<<ComboboxSelected>>', self.on_log_level_change)
         
         ttk.Button(logs_toolbar, text="Save Logs", command=self.save_logs).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(logs_toolbar, text="Refresh", command=self.refresh_logs).pack(side=tk.RIGHT, padx=2)
         ttk.Button(logs_toolbar, text="Clear", command=self.clear_logs).pack(side=tk.RIGHT)
         
         # Logs text area
@@ -470,6 +515,40 @@ Licensed under the MIT License"""
         self.logs_text.tag_configure("WARNING", foreground="orange")
         self.logs_text.tag_configure("INFO", foreground="blue")
         self.logs_text.tag_configure("DEBUG", foreground="gray")
+        
+        # Load existing logs from file
+        self.load_existing_logs()
+        
+    def load_existing_logs(self):
+        """Load existing logs from the log file"""
+        try:
+            if os.path.exists('blog_automation.log'):
+                with open('blog_automation.log', 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    # Load last 500 lines to avoid overwhelming the GUI
+                    recent_lines = lines[-500:] if len(lines) > 500 else lines
+                    
+                self.logs_text.insert(tk.END, "📋 Loading recent logs from blog_automation.log...\n\n")
+                
+                for line in recent_lines:
+                    line = line.strip()
+                    if line:  # Skip empty lines
+                        self.add_log_message(line)
+                        
+                self.logs_text.insert(tk.END, "\n🔄 Real-time logs will appear below...\n")
+                self.logs_text.see(tk.END)
+                
+                # Add separator
+                separator = "=" * 80 + "\n"
+                self.logs_text.insert(tk.END, separator)
+                
+        except Exception as e:
+            self.logs_text.insert(tk.END, f"⚠️ Could not load existing logs: {e}\n")
+            
+    def refresh_logs(self):
+        """Refresh logs by reloading from file"""
+        self.logs_text.delete(1.0, tk.END)
+        self.load_existing_logs()
         
     def create_config_tab(self):
         """Create configuration tab"""
@@ -643,45 +722,81 @@ Licensed under the MIT License"""
         try:
             while not self.log_queue.empty():
                 msg = self.log_queue.get_nowait()
-                if hasattr(self, 'log_text'):
-                    self.log_text.configure(state='normal')
-                    self.log_text.insert(tk.END, msg + '\n')
-                    self.log_text.configure(state='disabled')
-                    self.log_text.see(tk.END)
+                # Use the correct logs_text widget and add_log_message method
+                if hasattr(self, 'logs_text'):
+                    self.add_log_message(msg)
         except queue.Empty:
             pass
+        except Exception as e:
+            print(f"Error processing log queue: {e}")
         finally:
             # Schedule to run again
             self.root.after(100, self.process_log_queue)
             
     def add_log_message(self, message):
-        """Add log message to the logs text area"""
-        self.logs_text.insert(tk.END, message + "\n")
-        
-        # Apply color based on log level
-        if "ERROR" in message:
-            start_line = self.logs_text.index(tk.END + "-2l")
-            end_line = self.logs_text.index(tk.END + "-1l")
-            self.logs_text.tag_add("ERROR", start_line, end_line)
-        elif "WARNING" in message:
-            start_line = self.logs_text.index(tk.END + "-2l")  
-            end_line = self.logs_text.index(tk.END + "-1l")
-            self.logs_text.tag_add("WARNING", start_line, end_line)
-        elif "INFO" in message:
-            start_line = self.logs_text.index(tk.END + "-2l")
-            end_line = self.logs_text.index(tk.END + "-1l") 
-            self.logs_text.tag_add("INFO", start_line, end_line)
+        """Add log message to the logs text area with filtering and formatting"""
+        if not hasattr(self, 'logs_text') or not self.logs_text:
+            return
             
-        # Auto-scroll to bottom
-        self.logs_text.see(tk.END)
+        # Get current log level setting
+        current_level = self.log_level_var.get() if hasattr(self, 'log_level_var') else "INFO"
         
-        # Update status bar
+        # Determine message level
+        message_level = "INFO"  # Default
         if "ERROR" in message:
-            self.status_label.config(text="Error occurred - check logs")
-        elif "Starting" in message:
-            self.status_label.config(text="Automation running...")
-        elif "Completed" in message:
-            self.status_label.config(text="Automation completed")
+            message_level = "ERROR"
+        elif "WARNING" in message:
+            message_level = "WARNING"
+        elif "DEBUG" in message:
+            message_level = "DEBUG"
+        elif "INFO" in message:
+            message_level = "INFO"
+            
+        # Level hierarchy: DEBUG < INFO < WARNING < ERROR
+        level_hierarchy = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
+        
+        # Only show if message level is >= current filter level
+        if level_hierarchy.get(message_level, 1) >= level_hierarchy.get(current_level, 1):
+            # Add timestamp if not already present
+            if not message.startswith('20'):  # Simple check for timestamp
+                from datetime import datetime
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                message = f"{timestamp} - {message_level} - {message}"
+            
+            # Insert message
+            self.logs_text.insert(tk.END, message + "\n")
+            
+            # Apply color based on log level
+            start_line = self.logs_text.index(tk.END + "-2l")
+            end_line = self.logs_text.index(tk.END + "-1l")
+            
+            if message_level == "ERROR":
+                self.logs_text.tag_add("ERROR", start_line, end_line)
+            elif message_level == "WARNING":
+                self.logs_text.tag_add("WARNING", start_line, end_line)
+            elif message_level == "INFO":
+                self.logs_text.tag_add("INFO", start_line, end_line)
+            elif message_level == "DEBUG":
+                self.logs_text.tag_add("DEBUG", start_line, end_line)
+                
+            # Auto-scroll to bottom
+            self.logs_text.see(tk.END)
+            
+            # Update status bar
+            if hasattr(self, 'status_label'):
+                if message_level == "ERROR":
+                    self.status_label.config(text="❌ Error occurred - check logs")
+                elif "Starting" in message or "🚀" in message:
+                    self.status_label.config(text="🔄 Automation running...")
+                elif "Completed" in message or "✅" in message:
+                    self.status_label.config(text="✅ Automation completed")
+                elif "Processing" in message:
+                    self.status_label.config(text="📝 Processing articles...")
+        
+        # Limit log size to prevent memory issues
+        lines = self.logs_text.get(1.0, tk.END).count('\n')
+        if lines > 1000:  # Keep last 1000 lines
+            self.logs_text.delete(1.0, f"{lines-1000}.0")
             
     def install_requirements(self):
         """Install missing Python requirements"""
@@ -906,6 +1021,9 @@ Licensed under the MIT License"""
         self.stop_requested = False
         self.is_running = True
         
+        # Log automation start with details
+        self.log_automation_start()
+        
         # Initialize steps
         self.initialize_steps()
         
@@ -1069,9 +1187,11 @@ Licensed under the MIT License"""
             keyphrase_count = 1 + len(additional_keyphrases) if focus_keyphrase else len(additional_keyphrases)
             self.update_step_status(6, 'completed', f'Extracted {keyphrase_count} keyphrases', elapsed)
             
-            # Step 7: Generate featured image (if enabled)
+            # Step 7: Handle images based on selected source
+            image_source = self.image_source_var.get()
             media_id = None
-            if self.generate_images_var.get():
+            
+            if image_source == "openai":
                 step_start = time.time()
                 self.update_step_status(7, 'running', 'Generating image with OpenAI...')
                 
@@ -1080,8 +1200,19 @@ Licensed under the MIT License"""
                 media_id = None  # Will be set after post creation
                 elapsed = f"{time.time() - step_start:.1f}s"
                 self.update_step_status(7, 'completed', 'Image generated', elapsed)
+                
+            elif image_source == "getty":
+                step_start = time.time()
+                self.update_step_status(7, 'running', 'Preparing Getty Images for featured image...')
+                
+                # For Getty Images, we'll set it as featured image after post creation
+                # Just mark that we need to process Getty images later
+                media_id = None  # Will be set after post creation
+                elapsed = f"{time.time() - step_start:.1f}s"
+                self.update_step_status(7, 'completed', 'Getty Images prepared', elapsed)
+                
             else:
-                self.update_step_status(7, 'skipped', 'Image generation disabled', '')
+                self.update_step_status(7, 'skipped', 'No images selected', '')
             
             # Step 8: Detect categories
             step_start = time.time()
@@ -1121,10 +1252,10 @@ Licensed under the MIT License"""
             elapsed = f"{time.time() - step_start:.1f}s"
             self.update_step_status(10, 'completed', f'Post created (ID: {post_id})', elapsed)
             
-            # Step 7b: Now that we have a post ID, generate and upload the featured image if enabled
-            if self.generate_images_var.get():
+            # Step 7b: Now that we have a post ID, handle images based on selected source
+            if image_source == "openai":
                 step_start = time.time()
-                self.update_step_status(7, 'running', 'Uploading image and setting as featured...')
+                self.update_step_status(7, 'running', 'Uploading OpenAI image and setting as featured...')
                 
                 media_id = self.automation_engine.generate_and_upload_featured_image(
                     paraphrased_title, 
@@ -1134,9 +1265,25 @@ Licensed under the MIT License"""
                 
                 if media_id:
                     elapsed = f"{time.time() - step_start:.1f}s"
-                    self.update_step_status(7, 'completed', f'Featured image set (ID: {media_id})', elapsed)
+                    self.update_step_status(7, 'completed', f'OpenAI featured image set (ID: {media_id})', elapsed)
                 else:
-                    self.update_step_status(7, 'error', 'Failed to set featured image')
+                    self.update_step_status(7, 'error', 'Failed to set OpenAI featured image')
+                    
+            elif image_source == "getty":
+                step_start = time.time()
+                self.update_step_status(7, 'running', 'Searching and downloading Getty Images...')
+                
+                media_id = self.automation_engine.generate_and_upload_getty_featured_image(
+                    paraphrased_title, 
+                    final_content,
+                    post_id
+                )
+                
+                if media_id:
+                    elapsed = f"{time.time() - step_start:.1f}s"
+                    self.update_step_status(7, 'completed', f'Getty featured image set (ID: {media_id})', elapsed)
+                else:
+                    self.update_step_status(7, 'error', 'Failed to set Getty featured image')
             
             # Step 11: Finalize
             self.update_step_status(11, 'completed', f'Article processing completed in {time.time() - start_time:.1f}s')
@@ -1153,6 +1300,12 @@ Licensed under the MIT License"""
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
         self.current_task_label.config(text=f"Completed - {self.processed_count} articles processed")
+        
+        # Calculate error count for logging
+        error_count = getattr(self, 'error_count', 0) if hasattr(self, 'error_count') else 0
+        
+        # Log completion with summary
+        self.log_automation_complete(self.processed_count, error_count)
         
         if self.processed_count > 0:
             self.logger.info(f"🎉 Automation completed successfully! {self.processed_count} articles processed.")
@@ -1303,6 +1456,29 @@ See the Logs tab for more technical details."""
         """Check system prerequisites"""
         # This is a placeholder for now
         pass
+
+    def on_log_level_change(self, event=None):
+        """Handle log level combo box change"""
+        level = self.log_level_var.get()
+        self.add_log_message(f"🔧 Log level changed to: {level}")
+        
+    def log_automation_start(self):
+        """Log automation start with detailed info"""
+        self.add_log_message("🚀 Starting blog automation...")
+        self.add_log_message(f"📊 Configuration: Max articles={self.config.get('max_articles', 'N/A')}")
+        self.add_log_message(f"🌐 Source URL: {self.config.get('source_url', 'N/A')}")
+        self.add_log_message(f"📝 WordPress URL: {self.config.get('wp_base_url', 'N/A')}")
+        image_source = getattr(self, 'image_source_var', None)
+        if image_source:
+            self.add_log_message(f"🖼️ Image source: {image_source.get()}")
+            
+    def log_automation_complete(self, success_count=0, error_count=0):
+        """Log automation completion with summary"""
+        self.add_log_message("🏁 Blog automation completed!")
+        self.add_log_message(f"✅ Successfully processed: {success_count} articles")
+        if error_count > 0:
+            self.add_log_message(f"❌ Errors encountered: {error_count} articles")
+        self.add_log_message("📋 Check logs above for detailed information")
 
 def main():
     """Main function to run the application"""

@@ -1,0 +1,293 @@
+2025-06-26 03:21:16,413 - INFO - Logging initialized
+2025-06-26 03:21:16,420 - ERROR - Failed to initialize automation engine: BlogAutomationEngine.__init__() missing 1 required positional argument: 'logger'
+2025-06-26 03:21:16,420 - ERROR - Failed to initialize automation engine: BlogAutomationEngine.__init__() missing 1 required positional argument: 'logger'
+2025-06-26 03:21:48,619 - ERROR - Failed to initialize automation engine: BlogAutomationEngine.__init__() missing 1 required positional argument: 'logger'
+2025-06-26 03:22:19,028 - INFO - ✅ WordPress: Connected successfully
+2025-06-26 03:22:19,028 - INFO - ❌ Google API: Error - No module named 'google'
+2025-06-26 03:22:19,028 - INFO - ✅ OpenAI API: Connected successfully
+2025-06-26 03:22:24,351 - ERROR - Failed to initialize automation engine: BlogAutomationEngine.__init__() missing 1 required positional argument: 'logger'
+2025-06-26 03:24:11,529 - INFO - Logging initialized
+2025-06-26 03:24:11,536 - INFO - Automation engine initialized
+2025-06-26 03:24:11,536 - INFO - Automation engine initialized
+2025-06-26 03:24:13,159 - INFO - Credentials saved and automation engine initialized
+2025-06-26 03:24:14,792 - INFO - WordPress connection test successful
+2025-06-26 03:24:32,446 - INFO - ✅ WordPress: Connected successfully
+2025-06-26 03:24:32,447 - INFO - ❌ Google API: Error - No module named 'google'
+2025-06-26 03:24:32,447 - INFO - ✅ OpenAI API: Connected successfully
+2025-06-26 03:25:17,870 - INFO - Logging initialized
+2025-06-26 03:25:17,876 - INFO - Automation engine initialized
+2025-06-26 03:25:17,876 - INFO - Automation engine initialized
+2025-06-26 03:25:19,476 - INFO - Credentials saved and automation engine initialized
+2025-06-26 03:25:21,044 - INFO - WordPress connection test successful
+2025-06-26 03:25:43,687 - INFO - ✅ WordPress: Connected successfully
+2025-06-26 03:25:43,688 - INFO - ❌ Google API: Error - 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+2025-06-26 03:25:43,688 - INFO - ✅ OpenAI API: Connected successfully
+2025-06-26 03:27:23,607 - INFO - Logging initialized
+2025-06-26 03:27:23,614 - INFO - Automation engine initialized
+2025-06-26 03:27:23,614 - INFO - Automation engine initialized
+2025-06-26 03:27:30,599 - INFO - ✅ WordPress: Connected successfully
+2025-06-26 03:27:30,599 - INFO - ✅ Google API: Connected successfully
+2025-06-26 03:27:30,599 - INFO - ✅ OpenAI API: Connected successfully
+2025-06-26 03:27:37,615 - INFO - Starting automation with max_articles=1, force_processing=False
+2025-06-26 03:27:37,649 - ERROR - Error in automation: BlogAutomationEngine.get_article_links() got an unexpected keyword argument 'force'
+2025-06-26 03:27:37,649 - INFO - Automation completed
+2025-06-26 03:28:30,510 - INFO - Starting automation with max_articles=1, force_processing=False
+2025-06-26 03:28:30,533 - ERROR - Error in automation: BlogAutomationEngine.get_article_links() got an unexpected keyword argument 'force'
+2025-06-26 03:28:30,560 - INFO - Automation completed
+2025-06-26 03:28:31,185 - INFO - Starting automation with max_articles=1, force_processing=False
+2025-06-26 03:28:31,209 - ERROR - Error in automation: BlogAutomationEngine.get_article_links() got an unexpected keyword argument 'force'
+2025-06-26 03:28:31,223 - INFO - Automation completed
+2025-06-26 03:28:31,512 - INFO - Starting automation with max_articles=1, force_processing=False
+2025-06-26 03:28:31,531 - ERROR - Error in automation: BlogAutomationEngine.get_article_links() got an unexpected keyword argument 'force'
+2025-06-26 03:28:31,545 - INFO - Automation completed
+2025-06-26 03:28:48,278 - INFO - Logging initialized
+2025-06-26 03:28:48,285 - INFO - Automation engine initialized
+2025-06-26 03:28:48,285 - INFO - Automation engine initialized
+2025-06-26 03:28:59,734 - INFO - Starting automation with max_articles=1, force_processing=False
+2025-06-26 03:28:59,755 - ERROR - Error in automation: BlogAutomationEngine.get_article_links() got an unexpected keyword argument 'force'
+2025-06-26 03:28:59,767 - INFO - Automation completed
+2025-06-26 03:38:27,345 - INFO - Credentials saved and automation engine initialized
+2025-06-26 03:38:28,740 - INFO - WordPress connection test successful
+2025-06-26 03:38:32,940 - INFO - Starting automation with max_articles=1, force_processing=False
+2025-06-26 03:38:32,962 - ERROR - Error in automation: BlogAutomationEngine.get_article_links() got an unexpected keyword argument 'force'
+2025-06-26 03:38:32,990 - INFO - Automation completed
+2025-06-26 11:19:00,259 - INFO - Logging initialized
+2025-06-26 12:25:14,062 - INFO - Logging initialized
+2025-06-26 12:25:16,864 - INFO - Credentials saved and automation engine initialized
+2025-06-26 12:25:18,751 - ERROR - Failed to initialize automation engine: 'BlogAutomationGUI' object has no attribute 'connection_indicator'
+2025-06-26 12:26:35,209 - INFO - ✅ WordPress: Connected successfully
+2025-06-26 12:26:35,210 - INFO - ✅ Google API: Connected successfully
+2025-06-26 12:26:35,210 - INFO - ✅ OpenAI API: Connected successfully
+2025-06-26 12:30:29,610 - INFO - Stop requested by user
+2025-06-26 12:30:31,570 - INFO - Stop requested by user
+2025-06-26 14:08:49,801 - BlogAutomation - INFO - 🚀 Logging system initialized - capturing all logs
+2025-06-26 14:08:49,801 - BlogAutomation - INFO - 🚀 Logging system initialized - capturing all logs
+2025-06-26 14:08:49,801 - blog_automation - INFO - Configuration loaded successfully
+2025-06-26 14:08:49,801 - blog_automation - INFO - ✅ Automation engine initialized on startup
+2025-06-26 14:08:49,962 - blog_automation - INFO - 🎯 AUTO Blogger GUI started successfully
+2025-06-26 14:08:49,962 - blog_automation - DEBUG - 🔧 Debug logging is working
+2025-06-26 14:08:49,962 - blog_automation - WARNING - ⚠️ Warning logging is working
+2025-06-26 14:08:49,962 - blog_automation - ERROR - ❌ Error logging is working (this is just a test)
+2025-06-26 14:08:49,962 - blog_automation - INFO - 📋 Check logs tab to view all application logs
+2025-06-26 14:08:51,611 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:08:52,447 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/posts HTTP/1.1" 200 None
+2025-06-26 14:08:52,481 - blog_automation - INFO - WordPress connection test successful
+2025-06-26 14:08:53,344 - blog_automation - INFO - ✅ Configuration saved
+2025-06-26 14:08:56,587 - blog_automation - INFO - 🔗 Fetching articles from: https://tbrfootball.com/topic/english-premier-league/
+2025-06-26 14:08:56,587 - blog_automation - INFO - 🎯 Using selector: article.article h2 a
+2025-06-26 14:08:56,588 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): tbrfootball.com:443
+2025-06-26 14:08:56,886 - urllib3.connectionpool - DEBUG - https://tbrfootball.com:443 "GET /topic/english-premier-league/ HTTP/1.1" 200 None
+2025-06-26 14:08:56,889 - blog_automation - INFO - ✅ Successfully fetched page (Status: 200)
+2025-06-26 14:08:56,898 - blog_automation - INFO - 🔍 Found 15 elements matching selector
+2025-06-26 14:08:56,898 - blog_automation - DEBUG - Added article 1: https://tbrfootball.com/mathys-tels-performance-for-france-u-21-leaves-fans-in-agreement-tottenhams-thomas-frank-will-have-taken-note/
+2025-06-26 14:08:56,898 - blog_automation - DEBUG - Added article 2: https://tbrfootball.com/50m-star-will-run-across-london-and-sign-for-arsenal-but-only-if-mikel-arteta-makes-him-a-promise/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 3: https://tbrfootball.com/everton-now-confident-34m-striker-will-sign-for-them-he-wants-to-play-for-david-moyes/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 4: https://tbrfootball.com/tottenhams-outstanding-player-has-already-hinted-to-players-and-staff-hes-leaving-this-summer/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 5: https://tbrfootball.com/arsenal-have-finally-chosen-between-benjamin-sesko-or-viktor-gyokeres-theres-universal-backing-internally/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 6: https://tbrfootball.com/what-christian-norgaards-camp-privately-told-arsenal-when-tottenham-also-wanted-to-sign-him/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 7: https://tbrfootball.com/arsenal-boss-mikel-arteta-should-be-really-worried-after-hearing-what-rodrygo-is-like-in-training/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 8: https://tbrfootball.com/daniel-levy-will-be-gutted-to-see-tottenhams-60m-target-is-close-to-joining-another-club-thomas-frank-wanted-him/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 9: https://tbrfootball.com/liverpool-extremely-concerned-after-contract-talks-with-35m-star-he-holds-all-the-cards/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 10: https://tbrfootball.com/nicolas-jover-will-be-buzzing-to-hear-who-arsenal-are-now-trying-to-sign-he-could-make-them-way-more-creative/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 11: https://tbrfootball.com/tottenham-are-about-to-sign-a-very-highly-rated-player-johan-lange-might-have-pulled-off-bargain-deal/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 12: https://tbrfootball.com/liverpool-stance-on-viktor-gyokeres-and-benjamin-sesko-now-disclosed-as-newcastle-continue-alexander-isak-talks/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 13: https://tbrfootball.com/arsenal-have-one-major-viktor-gyokeres-doubt-and-85m-deal-proves-they-are-right/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 14: https://tbrfootball.com/nottingham-forest-now-in-talks-to-sign-fantastic-player-tottenham-want-him-too/
+2025-06-26 14:08:56,899 - blog_automation - DEBUG - Added article 15: https://tbrfootball.com/sunderland-in-contact-to-sign-17m-star-ahead-of-aston-villa-it-would-be-a-huge-coup/
+2025-06-26 14:08:56,899 - blog_automation - INFO - ✅ Successfully extracted 15 article links
+2025-06-26 14:08:56,907 - blog_automation - INFO - ✅ Found 1 new articles to process
+2025-06-26 14:08:56,926 - blog_automation - INFO - Processing article 1/1: https://tbrfootball.com/what-christian-norgaards-camp-privately-told-arsenal-when-tottenham-also-wanted-to-sign-him/
+2025-06-26 14:08:56,926 - WDM - INFO - ====== WebDriver manager ======
+2025-06-26 14:08:57,074 - WDM - INFO - Get LATEST chromedriver version for google-chrome
+2025-06-26 14:08:57,075 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): googlechromelabs.github.io:443
+2025-06-26 14:08:57,226 - urllib3.connectionpool - DEBUG - https://googlechromelabs.github.io:443 "GET /chrome-for-testing/latest-patch-versions-per-build.json HTTP/1.1" 200 11777
+2025-06-26 14:08:57,230 - WDM - INFO - Get LATEST chromedriver version for google-chrome
+2025-06-26 14:08:57,230 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): googlechromelabs.github.io:443
+2025-06-26 14:08:57,313 - urllib3.connectionpool - DEBUG - https://googlechromelabs.github.io:443 "GET /chrome-for-testing/latest-patch-versions-per-build.json HTTP/1.1" 200 11777
+2025-06-26 14:08:57,317 - WDM - INFO - Driver [/Users/vivek-w/.wdm/drivers/chromedriver/mac64/137.0.7151.119/chromedriver-mac-arm64/chromedriver] found in cache
+2025-06-26 14:08:57,317 - selenium.webdriver.common.driver_finder - DEBUG - Skipping Selenium Manager; path to chrome driver specified in Service class: /Users/vivek-w/.wdm/drivers/chromedriver/mac64/137.0.7151.119/chromedriver-mac-arm64/chromedriver
+2025-06-26 14:08:57,321 - selenium.webdriver.common.service - DEBUG - Started executable: `/Users/vivek-w/.wdm/drivers/chromedriver/mac64/137.0.7151.119/chromedriver-mac-arm64/chromedriver` in a child process with pid: 23597 using 0 to output -3
+2025-06-26 14:08:57,517 - selenium.webdriver.remote.remote_connection - DEBUG - POST http://localhost:55751/session {'capabilities': {'firstMatch': [{}], 'alwaysMatch': {'browserName': 'chrome', 'pageLoadStrategy': <PageLoadStrategy.normal: 'normal'>, 'goog:chromeOptions': {'extensions': [], 'args': ['--headless', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage', '--log-level=3', '--incognito', 'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36']}}}}
+2025-06-26 14:08:57,517 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): localhost:55751
+2025-06-26 14:08:57,856 - urllib3.connectionpool - DEBUG - http://localhost:55751 "POST /session HTTP/1.1" 200 0
+2025-06-26 14:08:57,856 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":{"capabilities":{"acceptInsecureCerts":false,"browserName":"chrome","browserVersion":"137.0.7151.120","chrome":{"chromedriverVersion":"137.0.7151.119 (e0ac9d12dff5f2d33c935958b06bf1ded7f1c08c-refs/branch-heads/7151@{#2356})","userDataDir":"/var/folders/f_/5mq0p_fs5p12fcpp9mfzdjfw0000gn/T/.org.chromium.Chromium.hi0o7B"},"fedcm:accounts":true,"goog:chromeOptions":{"debuggerAddress":"localhost:55760"},"networkConnectionEnabled":false,"pageLoadStrategy":"normal","platformName":"mac","proxy":{},"setWindowRect":true,"strictFileInteractability":false,"timeouts":{"implicit":0,"pageLoad":300000,"script":30000},"unhandledPromptBehavior":"dismiss and notify","webauthn:extension:credBlob":true,"webauthn:extension:largeBlob":true,"webauthn:extension:minPinLength":true,"webauthn:extension:prf":true,"webauthn:virtualAuthenticators":true},"sessionId":"31f4e4339c6e763c050dfdd6d43be1e5"}} | headers=HTTPHeaderDict({'Content-Length': '892', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:57,856 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:57,857 - blog_automation - INFO - ✅ Selenium WebDriver initialized successfully
+2025-06-26 14:08:57,857 - selenium.webdriver.remote.remote_connection - DEBUG - POST http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/url {'url': 'https://tbrfootball.com/what-christian-norgaards-camp-privately-told-arsenal-when-tottenham-also-wan...'}
+2025-06-26 14:08:59,056 - urllib3.connectionpool - DEBUG - http://localhost:55751 "POST /session/31f4e4339c6e763c050dfdd6d43be1e5/url HTTP/1.1" 200 0
+2025-06-26 14:08:59,056 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":null} | headers=HTTPHeaderDict({'Content-Length': '14', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,056 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,056 - selenium.webdriver.remote.remote_connection - DEBUG - POST http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element {'using': 'tag name', 'value': 'h1'}
+2025-06-26 14:08:59,061 - urllib3.connectionpool - DEBUG - http://localhost:55751 "POST /session/31f4e4339c6e763c050dfdd6d43be1e5/element HTTP/1.1" 200 0
+2025-06-26 14:08:59,061 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.13"}} | headers=HTTPHeaderDict({'Content-Length': '126', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,061 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,061 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.13/text {}
+2025-06-26 14:08:59,066 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.13/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,066 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"What Christian Norgaard’s camp privately told Arsenal when Tottenham also wanted to sign him"} | headers=HTTPHeaderDict({'Content-Length': '106', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,066 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,066 - selenium.webdriver.remote.remote_connection - DEBUG - POST http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/elements {'using': 'css selector', 'value': 'article p'}
+2025-06-26 14:08:59,070 - urllib3.connectionpool - DEBUG - http://localhost:55751 "POST /session/31f4e4339c6e763c050dfdd6d43be1e5/elements HTTP/1.1" 200 0
+2025-06-26 14:08:59,070 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":[{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.14"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.15"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.16"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.17"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.18"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.19"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.20"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.21"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.22"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.23"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.24"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.25"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.26"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.27"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.28"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.29"},{"element-6066-11e4-a52e-4f735466cecf":"f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.30"}]} | headers=HTTPHeaderDict({'Content-Length': '2000', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,070 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,070 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.14/text {}
+2025-06-26 14:08:59,073 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.14/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,073 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"TBR Football can exclusively reveal Christian Norgaard’s thoughts when he learned that both Arsenal and Tottenham Hotspur were interested in signing him."} | headers=HTTPHeaderDict({'Content-Length': '167', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,073 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,073 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.15/text {}
+2025-06-26 14:08:59,076 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.15/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,076 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"The Brentford captain has been one of the most consistent performers in the Premier League in recent seasons, and he has a lot of admirers."} | headers=HTTPHeaderDict({'Content-Length': '151', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,076 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,076 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.16/text {}
+2025-06-26 14:08:59,079 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.16/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,079 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"Thomas Frank wanted to sign Norgaard for Tottenham, but the Dane became a target for Arsenal too after it became clear that Thomas Partey was leaving the Emirates."} | headers=HTTPHeaderDict({'Content-Length': '175', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,079 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,079 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.17/text {}
+2025-06-26 14:08:59,081 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.17/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,081 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"A reunion with his old boss would’ve been appealing, but everything changed for Norgaard once Arsenal came into the picture."} | headers=HTTPHeaderDict({'Content-Length': '138', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,081 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,081 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.18/text {}
+2025-06-26 14:08:59,084 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.18/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,084 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"TBR Football’s chief correspondent, Graeme Bailey, understands that once Arsenal made their approach for Christian Norgaard, he made it clear he only wanted to move to the Emirates."} | headers=HTTPHeaderDict({'Content-Length': '195', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,084 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,084 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.19/text {}
+2025-06-26 14:08:59,087 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.19/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,087 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"We understand that the Danish midfielder was left unsettled by Frank’s departure from Brentford. That is when his agents reached out to assess his options."} | headers=HTTPHeaderDict({'Content-Length': '169', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,087 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,087 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.20/text {}
+2025-06-26 14:08:59,089 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.20/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,089 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"Soon, it became known that both Arsenal and Tottenham were interested in his services, but we have been told that Norgaard only had one thought in his mind, and that was a move to the red side of North London."} | headers=HTTPHeaderDict({'Content-Length': '221', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,090 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,090 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.21/text {}
+2025-06-26 14:08:59,093 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.21/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,093 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"Arsenal were looking at numerous midfield options, including Sevilla’s Lucien Agoume and Lille’s Ayyoub Bouaddi, upon learning that Partey was heading out. But, it is believed that the chance to land an experienced and highly-regarded Premier League performer was too good to turn down."} | headers=HTTPHeaderDict({'Content-Length': '302', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,093 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,093 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.22/text {}
+2025-06-26 14:08:59,095 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.22/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,095 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"Once Arsenal’s interest emerged, the Gunners were told by Norgaard’s camp that they were his priority destination, despite interest from their fierce rivals, Tottenham."} | headers=HTTPHeaderDict({'Content-Length': '184', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,095 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,095 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.23/text {}
+2025-06-26 14:08:59,098 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.23/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,098 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"Bailey told TBR: “Andrea Berta moved quickly, he spoke with Mikel Arteta and a decision was made quickly to sign Norgaard."} | headers=HTTPHeaderDict({'Content-Length': '136', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,098 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,098 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.24/text {}
+2025-06-26 14:08:59,101 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.24/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,101 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"“They were told early on that Arsenal was his priority, and that was a major appeal too.”"} | headers=HTTPHeaderDict({'Content-Length': '105', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,101 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,101 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.25/text {}
+2025-06-26 14:08:59,103 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.25/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,103 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"The £15 million deal for Norgaard is due to be completed before the weekend, with a medical already pencilled in for Thursday."} | headers=HTTPHeaderDict({'Content-Length': '139', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,103 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,103 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.26/text {}
+2025-06-26 14:08:59,106 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.26/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,106 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"Frank absolutely adored Norgaard and loved having him at Brentford."} | headers=HTTPHeaderDict({'Content-Length': '79', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,106 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,106 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.27/text {}
+2025-06-26 14:08:59,108 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.27/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,108 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"The now-Tottenham boss would’ve liked him at his disposal at his new club too, but Arsenal’s interest blew Spurs out of the water."} | headers=HTTPHeaderDict({'Content-Length': '146', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,109 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,109 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.28/text {}
+2025-06-26 14:08:59,111 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.28/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,111 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"The Norgaard deal should be sealed in the coming days, and one of the Dane’s first games in the famous red and white is set to come against Tottenham in pre-season."} | headers=HTTPHeaderDict({'Content-Length': '178', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,111 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,111 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.29/text {}
+2025-06-26 14:08:59,114 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.29/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,114 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"Arsenal take on Spurs in Hong Kong in what will be the first North London Derby played outside the country in history."} | headers=HTTPHeaderDict({'Content-Length': '130', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,114 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,114 - selenium.webdriver.remote.remote_connection - DEBUG - GET http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.30/text {}
+2025-06-26 14:08:59,117 - urllib3.connectionpool - DEBUG - http://localhost:55751 "GET /session/31f4e4339c6e763c050dfdd6d43be1e5/element/f.E197F525705A0EAF9475517510604ABF.d.1A620ED9650744F9ADE04A31B6A060C9.e.30/text HTTP/1.1" 200 0
+2025-06-26 14:08:59,117 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":"If Norgaard scores against his old boss and helps Arsenal beat Tottenham, he will become an instant hero."} | headers=HTTPHeaderDict({'Content-Length': '117', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,117 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,117 - blog_automation - INFO - Extracted title 'What Christian Norgaard’s camp privately told Arsenal when Tottenham also wanted to sign him' and 17 paragraphs from https://tbrfootball.com/what-christian-norgaards-camp-privately-told-arsenal-when-tottenham-also-wanted-to-sign-him/
+2025-06-26 14:08:59,117 - blog_automation - INFO - ℹ️ Quitting Selenium WebDriver
+2025-06-26 14:08:59,117 - selenium.webdriver.remote.remote_connection - DEBUG - DELETE http://localhost:55751/session/31f4e4339c6e763c050dfdd6d43be1e5 {}
+2025-06-26 14:08:59,172 - urllib3.connectionpool - DEBUG - http://localhost:55751 "DELETE /session/31f4e4339c6e763c050dfdd6d43be1e5 HTTP/1.1" 200 0
+2025-06-26 14:08:59,172 - selenium.webdriver.remote.remote_connection - DEBUG - Remote response: status=200 | data={"value":null} | headers=HTTPHeaderDict({'Content-Length': '14', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2025-06-26 14:08:59,172 - selenium.webdriver.remote.remote_connection - DEBUG - Finished Request
+2025-06-26 14:08:59,184 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): generativelanguage.googleapis.com:443
+2025-06-26 14:09:03,387 - urllib3.connectionpool - DEBUG - https://generativelanguage.googleapis.com:443 "POST /v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAReIvt63-8a6xgYl9vbL4Tax3AuEn3ZHo HTTP/1.1" 200 None
+2025-06-26 14:09:03,402 - blog_automation - INFO - Injected 3 internal links
+2025-06-26 14:09:03,438 - blog_automation - INFO - Injected 2 external links
+2025-06-26 14:09:03,490 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): generativelanguage.googleapis.com:443
+2025-06-26 14:09:04,659 - urllib3.connectionpool - DEBUG - https://generativelanguage.googleapis.com:443 "POST /v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAReIvt63-8a6xgYl9vbL4Tax3AuEn3ZHo HTTP/1.1" 200 None
+2025-06-26 14:09:04,659 - blog_automation - INFO - Generated SEO title (54 chars): Arsenal beat Tottenham to Christian Norgaard signature
+2025-06-26 14:09:04,660 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): generativelanguage.googleapis.com:443
+2025-06-26 14:09:05,563 - urllib3.connectionpool - DEBUG - https://generativelanguage.googleapis.com:443 "POST /v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAReIvt63-8a6xgYl9vbL4Tax3AuEn3ZHo HTTP/1.1" 200 None
+2025-06-26 14:09:05,563 - blog_automation - INFO - Extracted focus keyphrase: christian norgaard transfer
+2025-06-26 14:09:05,563 - blog_automation - INFO - Extracted additional keyphrases: ['arsenal transfer news', 'tottenham interest', 'brentford midfielder', 'premier league giants', 'thomas partey replacement']
+2025-06-26 14:09:05,563 - blog_automation - INFO - Matched category 'Transfer News' via keyword 'deal'
+2025-06-26 14:09:05,563 - blog_automation - INFO - Matched category 'Premier League Derbies' via keyword 'derby'
+2025-06-26 14:09:05,580 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): generativelanguage.googleapis.com:443
+2025-06-26 14:09:06,487 - urllib3.connectionpool - DEBUG - https://generativelanguage.googleapis.com:443 "POST /v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAReIvt63-8a6xgYl9vbL4Tax3AuEn3ZHo HTTP/1.1" 200 None
+2025-06-26 14:09:06,488 - blog_automation - INFO - Generated tags: ['Christian Norgaard', 'Thomas Frank', 'Thomas Partey', 'Lucien Agoume', 'Ayyoub Bouaddi', 'Mikel Arteta', 'Arsenal', 'Brentford']
+2025-06-26 14:09:06,488 - blog_automation - INFO - Generated slug: arsenal-beat-tottenham-christian-norgaard (Length: 41)
+2025-06-26 14:09:06,489 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:06,817 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/categories?search=Latest+News HTTP/1.1" 200 None
+2025-06-26 14:09:06,818 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:07,118 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/categories?search=Transfer+News HTTP/1.1" 200 None
+2025-06-26 14:09:07,120 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:07,401 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/categories?search=Premier+League+Derbies HTTP/1.1" 200 None
+2025-06-26 14:09:07,402 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:07,718 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/tags?search=Christian+Norgaard HTTP/1.1" 200 None
+2025-06-26 14:09:07,719 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:08,035 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/tags?search=Thomas+Frank HTTP/1.1" 200 None
+2025-06-26 14:09:08,037 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:08,357 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/tags?search=Thomas+Partey HTTP/1.1" 200 None
+2025-06-26 14:09:08,358 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:08,635 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/tags?search=Lucien+Agoume HTTP/1.1" 200 22
+2025-06-26 14:09:08,635 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:08,950 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "POST /wp-json/wp/v2/tags HTTP/1.1" 201 None
+2025-06-26 14:09:08,952 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:10,592 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/tags?search=Ayyoub+Bouaddi HTTP/1.1" 200 22
+2025-06-26 14:09:10,593 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:10,920 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "POST /wp-json/wp/v2/tags HTTP/1.1" 201 None
+2025-06-26 14:09:10,921 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:12,173 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/tags?search=Mikel+Arteta HTTP/1.1" 200 None
+2025-06-26 14:09:12,174 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:12,618 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/tags?search=Arsenal HTTP/1.1" 200 None
+2025-06-26 14:09:12,619 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:12,937 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "GET /wp-json/wp/v2/tags?search=Brentford HTTP/1.1" 200 None
+2025-06-26 14:09:12,938 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:13,331 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "POST /wp-json/wp/v2/posts HTTP/1.1" 201 None
+2025-06-26 14:09:13,339 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:13,698 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "PUT /wp-json/wp/v2/posts/101531 HTTP/1.1" 200 None
+2025-06-26 14:09:13,704 - blog_automation - INFO - ✅ SEO meta data updated with focus keyphrase: christian norgaard transfer
+2025-06-26 14:09:13,704 - blog_automation - INFO - ✅ WordPress draft post created (ID: 101531)
+2025-06-26 14:09:13,751 - blog_automation - INFO - 🖼️ Setting up Getty Images as featured image for: Premier League giants battle for experienced midfielder's signature
+2025-06-26 14:09:13,751 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): generativelanguage.googleapis.com:443
+2025-06-26 14:09:14,561 - urllib3.connectionpool - DEBUG - https://generativelanguage.googleapis.com:443 "POST /v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAReIvt63-8a6xgYl9vbL4Tax3AuEn3ZHo HTTP/1.1" 200 None
+2025-06-26 14:09:14,561 - blog_automation - INFO - 🤖 Gemini suggested search terms: Christian Norgaard Arsenal, Brentford FC, Premier League match
+2025-06-26 14:09:14,562 - blog_automation - INFO - 🔍 Searching for editorial sports images for: Christian Norgaard Arsenal, Brentford FC, Premier League match
+2025-06-26 14:09:14,562 - blog_automation - INFO - 🏆 Getting reliable sports images for: Christian Norgaard Arsenal, Brentford FC, Premier League match
+2025-06-26 14:09:14,562 - blog_automation - INFO - � Searching Unsplash for sports images: Christian Norgaard Arsenal, Brentford FC, Premier League match
+2025-06-26 14:09:14,562 - blog_automation - INFO - ✅ Generated 5 Unsplash sports images
+2025-06-26 14:09:14,562 - blog_automation - INFO - ✅ Found 5 editorial sports images for 'Christian Norgaard Arsenal, Brentford FC, Premier League match'
+2025-06-26 14:09:14,562 - blog_automation - INFO - 📸 Selected Getty image: Sports Editorial: Christian Norgaard Arsenal, Bren...
+2025-06-26 14:09:14,562 - blog_automation - INFO - 🔗 Image URL: https://source.unsplash.com/1200x800/?premier league arsenal match&sig=0
+2025-06-26 14:09:14,562 - blog_automation - INFO - ⬇️ Downloading sports image: https://source.unsplash.com/1200x800/?premier league arsenal match&sig=0
+2025-06-26 14:09:14,562 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): source.unsplash.com:443
+2025-06-26 14:09:15,669 - urllib3.connectionpool - DEBUG - https://source.unsplash.com:443 "GET /1200x800/?premier%20league%20arsenal%20match&sig=0 HTTP/1.1" 503 567
+2025-06-26 14:09:15,670 - blog_automation - ERROR - ❌ Error downloading image: 503 Server Error: Service Unavailable for url: https://source.unsplash.com/1200x800/?premier%20league%20arsenal%20match&sig=0
+2025-06-26 14:09:15,670 - blog_automation - INFO - 🔄 Downloading reliable fallback placeholder image...
+2025-06-26 14:09:15,670 - blog_automation - INFO - 🔄 Trying fallback URL: https://picsum.photos/1200/800?grayscale
+2025-06-26 14:09:15,672 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): picsum.photos:443
+2025-06-26 14:09:16,745 - urllib3.connectionpool - DEBUG - https://picsum.photos:443 "GET /1200/800?grayscale HTTP/1.1" 302 0
+2025-06-26 14:09:16,746 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): fastly.picsum.photos:443
+2025-06-26 14:09:17,718 - urllib3.connectionpool - DEBUG - https://fastly.picsum.photos:443 "GET /id/930/1200/800.jpg?grayscale&hmac=l8Liy0m7LuhHP_DAlQMBiEwgE-gc-wpSzPjBnb5NkzI HTTP/1.1" 503 447
+2025-06-26 14:09:17,719 - blog_automation - WARNING - ⚠️ Fallback URL failed: 503 Server Error: backend read error for url: https://fastly.picsum.photos/id/930/1200/800.jpg?grayscale&hmac=l8Liy0m7LuhHP_DAlQMBiEwgE-gc-wpSzPjBnb5NkzI
+2025-06-26 14:09:17,719 - blog_automation - INFO - 🔄 Trying fallback URL: https://source.unsplash.com/1200x800/?sports,football
+2025-06-26 14:09:17,719 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): source.unsplash.com:443
+2025-06-26 14:09:18,502 - urllib3.connectionpool - DEBUG - https://source.unsplash.com:443 "GET /1200x800/?sports,football HTTP/1.1" 503 567
+2025-06-26 14:09:18,503 - blog_automation - WARNING - ⚠️ Fallback URL failed: 503 Server Error: Service Unavailable for url: https://source.unsplash.com/1200x800/?sports,football
+2025-06-26 14:09:18,503 - blog_automation - INFO - 🔄 Trying fallback URL: https://picsum.photos/1200/800
+2025-06-26 14:09:18,504 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): picsum.photos:443
+2025-06-26 14:09:18,905 - urllib3.connectionpool - DEBUG - https://picsum.photos:443 "GET /1200/800 HTTP/1.1" 302 0
+2025-06-26 14:09:18,906 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): fastly.picsum.photos:443
+2025-06-26 14:09:18,995 - urllib3.connectionpool - DEBUG - https://fastly.picsum.photos:443 "GET /id/53/1200/800.jpg?hmac=deeOzwPgev9j2G7N03_d3texLOyJNsivXqUasPI35W4 HTTP/1.1" 200 65416
+2025-06-26 14:09:19,025 - blog_automation - INFO - ✅ Downloaded fallback image (65416 bytes)
+2025-06-26 14:09:19,025 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:21,084 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "POST /wp-json/wp/v2/media HTTP/1.1" 201 None
+2025-06-26 14:09:21,084 - blog_automation - INFO - ✅ Getty image uploaded to WordPress (Media ID: 101533)
+2025-06-26 14:09:21,085 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): premierleaguenewsnow.com:443
+2025-06-26 14:09:21,434 - urllib3.connectionpool - DEBUG - https://premierleaguenewsnow.com:443 "POST /wp-json/wp/v2/posts/101531 HTTP/1.1" 200 None
+2025-06-26 14:09:21,444 - blog_automation - INFO - ✅ Getty image set as featured image for post ID 101531
+2025-06-26 14:09:21,491 - blog_automation - INFO - 🎉 Automation completed successfully! 1 articles processed.
