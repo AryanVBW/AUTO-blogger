@@ -41,6 +41,18 @@ A comprehensive GUI application for automating WordPress blog posting with AI-po
 
 ## Installation
 
+### Quick Installation (One-Line Command)
+
+```bash
+# For macOS and Linux:
+curl -sSL https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_auto_blogger.sh | bash
+
+# For Windows (Run in PowerShell as Administrator):
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_auto_blogger.sh -OutFile install_auto_blogger.sh; bash install_auto_blogger.sh
+```
+
+After installation, you can start AUTO-blogger by typing `autoV` in your terminal.
+
 ### Prerequisites
 - Python 3.7 or higher
 - Chrome browser (for web scraping)
