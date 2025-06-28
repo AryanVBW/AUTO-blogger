@@ -1,0 +1,10 @@
+2025-06-29 02:02:11 | INFO | [SYSTEM] | 🚀 Unified logging system initialized
+2025-06-29 02:02:11 | INFO | [SYSTEM] | 📁 Session: session_20250629_020211
+2025-06-29 02:02:11 | INFO | [SYSTEM] | 📄 Unified log file: logs/session_20250629_020211_unified.log
+2025-06-29 02:02:11 | INFO | [SYSTEM] | Starting WebDriver and logging test
+2025-06-29 02:02:11 | ERROR | [ERROR] | Test failed: BlogAutomationEngine.__init__() missing 2 required positional arguments: 'config' and 'logger'
+2025-06-29 02:02:11 | INFO | [API] | API REQUEST | Testing API logging with enhanced colors 
+2025-06-29 02:02:11 | WARNING | [SECURITY] | SECURITY TESTING SECURITY LOGGING | 
+2025-06-29 02:02:11 | INFO | [CONTENT] | CONTENT TESTING CONTENT LOGGING
+2025-06-29 02:02:11 | INFO | [UI] | UI TESTING UI LOGGING
+2025-06-29 02:02:11 | INFO | [SYSTEM] | 📋 Session finalized: session_20250629_020211

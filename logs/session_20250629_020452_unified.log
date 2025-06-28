@@ -1,0 +1,14 @@
+2025-06-29 02:04:52 | INFO | [SYSTEM] | 🚀 Unified logging system initialized
+2025-06-29 02:04:52 | INFO | [SYSTEM] | 📁 Session: session_20250629_020452
+2025-06-29 02:04:52 | INFO | [SYSTEM] | 📄 Unified log file: logs/session_20250629_020452_unified.log
+2025-06-29 02:04:52 | INFO | [SYSTEM] | Real-time monitoring test started
+2025-06-29 02:04:54 | INFO | [AUTOMATION] | TEST
+2025-06-29 02:04:56 | INFO | [WEBDRIVER] | WEBDRIVER WEBDRIVER TEST EVENT | INIT
+2025-06-29 02:04:58 | INFO | [API] | API REQUEST | API test request GET /test
+2025-06-29 02:05:00 | WARNING | [SECURITY] | SECURITY SECURITY TEST EVENT | AUTH
+2025-06-29 02:05:02 | INFO | [CONTENT] | CONTENT CONTENT PROCESSING TEST | PARSE
+2025-06-29 02:05:04 | INFO | [UI] | UI UI INTERACTION TEST | CLICK
+2025-06-29 02:05:06 | ERROR | [SYSTEM] | Test error message
+2025-06-29 02:05:08 | WARNING | [SYSTEM] | Test warning message
+2025-06-29 02:05:10 | DEBUG | [SYSTEM] | Test debug message
+2025-06-29 02:05:12 | INFO | [SYSTEM] | Real-time monitoring test completed

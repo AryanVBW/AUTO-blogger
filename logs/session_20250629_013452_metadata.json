@@ -1,0 +1,20 @@
+{
+  "session_id": "session_20250629_013452",
+  "start_time": "2025-06-29T01:34:52.803809",
+  "timestamp": "20250629_013452",
+  "unified_log_file": "logs/session_20250629_013452_unified.log",
+  "log_format": "unified_with_tags",
+  "categories": [
+    "SYSTEM",
+    "MAIN",
+    "ERROR",
+    "DEBUG",
+    "AUTOMATION",
+    "API",
+    "SECURITY",
+    "UI",
+    "WEBDRIVER",
+    "CONTENT"
+  ],
+  "status": "active"
+}

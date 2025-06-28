@@ -130,43 +130,165 @@ class BlogAutomationEngine:
             {"style_prompt": ""}
         )["style_prompt"]
         
+        # Load Gemini prompts configuration
+        self.GEMINI_PROMPTS = self.load_json_config(
+            "gemini_prompts.json",
+            {
+                "style_prompt": "",
+                "seo_title_meta_prompt": "",
+                "tag_generation_prompt": "",
+                "keyphrase_extraction_prompt": "",
+                "post_processing_replacements": {}
+            }
+        )
+        
     def load_json_config(self, filename, default):
+        """Load JSON configuration file with proper error handling"""
         path = os.path.join(self.config_dir, filename)
         if os.path.exists(path):
             try:
-                with open(path) as f:
-                    return json.load(f)
+                with open(path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.logger.debug(f"✅ Successfully loaded {filename}")
+                    return data
+            except json.JSONDecodeError as e:
+                self.logger.error(f"JSON decode error in {filename}: {e}")
             except Exception as e:
                 self.logger.error(f"Error loading {filename}: {e}")
+        else:
+            self.logger.warning(f"Config file not found: {filename}, using defaults")
         return default
+
+    def load_posted_links(self) -> Set[str]:
+        """Load previously posted article links from file"""
+        try:
+            if os.path.exists(self.posted_links_file):
+                with open(self.posted_links_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    # Handle both old format (list) and new format (object)
+                    if isinstance(data, list):
+                        self.logger.info("Converting old posted_links format to new format")
+                        return set(data)
+                    elif isinstance(data, dict):
+                        return set(data.get('posted_links', []))
+                    else:
+                        self.logger.warning("Unexpected posted_links format, returning empty set")
+                        return set()
+            return set()
+        except Exception as e:
+            self.logger.error(f"Error loading posted links: {e}")
+            return set()
+
+    def save_posted_links(self, posted_links: Set[str]):
+        """Save posted article links to file"""
+        try:
+            data = {
+                'posted_links': list(posted_links),
+                'last_updated': time.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            with open(self.posted_links_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            self.logger.info(f"Saved {len(posted_links)} posted links to {self.posted_links_file}")
+        except Exception as e:
+            self.logger.error(f"Error saving posted links: {e}")
 
     @contextmanager
     def get_selenium_driver_context(self):
-        """Context manager for Chrome WebDriver"""
+        """Context manager for Chrome WebDriver with improved error handling"""
         driver_instance = None
         try:
-            service = Service(ChromeDriverManager().install())
+            # Check if Selenium is available
+            if not SELENIUM_AVAILABLE:
+                self.logger.error("❌ Selenium not available. Please install selenium and webdriver-manager")
+                yield None
+                return
+            
+            self.logger.info("🔄 Initializing Chrome WebDriver...")
+            
+            # Install ChromeDriver with permission fix
+            try:
+                driver_path = ChromeDriverManager().install()
+                self.logger.info(f"📁 ChromeDriver installed at: {driver_path}")
+                
+                # Ensure ChromeDriver is executable (fix for macOS permissions)
+                import stat
+                import os
+                try:
+                    current_permissions = os.stat(driver_path).st_mode
+                    os.chmod(driver_path, current_permissions | stat.S_IEXEC)
+                    self.logger.info("✅ ChromeDriver permissions updated")
+                except Exception as perm_error:
+                    self.logger.warning(f"⚠️ Could not update ChromeDriver permissions: {perm_error}")
+                
+                service = Service(driver_path)
+            except Exception as e:
+                self.logger.error(f"❌ Failed to install ChromeDriver: {e}")
+                self.logger.info("💡 Try running: pip install --upgrade webdriver-manager")
+                yield None
+                return
+            
+            # Configure Chrome options with macOS ARM64 compatibility
             options = webdriver.ChromeOptions()
             options.add_argument('--headless')
             options.add_argument('--disable-gpu')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-extensions')
+            options.add_argument('--disable-logging')
             options.add_argument('--log-level=3')
             options.add_argument('--incognito')
-            options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
-
+            options.add_argument('--disable-web-security')
+            options.add_argument('--allow-running-insecure-content')
+            options.add_argument('--window-size=1920,1080')
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_argument('--disable-features=VizDisplayCompositor')
+            options.add_argument('--remote-debugging-port=0')  # Use random port
+            options.add_argument('--disable-background-timer-throttling')
+            options.add_argument('--disable-backgrounding-occluded-windows')
+            options.add_argument('--disable-renderer-backgrounding')
+            options.add_argument('--disable-ipc-flooding-protection')
+            options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            
+            # Suppress Chrome logs and automation detection
+            options.add_experimental_option('excludeSwitches', ['enable-logging', 'enable-automation'])
+            options.add_experimental_option('useAutomationExtension', False)
+            options.add_experimental_option('detach', True)
+            
+            # macOS specific fixes
+            import platform
+            if platform.system() == 'Darwin':  # macOS
+                options.add_argument('--disable-features=TranslateUI')
+                options.add_argument('--disable-default-apps')
+                options.add_argument('--disable-component-extensions-with-background-pages')
+            
+            # Initialize WebDriver
             driver_instance = webdriver.Chrome(service=service, options=options)
-            self.logger.info("✅ Selenium WebDriver initialized successfully")
+            driver_instance.set_page_load_timeout(30)
+            
+            self.logger.info("✅ Chrome WebDriver initialized successfully")
             yield driver_instance
             
         except WebDriverException as e:
-            self.logger.error(f"❌ Error initializing Selenium WebDriver: {e}")
+            self.logger.error(f"❌ WebDriver error: {e}")
+            self.logger.info("💡 Troubleshooting tips:")
+            self.logger.info("   • Ensure Chrome browser is installed")
+            self.logger.info("   • Check internet connection for ChromeDriver download")
+            self.logger.info("   • Try updating Chrome browser")
+            yield None
+            
+        except Exception as e:
+            self.logger.error(f"❌ Unexpected error initializing WebDriver: {e}")
+            self.logger.exception("Full error details:")
             yield None
             
         finally:
             if driver_instance:
-                self.logger.info("ℹ️ Quitting Selenium WebDriver")
-                driver_instance.quit()
+                try:
+                    self.logger.debug("🔄 Closing WebDriver...")
+                    driver_instance.quit()
+                    self.logger.debug("✅ WebDriver closed successfully")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Error closing WebDriver: {e}")
 
     def get_latest_article_link(self) -> Optional[str]:
         """Fetches the most recent article link"""
@@ -228,15 +350,22 @@ class BlogAutomationEngine:
             self.logger.info(f"🔍 Found {len(tags)} elements matching selector")
             
             if len(tags) == 0:
-                # Try alternative selectors
+                # Try alternative selectors with TBR Football specific ones
                 alternative_selectors = [
                     "article h2 a",
+                    "article h3 a",
                     "h2 a",
                     "h3 a",
                     ".post-title a",
                     ".entry-title a",
-                    "a[href*='post']",
-                    "a[href*='article']"
+                    ".article-title a",
+                    "a[href*='tbrfootball.com']",
+                    "a[href*='/post/']",
+                    "a[href*='/article/']",
+                    "a[href*='/news/']",
+                    ".post a",
+                    ".entry a",
+                    ".content a[href*='tbrfootball']"
                 ]
                 
                 self.logger.warning(f"⚠️ No articles found with selector '{selector}', trying alternatives...")
@@ -244,17 +373,46 @@ class BlogAutomationEngine:
                 for alt_selector in alternative_selectors:
                     alt_tags = soup.select(alt_selector)
                     if alt_tags:
-                        self.logger.info(f"✅ Found {len(alt_tags)} articles with alternative selector: {alt_selector}")
-                        tags = alt_tags
-                        break
+                        # Filter to only include TBR Football links
+                        valid_tags = []
+                        for tag in alt_tags:
+                            href = tag.get("href", "")
+                            if href and ("tbrfootball.com" in href or href.startswith("/")):
+                                valid_tags.append(tag)
+                        
+                        if valid_tags:
+                            self.logger.info(f"✅ Found {len(valid_tags)} valid articles with alternative selector: {alt_selector}")
+                            tags = valid_tags
+                            break
+                        else:
+                            self.logger.debug(f"Found {len(alt_tags)} links with '{alt_selector}' but none were TBR Football articles")
                 
                 if not tags:
                     self.logger.error("❌ No articles found with any selector")
-                    # Log the page structure for debugging
-                    self.logger.debug("Page structure sample:")
-                    articles = soup.find_all(['article', 'div'], limit=5)
+                    # Enhanced debugging - log page structure and available links
+                    self.logger.info("🔍 Debugging page structure...")
+                    
+                    # Check for any links that might be articles
+                    all_links = soup.find_all('a', href=True)
+                    tbr_links = [link for link in all_links if 'tbrfootball.com' in link.get('href', '') or link.get('href', '').startswith('/')]
+                    
+                    self.logger.info(f"Total links found: {len(all_links)}")
+                    self.logger.info(f"TBR Football related links: {len(tbr_links)}")
+                    
+                    # Show sample of TBR links
+                    for i, link in enumerate(tbr_links[:5]):
+                        href = link.get('href')
+                        text = link.get_text().strip()[:50]
+                        self.logger.info(f"TBR Link {i+1}: {href} - {text}")
+                    
+                    # Show page structure sample
+                    articles = soup.find_all(['article', 'div', 'section'], class_=True, limit=5)
                     for i, article in enumerate(articles):
-                        self.logger.debug(f"Article {i+1}: {str(article)[:200]}...")
+                        classes = ' '.join(article.get('class', []))
+                        self.logger.info(f"Container {i+1} classes: {classes}")
+                        links_in_container = article.find_all('a', href=True)
+                        self.logger.info(f"  Links in container: {len(links_in_container)}")
+                    
                     return []
             
             links = []
@@ -297,59 +455,155 @@ class BlogAutomationEngine:
             # Must be HTTP/HTTPS
             if not url.startswith(('http://', 'https://')):
                 return False
-                
-            # Avoid obvious non-article URLs
-            invalid_patterns = [
-                'javascript:', 'mailto:', '#', 'tag/', 'category/', 
-                'author/', 'page/', 'search/', 'login', 'register',
-                '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.pdf'
-            ]
             
             url_lower = url.lower()
-            for pattern in invalid_patterns:
-                if pattern in url_lower:
+            
+            # For TBR Football, be more specific about what constitutes an article
+            if 'tbrfootball.com' in url_lower:
+                # TBR Football specific validation
+                # Accept URLs that look like articles
+                valid_patterns = [
+                    '/post/',
+                    '/news/',
+                    '/article/',
+                    '/football/',
+                    '/premier-league/',
+                    '/transfer',
+                    '/analysis'
+                ]
+                
+                # Check if URL contains article-like patterns
+                has_valid_pattern = any(pattern in url_lower for pattern in valid_patterns)
+                
+                # Avoid obvious non-article URLs
+                invalid_patterns = [
+                    'javascript:', 'mailto:', '#', '/tag/', '/category/', 
+                    '/author/', '/page/', '/search/', '/login', '/register',
+                    '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.pdf',
+                    '/topic/english-premier-league/' # Avoid the main topic page
+                ]
+                
+                has_invalid_pattern = any(pattern in url_lower for pattern in invalid_patterns)
+                
+                # For TBR Football, either accept if it has valid pattern or if it doesn't have invalid patterns
+                if has_valid_pattern and not has_invalid_pattern:
+                    return True
+                elif not has_invalid_pattern and len(url) > 30:  # Likely an article if it's a longer URL
+                    return True
+                else:
                     return False
-                    
+            else:
+                # Generic validation for other sites
+                invalid_patterns = [
+                    'javascript:', 'mailto:', '#', 'tag/', 'category/', 
+                    'author/', 'page/', 'search/', 'login', 'register',
+                    '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.pdf'
+                ]
+                
+                for pattern in invalid_patterns:
+                    if pattern in url_lower:
+                        return False
+                        
             return True
             
         except Exception:
             return False
 
-    def extract_article_with_selenium(self, driver: webdriver.Chrome, url: str, timeout: int = 10) -> Tuple[Optional[str], Optional[str]]:
-        """Extract article content using Selenium"""
+    def extract_article_with_selenium(self, driver: 'webdriver.Chrome', url: str, timeout: int = 15) -> Tuple[Optional[str], Optional[str]]:
+        """Extract article content using Selenium with improved error handling"""
         if not driver:
-            self.logger.error("No WebDriver provided")
+            self.logger.error("❌ No WebDriver provided for content extraction")
             return None, None
             
         if not url:
-            self.logger.error("No URL provided")
+            self.logger.error("❌ No URL provided for content extraction")
             return None, None
 
+        self.logger.info(f"🔄 Extracting content from: {url}")
+        
         try:
+            # Navigate to the page
             driver.get(url)
             wait = WebDriverWait(driver, timeout)
+            
+            # Wait for page to load
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            self.logger.debug("✅ Page loaded successfully")
 
-            # Extract title
-            title_el = wait.until(EC.presence_of_element_located((By.TAG_NAME, "h1")))
-            title = title_el.text.strip() or None
+            # Extract title with multiple selectors
+            title = None
+            title_selectors = ["h1", ".entry-title", ".post-title", "[class*='title']", "title"]
+            
+            for selector in title_selectors:
+                try:
+                    title_el = driver.find_element(By.CSS_SELECTOR, selector)
+                    if title_el and title_el.text.strip():
+                        title = title_el.text.strip()
+                        self.logger.debug(f"✅ Title found with selector: {selector}")
+                        break
+                except:
+                    continue
+            
+            if not title:
+                self.logger.warning("⚠️ Could not extract title from page")
+                title = "Untitled Article"
 
-            # Extract content paragraphs
-            paras = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "article p")))
-            content = "\n\n".join(p.text for p in paras) if paras else None
+            # Extract content with multiple strategies
+            content = None
+            content_selectors = [
+                "article p",
+                ".entry-content p", 
+                ".post-content p",
+                ".content p",
+                "[class*='content'] p",
+                "main p",
+                "p"
+            ]
+            
+            for selector in content_selectors:
+                try:
+                    paras = driver.find_elements(By.CSS_SELECTOR, selector)
+                    if paras and len(paras) >= 3:  # Ensure we have substantial content
+                        content_texts = [p.text.strip() for p in paras if p.text.strip() and len(p.text.strip()) > 20]
+                        if content_texts:
+                            content = "\n\n".join(content_texts)
+                            self.logger.debug(f"✅ Content found with selector: {selector} ({len(content_texts)} paragraphs)")
+                            break
+                except Exception as e:
+                    self.logger.debug(f"Selector {selector} failed: {e}")
+                    continue
+            
+            if not content:
+                self.logger.warning("⚠️ Could not extract meaningful content from page")
+                # Try to get any text content as fallback
+                try:
+                    body = driver.find_element(By.TAG_NAME, "body")
+                    content = body.text[:1000] + "..." if len(body.text) > 1000 else body.text
+                    self.logger.info("ℹ️ Using fallback content extraction")
+                except:
+                    content = "Content extraction failed"
 
-            self.logger.info(f"Extracted title '{title}' and {len(paras)} paragraphs from {url}")
-            return title, content
+            # Validate extracted content
+            if title and content and len(content) > 100:
+                self.logger.info(f"✅ Successfully extracted: '{title[:50]}...' ({len(content)} chars)")
+                return title, content
+            else:
+                self.logger.warning(f"⚠️ Extracted content may be incomplete: title={bool(title)}, content_length={len(content) if content else 0}")
+                return title, content
 
         except TimeoutException:
-            self.logger.error(f"❌ Selenium extraction timed out for {url}")
+            self.logger.error(f"❌ Page load timeout ({timeout}s) for {url}")
+            self.logger.info("💡 Try increasing timeout or check if the website is accessible")
             return None, None
             
         except WebDriverException as e:
-            self.logger.error(f"❌ Selenium WebDriver error during extraction for {url}: {e}")
+            self.logger.error(f"❌ WebDriver error during extraction: {e}")
+            self.logger.info("💡 This might be due to page structure changes or network issues")
             return None, None
             
         except Exception as e:
-            self.logger.exception(f"❌ Unexpected error during Selenium extraction for {url}")
+            self.logger.error(f"❌ Unexpected error during content extraction: {e}")
+            self.logger.exception("Full error details:")
             return None, None
 
     def sentence_case(self, text: str) -> str:
@@ -375,8 +629,9 @@ class BlogAutomationEngine:
         return ' '.join(processed_words)
 
     def post_process_text(self, text: str) -> str:
-        """Apply targeted capitalization rules"""
-        replacements = {
+        """Apply targeted capitalization rules from Jupyter notebook implementation"""
+        # Load replacements from configuration or use default
+        replacements = self.GEMINI_PROMPTS.get("post_processing_replacements", {
             r'\bpremier league\b': 'Premier League',
             r'\bthe premier league\b': 'the Premier League',
             r'\bchampionship\b': 'Championship',
@@ -394,26 +649,48 @@ class BlogAutomationEngine:
             r'\bfifa\b': 'FIFA',
             r'\bvar\b': 'VAR',
             r'\bpl\b': 'PL',
-            r'\bvardy\b': 'Vardy',
             r'\belland road\b': 'Elland Road',
             r'\bleeds united\b': 'Leeds United',
-            r'\bjaka bijol\b': 'Jaka Bijol',
-            r'\blukas nmecha\b': 'Lukas Nmecha',
-            r'\bnikola krstovic\b': 'Nikola Krstovic',
-            r'\blecce\b': 'Lecce',
-            r'\budinese\b': 'Udinese',
-            r'\bs a\b': 'Serie A',
-        }
+            r'\btottenham hotspur\b': 'Tottenham Hotspur',
+            r'\bmanchester united\b': 'Manchester United',
+            r'\bmanchester city\b': 'Manchester City'
+        })
 
+        # Apply replacements using regex for whole word matching and case-insensitivity
         for lower_term, correct_term in replacements.items():
             text = re.sub(lower_term, correct_term, text, flags=re.IGNORECASE)
 
         return text
 
     def gemini_paraphrase_content_and_title(self, original_title: str, article_html: str) -> Tuple[str, str]:
-        """Use Gemini to paraphrase content and generate title"""
+        """Use enhanced Gemini prompts from Jupyter notebook to paraphrase content and generate title"""
         
-        style_prompt = self.STYLE_PROMPT
+        # Use the enhanced style prompt from configuration
+        style_prompt = self.GEMINI_PROMPTS.get("style_prompt", "")
+        
+        if not style_prompt:
+            # Fallback to basic prompt if not configured
+            style_prompt = """You are a skilled Premier League football blogger. Rewrite the provided HTML article content into a clean, engaging, and SEO-optimized blog post for football fans.
+
+**CONTENT REWRITE RULES:**
+1. Begin with 2–3 exciting, punchy introductory sentences highlighting the central story
+2. Insert exactly 2 or 3 `<h3>` headings in sentence case
+3. Maintain a confident, energetic, fan-first tone
+4. Use active voice in at least 90% of sentences
+5. Keep sentences under 15 words
+6. Use short paragraphs with 2–3 sentences maximum
+7. Wrap every paragraph in `<p>` tags
+8. Conclude with Author's take, Conclusion, or What's next heading
+9. Minimum 400 words
+10. Use simple, everyday football language
+
+**HEADLINE GENERATION RULES:**
+- Generate exactly one headline
+- Avoid specific player or manager names in headline
+- Use indirect identifiers like "25yo winger", "veteran midfielder"
+- Make it curiosity-driven and indirect
+- Use sentence case only
+- No quotes or punctuation marks"""
 
         prompt = f"""
 {style_prompt}
@@ -446,25 +723,44 @@ HEADLINE:
             response = requests.post(url, headers=headers, json=payload, timeout=60)
             response.raise_for_status()
 
-            text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+            # Add error handling for API response structure
+            response_data = response.json()
+            if not response_data.get("candidates") or len(response_data["candidates"]) == 0:
+                self.logger.error("Empty or invalid Gemini API response for paraphrasing")
+                raise ValueError("Invalid API response structure")
+                
+            if not response_data["candidates"][0].get("content") or not response_data["candidates"][0]["content"].get("parts") or len(response_data["candidates"][0]["content"]["parts"]) == 0:
+                self.logger.error("Invalid content structure in Gemini API response for paraphrasing")
+                raise ValueError("Invalid content structure in API response")
+
+            text = response_data["candidates"][0]["content"]["parts"][0].get("text", "")
             content_match = re.search(r"CONTENT:\s*(.*?)\s*HEADLINE:", text, re.DOTALL)
             headline_match = re.search(r"HEADLINE:\s*(.+)", text)
 
             if not content_match or not headline_match:
-                raise ValueError("Gemini response missing expected sections.")
+                self.logger.error("Gemini response missing expected sections")
+                # Fallback generation
+                seo_title = original_title[:59] if len(original_title) > 59 else original_title
+                clean_content = re.sub(r'<[^>]+>', '', article_html)
+                meta_desc = clean_content[:157] + "..." if len(clean_content) > 157 else clean_content
+                return seo_title, meta_desc
 
             html = content_match.group(1).strip()
             headline_raw = headline_match.group(1).strip()
 
-            # Apply post-processing
+            # Apply the enhanced post-processing from Jupyter notebook
             processed_html = self.post_process_text(html)
             processed_headline_raw = self.post_process_text(headline_raw)
 
-            # Apply sentence case to headline
+            # Apply sentence case specifically for the headline
             final_headline = self.sentence_case(processed_headline_raw)
 
+            self.logger.info(f"✅ Gemini paraphrasing completed - Title: {final_headline[:50]}...")
             return processed_html, final_headline
-            
+
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"❌ Gemini API request error: {e}")
+            raise
         except Exception as e:
             self.logger.error(f"❌ Error in Gemini paraphrasing: {e}")
             return article_html, original_title
@@ -530,7 +826,7 @@ HEADLINE:
         return "".join(segments)
 
     def generate_seo_title_and_meta(self, title: str, content: str) -> Tuple[str, str]:
-        """Generate SEO title and meta description"""
+        """Generate SEO title and meta description using enhanced Jupyter notebook implementation"""
         if not title or not content:
             self.logger.error("Both title and content are required for SEO generation")
             return title, ""
@@ -542,18 +838,23 @@ HEADLINE:
                 seo_title = title[:59] if len(title) > 59 else title
                 clean_content = re.sub(r'<[^>]+>', '', content)
                 meta_desc = clean_content[:157] + "..." if len(clean_content) > 157 else clean_content
+                self.logger.warning("No Gemini API key - using fallback SEO generation")
                 return seo_title, meta_desc
 
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
 
-            prompt = f"""
-You are a passionate Premier League football blogger.
+            # Use the configurable prompt from GEMINI_PROMPTS
+            prompt = self.GEMINI_PROMPTS.get('seo_title_meta_prompt', '')
+            if not prompt:
+                # Fallback to default prompt if not configured
+                prompt = f"""You are a passionate Premier League football blogger.
 
-1. Read the article content below and identify its one primary subject. Then rewrite the original title into a single, sharp, SEO-friendly headline.
+1. Read the article content below and identify its one primary subject (player, event, or transfer saga). Then rewrite the original title into a single, sharp, SEO-friendly headline.
 
 - Preserve the correct capitalization of all proper nouns exactly as in the original.
-- Use sentence case—capitalize only the first word and proper nouns. All other words should be lowercase.
+- Use sentence case—capitalize only the first word and proper nouns. All other words should be lowercase. **Example: Tottenham: Should Spurs chase Kudus over Crystal Palace's target?**
 - The headline must be **strictly** between 50 and 59 characters in length (counting spaces and punctuation).
+- **Crucially, your final output must be precisely within this character range. Do NOT go under 50 characters or over 59 characters.**
 - Ensure the headline is a grammatically complete and coherent sentence within the character limits.
 - Always use British English spelling for 'rumours' (with a 'u').
 
@@ -576,22 +877,34 @@ META:
 Original Title: "{title}"
 
 Article Content:
-\"\"\"
-{content}
-\"\"\"
-"""
+\"\"\"{content}\"\"\""""
+            else:
+                # Use the configured prompt and format it with title and content
+                prompt = prompt.format(title=title, content=content)
 
-            resp = requests.post(
+            response = requests.post(
                 url,
                 headers={"Content-Type": "application/json"},
                 json={"contents": [{"parts": [{"text": prompt}]}]},
                 timeout=30
             )
-            resp.raise_for_status()
-            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            response.raise_for_status()
+            
+            # Add error handling for API response structure
+            response_data = response.json()
+            if not response_data.get("candidates") or len(response_data["candidates"]) == 0:
+                self.logger.error("Empty or invalid Gemini API response")
+                raise ValueError("Invalid API response structure")
+                
+            if not response_data["candidates"][0].get("content") or not response_data["candidates"][0]["content"].get("parts") or len(response_data["candidates"][0]["content"]["parts"]) == 0:
+                self.logger.error("Invalid content structure in Gemini API response")
+                raise ValueError("Invalid content structure in API response")
+                
+            text = response_data["candidates"][0]["content"]["parts"][0].get("text", "").strip()
 
             seo_title, meta_description = "", ""
 
+            # Parse response using regex from Jupyter notebook
             match_seo = re.search(r"SEO_TITLE:\s*(.*?)\s*META:", text, re.DOTALL)
             match_meta = re.search(r"META:\s*(.+)", text, re.DOTALL)
 
@@ -600,35 +913,78 @@ Article Content:
             if match_meta:
                 meta_description = match_meta.group(1).strip()
 
-            # Ensure SEO title fits 50–59 characters
-            length = len(seo_title)
-            if length > 59:
-                seo_title = seo_title[:59].rsplit(" ", 1)[0].strip()
-            elif length < 50:
-                self.logger.warning("SEO title is under 50 characters")
+            # Clean up
+            seo_title = seo_title.strip()
+            meta_description = meta_description.strip()
 
-            self.logger.info(f"Generated SEO title ({len(seo_title)} chars): {seo_title}")
+            # Enhanced SEO title validation from Jupyter notebook
+            length = len(seo_title)
+            if length < 50 or length > 59:
+                self.logger.warning(f"SEO title has {length} chars (expected 50–59). Adjusting...")
+                if length > 59:
+                    snippet = seo_title[:59]
+                    # Try to find a natural break point
+                    m = re.search(r'(.+[\\.?!])(?=[^\\.?!]*$)', snippet)
+                    if m:
+                        seo_title = m.group(1).strip()
+                    else:
+                        seo_title = snippet.rsplit(" ", 1)[0].strip() if " " in snippet else snippet.strip()
+                elif length < 50:
+                    self.logger.warning("SEO title is under 50 characters. Keeping it short for now.")
+
+            # Avoid bad trailing words from Jupyter notebook logic
+            if seo_title and seo_title.split() and seo_title.split()[-1].lower() in {"to", "on", "with", "and", "or", "but", "for", "in"}:
+                seo_title = " ".join(seo_title.split()[:-1])
+                self.logger.warning("Trimmed dangling word from SEO title end")
+
+            self.logger.info(f"Final SEO title ({len(seo_title)} chars): {seo_title}")
+
+            # Enhanced META validation from Jupyter notebook
+            length_meta = len(meta_description)
+            if not (155 <= length_meta <= 160):
+                self.logger.warning(f"Meta description is {length_meta} chars (expected 155–160). Falling back to snippet.")
+                # Create fallback meta from content using Jupyter notebook logic
+                plain = re.sub(r'<[^>]+>', ' ', content)
+                plain = re.sub(r'https?:\\/\\/\\S+|[^<\\s]+\\/\\\">', ' ', plain)
+                plain = re.sub(r'\\s+', ' ', plain).strip()
+
+                words = plain.split() if plain else []
+                snippet = ""
+                for w in words:
+                    candidate = f"{snippet} {w}".strip()
+                    if len(candidate) > 160:
+                        break
+                    snippet = candidate
+
+                if len(snippet) < 155:
+                    for word in plain[len(snippet):].strip().split():
+                        temp = f"{snippet} {word}".strip()
+                        if len(temp) > 160:
+                            break
+                        snippet = temp
+                        if len(snippet) >= 155:
+                            break
+                if len(snippet) < 155:
+                    snippet = plain[:155].rsplit(" ", 1)[0]
+                meta_description = snippet
+
+            self.logger.info(f"Final Meta Description ({len(meta_description)} chars)")
             return seo_title, meta_description
 
-        except Exception as e:
-            self.logger.error(f"❌ Error generating SEO metadata: {e}")
-            # Fallback
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"❌ Gemini API request error: {e}")
+            # Fallback generation
             seo_title = title[:59] if len(title) > 59 else title
             clean_content = re.sub(r'<[^>]+>', '', content)
             meta_desc = clean_content[:157] + "..." if len(clean_content) > 157 else clean_content
             return seo_title, meta_desc
-
-    def detect_categories(self, text: str) -> List[str]:
-        """Detect categories from text"""
-        lower = text.lower()
-        cats = ["Latest News"]  # Always include default category
-
-        for kw, subcat in self.CATEGORY_KEYWORDS.items():
-            if kw in lower and subcat not in cats:
-                cats.append(subcat)
-                self.logger.info(f"Matched category '{subcat}' via keyword '{kw}'")
-
-        return cats
+        except Exception as e:
+            self.logger.error(f"❌ Error in SEO generation: {e}")
+            # Fallback generation
+            seo_title = title[:59] if len(title) > 59 else title
+            clean_content = re.sub(r'<[^>]+>', '', content)
+            meta_desc = clean_content[:157] + "..." if len(clean_content) > 157 else clean_content
+            return seo_title, meta_desc
 
     def generate_tags_with_gemini(self, content: str) -> List[str]:
         """Generate tags using Gemini AI"""
@@ -641,217 +997,358 @@ Article Content:
                 # Fallback to simple tag generation
                 return self.generate_tags_fallback(content)
 
-            prompt = f"""
-Extract only the full names of football players and the full names of the clubs mentioned in this article.
+            # Use the configurable prompt from GEMINI_PROMPTS
+            prompt = self.GEMINI_PROMPTS.get('tag_generation_prompt', '')
+            if not prompt:
+                # Fallback to default prompt if not configured
+                prompt = f"""Extract only the full names of football players and the full names of the clubs mentioned in this article.
 Return them as a comma-separated list with no extra punctuation.
 
 Article Content:
-\"\"\"
-{content}
-\"\"\"
-"""
+\"\"\"{content}\"\"\""""
+            else:
+                # Use the configured prompt and format it with content
+                prompt = prompt.format(content=content)
+
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
             
-            resp = requests.post(
+            response = requests.post(
                 url,
                 headers={"Content-Type": "application/json"},
                 json={"contents": [{"parts": [{"text": prompt}]}]},
                 timeout=30
             )
-            
-            if resp.status_code == 200:
-                raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-                for cand in [c.strip() for c in raw.split(",") if c.strip()]:
-                    name = re.sub(r"\s+", " ", cand)
-                    
-                    # Synonym normalization
-                    if name in self.TAG_SYNONYMS:
-                        name = self.TAG_SYNONYMS[name]
-                        
-                    # Keep if valid and present in content
-                    if (
-                        (name in self.STATIC_CLUBS or re.fullmatch(r"[A-Z][a-z]+(?:\s[A-Z][a-z]+)*", name))
-                        and re.search(rf"\b{re.escape(name)}\b", content, re.IGNORECASE)
-                        and name not in seen
-                    ):
-                        seen.add(name)
-                        tags.append(name)
+
+            if response.status_code == 200:
+                response_data = response.json()
+                if response_data.get("candidates") and len(response_data["candidates"]) > 0:
+                    candidate = response_data["candidates"][0]
+                    if candidate.get("content") and candidate["content"].get("parts") and len(candidate["content"]["parts"]) > 0:
+                        raw = candidate["content"]["parts"][0].get("text", "")
+                        for cand in [c.strip() for c in raw.split(",") if c.strip()]:
+                            name = re.sub(r"\\s+", " ", cand)
+                            
+                            # Apply synonym normalization from Jupyter notebook
+                            if name in self.TAG_SYNONYMS:
+                                name = self.TAG_SYNONYMS[name]
+                            
+                            # Keep if valid and present in content (from Jupyter notebook logic)
+                            if (
+                                (name in self.STATIC_CLUBS or re.fullmatch(r"[A-Z][a-z]+(?:\\s[A-Z][a-z]+)*", name))
+                                and re.search(rf"\\b{re.escape(name)}\\b", content, re.IGNORECASE)
+                                and name not in seen
+                            ):
+                                seen.add(name)
+                                tags.append(name)
+                    else:
+                        self.logger.error("Invalid content structure in Gemini tag API response")
+                else:
+                    self.logger.error("No candidates in Gemini tag API response")
             else:
-                self.logger.error(f"Gemini Tag API Error {resp.status_code}: {resp.text}")
+                self.logger.error(f"Gemini Tag API Error {response.status_code}: {response.text}")
+
+            # Fallback scan from Jupyter notebook implementation
+            for club in self.STATIC_CLUBS:
+                if club not in seen and re.search(rf"\\b{re.escape(club)}\\b", content, re.IGNORECASE):
+                    seen.add(club)
+                    tags.append(club)
+
+            self.logger.info(f"Generated tags: {tags}")
+            return tags
 
         except Exception as e:
-            self.logger.error(f"❌ Error generating tags with Gemini: {e}")
+            self.logger.error(f"Error in Gemini tag generation: {e}")
+            return self.generate_tags_fallback(content)
 
-        # Fallback scan
-        for club in self.STATIC_CLUBS:
-            if club not in seen and re.search(rf"\b{re.escape(club)}\b", content, re.IGNORECASE):
-                seen.add(club)
-                tags.append(club)
-
-        self.logger.info(f"Generated tags: {tags}")
-        return tags
-
-    def generate_tags_fallback(self, content: str) -> List[str]:
-        """Fallback tag generation without Gemini"""
-        tags = []
-        
-        # Check for static clubs
-        for club in self.STATIC_CLUBS:
-            if re.search(rf"\b{re.escape(club)}\b", content, re.IGNORECASE):
-                tags.append(club)
-                
-        return tags[:10]  # Limit to 10 tags
-
-    def generate_slug(self, title: str, max_length: int = 50) -> str:
-        """Generate URL-friendly slug from title"""
-        # Normalize and clean
-        text_norm = unicodedata.normalize('NFKD', title)
-        text_ascii = text_norm.encode('ascii', 'ignore').decode('ascii')
-        text_clean = re.sub(r'[^a-z0-9\s-]', '', text_ascii.lower())
-
-        # Filter stop words
-        words = text_clean.split()
-        keywords = [w for w in words if w not in self.STOP_WORDS]
-
-        # Join and clean up
-        slug = '-'.join(keywords)
-        slug = re.sub(r'-{2,}', '-', slug)
-        slug = slug.strip('-')
-
-        # Trim to max_length
-        if max_length and len(slug) > max_length:
-            temp_slug = slug[:max_length]
-            if "-" in temp_slug:
-                slug = temp_slug.rsplit('-', 1)[0]
-            else:
-                slug = temp_slug
-            slug = slug.strip('-')
-
-        self.logger.info(f"Generated slug: {slug} (Length: {len(slug)})")
-        return slug
-
-    def post_to_wordpress_with_seo(
-        self, 
-        title: str, 
-        content: str, 
-        categories: List[str], 
-        tags: List[str], 
-        excerpt: Optional[str] = None,
-        seo_title: Optional[str] = None, 
-        meta_description: Optional[str] = None,
-        focus_keyphrase: Optional[str] = None,
-        additional_keyphrases: Optional[List[str]] = None
-    ) -> Tuple[Optional[int], Optional[str]]:
-        """Post to WordPress with SEO optimization"""
-        
+    def generate_tags_with_gemini_jupyter(self, content: str) -> List[str]:
+        """Enhanced tag generation using Jupyter notebook approach with synonym normalization"""
         try:
+            # Use the existing generate_tags_with_gemini method first
+            raw_tags = self.generate_tags_with_gemini(content)
+            
+            if not raw_tags:
+                self.logger.warning("No raw tags generated, using fallback")
+                return self.generate_tags_fallback(content)
+            
+            # Apply synonym normalization from Jupyter notebook
+            normalized_tags = []
+            for tag in raw_tags:
+                normalized = self.normalize_tag_with_synonyms(tag)
+                if normalized and normalized not in normalized_tags:
+                    normalized_tags.append(normalized)
+            
+            self.logger.info(f"Generated {len(normalized_tags)} normalized tags from {len(raw_tags)} raw tags")
+            return normalized_tags[:15]  # Limit to 15 tags as in Jupyter notebook
+            
+        except Exception as e:
+            self.logger.error(f"Error in enhanced tag generation: {e}")
+            return self.generate_tags_fallback(content)
+    
+    def normalize_tag_with_synonyms(self, tag: str) -> str:
+        """Normalize tags using synonym mapping from Jupyter notebook"""
+        try:
+            # Convert to lowercase for matching
+            lower_tag = tag.lower().strip()
+            
+            # Check if tag exists in synonym mapping
+            for canonical, synonyms in self.TAG_SYNONYMS.items():
+                if lower_tag == canonical.lower():
+                    return canonical
+                if lower_tag in [syn.lower() for syn in synonyms]:
+                    return canonical
+            
+            # If no synonym found, return title case version
+            return tag.title()
+            
+        except Exception as e:
+            self.logger.warning(f"Error normalizing tag '{tag}': {e}")
+            return tag.title()
+    
+    def generate_slug_jupyter(self, title: str) -> str:
+        """Enhanced slug generation using Jupyter notebook approach with stop word filtering"""
+        try:
+            # Convert to lowercase and replace spaces with hyphens
+            slug = title.lower()
+            
+            # Remove special characters but keep alphanumeric and spaces
+            slug = re.sub(r'[^\w\s-]', '', slug)
+            
+            # Split into words and filter out stop words
+            words = slug.split()
+            filtered_words = []
+            
+            for word in words:
+                # Skip stop words (if available) and very short words
+                if len(word) > 2 and word not in self.STOP_WORDS:
+                    filtered_words.append(word)
+            
+            # Join with hyphens and limit length
+            slug = '-'.join(filtered_words)
+            
+            # Ensure slug isn't too long (WordPress limitation)
+            if len(slug) > 50:
+                # Take first 50 characters and ensure we don't cut in middle of word
+                slug = slug[:50]
+                if slug.endswith('-'):
+                    slug = slug[:-1]
+                last_hyphen = slug.rfind('-')
+                if last_hyphen > 30:  # Only trim if we have a reasonable length
+                    slug = slug[:last_hyphen]
+            
+            self.logger.info(f"Generated slug: {slug}")
+            return slug
+            
+        except Exception as e:
+            self.logger.error(f"Error generating enhanced slug: {e}")
+            # Fallback to simple slug generation
+            return re.sub(r'[^\w\s-]', '', title.lower()).replace(' ', '-')[:50]
+
+    def process_complete_article_jupyter(self, url: str) -> Optional[Dict]:
+        """Complete article processing pipeline using Jupyter notebook implementation"""
+        try:
+            self.logger.info(f"🔗 Processing article: {url}")
+            
+            # Extract article content using Selenium
+            with self.get_selenium_driver_context() as driver:
+                if not driver:
+                    self.logger.error("❌ Selenium driver could not be initialized")
+                    return None
+
+                title, content = self.extract_article_with_selenium(driver, url)
+                if not title or not content:
+                    self.logger.warning("⚠️ Failed to extract title/content")
+                    return None
+
+                # Gemini paraphrasing - enhanced version
+                try:
+                    paraphrased_content, paraphrased_title = self.gemini_paraphrase_content_and_title(title, content)
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Gemini paraphrasing failed: {e}")
+                    return None
+
+                # Internal + external link injection
+                internal_linked = self.inject_internal_links(paraphrased_content)
+                final_linked_content = self.inject_external_links(internal_linked)
+
+                # Enhanced category + tag detection from Jupyter notebook
+                categories = self.detect_categories_jupyter(paraphrased_content, paraphrased_title)
+                tags = self.generate_tags_with_gemini_jupyter(paraphrased_content)
+
+                # Enhanced SEO generation from Jupyter notebook
+                seo_title, meta_description = self.generate_seo_title_and_meta_jupyter(paraphrased_title, final_linked_content)
+                
+                # Enhanced slug generation from Jupyter notebook
+                slug = self.generate_slug_jupyter(seo_title)
+
+                # Keyphrase extraction from Jupyter notebook
+                focus_keyphrase, additional_keyphrases = self.extract_keyphrases_jupyter(paraphrased_title, final_linked_content)
+
+                return {
+                    'original_title': title,
+                    'original_content': content,
+                    'title': paraphrased_title,
+                    'content': final_linked_content,
+                    'categories': categories,
+                    'tags': tags,
+                    'seo_title': seo_title,
+                    'meta_description': meta_description,
+                    'slug': slug,
+                    'focus_keyphrase': focus_keyphrase,
+                    'additional_keyphrases': additional_keyphrases,
+                    'url': url
+                }
+
+        except Exception as e:
+            self.logger.error(f"❌ Error processing article: {e}")
+            return None
+
+    def detect_categories_jupyter(self, content: str, title: str = "") -> List[str]:
+        """Enhanced category detection from Jupyter notebook - always include Latest News as parent"""
+        # Combine title and content for better category detection
+        text = f"{title}. {content}" if title else content
+        lower = text.lower()
+        cats: List[str] = ["Latest News"]  # always first
+
+        for kw, subcat in self.CATEGORY_KEYWORDS.items():
+            if kw in lower and subcat not in cats:
+                cats.append(subcat)
+                self.logger.info(f"Matched sub-category '{subcat}' via keyword '{kw}'")
+
+        self.logger.info(f"Final categories: {cats}")
+        return cats
+
+    def detect_categories(self, text: str) -> List[str]:
+        """Legacy method for backward compatibility - calls the enhanced version"""
+        return self.detect_categories_jupyter(text, "")
+
+    def run_automation_jupyter_style(self, max_articles: int = 2) -> int:
+        """Run the complete automation pipeline using Jupyter notebook implementation"""
+        processed = 0
+        posted_links = self.load_posted_links()
+
+        try:
+            # Get article links from source
+            article_links = self.get_article_links(limit=10)
+            if not article_links:
+                self.logger.error("❌ No article links found")
+                return 0
+
+            self.logger.info(f"✅ Found {len(article_links)} article links")
+
+            for link in article_links:
+                if link in posted_links:
+                    self.logger.info(f"⏩ Skipping already posted article: {link}")
+                    continue
+
+                # Process the complete article using Jupyter notebook methods
+                article_data = self.process_complete_article_jupyter(link)
+                if not article_data:
+                    self.logger.warning(f"⚠️ Failed to process article: {link}")
+                    continue
+
+                # Post to WordPress with all the enhanced data
+                post_id = self.post_to_wordpress_jupyter_style(article_data)
+                
+                if post_id:
+                    self.logger.info(f"✅ Draft post created with ID: {post_id}")
+                    posted_links.add(link)
+                    self.save_posted_links(posted_links)
+                    processed += 1
+                else:
+                    self.logger.error(f"❌ Failed to post article for: {link}")
+
+                if processed >= max_articles:
+                    self.logger.info(f"✅ Reached target of {max_articles} articles. Ending.")
+                    break
+
+            if processed == 0:
+                self.logger.warning("⚠️ No new articles were posted")
+            else:
+                self.logger.info(f"🎉 Total new articles posted: {processed}")
+
+            return processed
+
+        except Exception as e:
+            self.logger.error(f"❌ Error in automation pipeline: {e}")
+            return processed
+
+    def post_to_wordpress_jupyter_style(self, article_data: Dict) -> Optional[int]:
+        """Post to WordPress using enhanced data from Jupyter notebook processing"""
+        try:
+            # WordPress API setup
             wp_base_url = self.config.get('wp_base_url', '')
             username = self.config.get('wp_username', '')
             password = self.config.get('wp_password', '')
             
             if not all([wp_base_url, username, password]):
-                self.logger.error("WordPress credentials not properly configured")
-                return None, None
-                
+                self.logger.error("❌ WordPress credentials not properly configured")
+                return None
+
             auth = HTTPBasicAuth(username, password)
             
-            # Generate SEO elements if not provided
-            if not seo_title or not meta_description:
-                self.logger.info("Generating SEO title and meta description")
-                seo_title, meta_description = self.generate_seo_title_and_meta(title, content)
-                
-            # Generate keyphrases if not provided
-            if not focus_keyphrase or not additional_keyphrases:
-                self.logger.info("Extracting focus keyphrase and additional keyphrases")
-                focus_keyphrase, additional_keyphrases = self.extract_keyphrases_with_gemini(title, content)
-                
-            seo_slug = self.generate_slug(seo_title)
+            # Create excerpt from content
+            clean_content = re.sub(r'<[^>]+>', '', article_data['content']).strip()
+            excerpt = clean_content[:297] + "..." if len(clean_content) > 300 else clean_content
 
-            # Generate excerpt if not provided
-            if not excerpt:
-                clean = re.sub(r'<[^>]+>', '', content).strip()
-                if len(clean) > 300:
-                    excerpt = clean[:297]
-                    last_space = excerpt.rfind(' ')
-                    if last_space != -1:
-                        excerpt = excerpt[:last_space]
-                    excerpt += "..."
-                else:
-                    excerpt = clean
-
-            # Prepare post payload
+            # Build payload with enhanced data
             payload = {
-                "title": title,
-                "content": content,
-                "slug": seo_slug,
+                "title": article_data['title'],
+                "content": article_data['content'],
+                "slug": article_data['slug'],
                 "excerpt": excerpt,
                 "status": "draft",
                 "categories": [],
-                "tags": [],
-                "yoast_head": "",
-                "focuskw": focus_keyphrase,
-                "metadesc": meta_description,
-                "additional_keyphrases": additional_keyphrases
+                "tags": []
             }
 
-            # Handle categories
+            # Process categories
             categories_url = f"{wp_base_url}/categories"
             cat_ids = []
             
-            for cat in categories:
+            for cat in article_data['categories']:
                 try:
                     resp = requests.get(categories_url, auth=auth, params={"search": cat}, timeout=10)
                     resp.raise_for_status()
                     found = resp.json()
                     
-                    cid = None
-                    if found:
-                        # Look for exact match first
-                        cid = next((c["id"] for c in found if c["name"].lower() == cat.lower()), None)
-                        if not cid:
-                            cid = found[0]["id"]  # Use first match
+                    cid = next((c["id"] for c in found if c["name"].lower() == cat.lower()), None)
+                    if not cid and found:
+                        cid = found[0]["id"]
                     
                     if not cid:
                         # Create new category
-                        crt = requests.post(categories_url, auth=auth, json={"name": cat}, timeout=10)
-                        crt.raise_for_status()
-                        cid = crt.json().get("id")
-                        
+                        create_resp = requests.post(categories_url, auth=auth, json={"name": cat}, timeout=10)
+                        create_resp.raise_for_status()
+                        cid = create_resp.json().get("id")
+                    
                     if cid and cid not in cat_ids:
                         cat_ids.append(cid)
                         
-                except HTTPError as e:
-                    if e.response.status_code == 401:
-                        self.logger.error("401 Unauthorized - check WordPress credentials")
-                        return None, None
-                    self.logger.warning(f"HTTP error for category '{cat}': {e}")
                 except Exception as e:
                     self.logger.warning(f"Error processing category '{cat}': {e}")
                     
             payload["categories"] = cat_ids
 
-            # Handle tags
+            # Process tags
             tags_url = f"{wp_base_url}/tags"
             tag_ids = []
             
-            for tag in tags:
+            for tag in article_data['tags']:
                 try:
                     resp = requests.get(tags_url, auth=auth, params={"search": tag}, timeout=10)
                     resp.raise_for_status()
                     found = resp.json()
                     
-                    tid = None
-                    if found:
-                        tid = next((t["id"] for t in found if t["name"].lower() == tag.lower()), None)
-                        if not tid:
-                            tid = found[0]["id"]
+                    tid = next((t["id"] for t in found if t["name"].lower() == tag.lower()), None)
+                    if not tid and found:
+                        tid = found[0]["id"]
                     
                     if not tid:
                         # Create new tag
-                        crt = requests.post(tags_url, auth=auth, json={"name": tag}, timeout=10)
-                        crt.raise_for_status()
-                        tid = crt.json().get("id")
-                        
+                        create_resp = requests.post(tags_url, auth=auth, json={"name": tag}, timeout=10)
+                        create_resp.raise_for_status()
+                        tid = create_resp.json().get("id")
+                    
                     if tid and tid not in tag_ids:
                         tag_ids.append(tid)
                         
@@ -867,341 +1364,131 @@ Article Content:
             
             post_id = post_resp.json().get("id")
             if not post_id:
-                self.logger.error("Post created but ID not returned")
-                return None, None
+                self.logger.error("❌ Post created but ID not returned")
+                return None
 
-            # Update with AIOSEO meta data including keyphrases
+            # Set SEO metadata (if AIOSEO plugin is available)
             try:
-                aioseo_meta = {
+                aioseo_data = {
                     "aioseo_meta_data": {
-                        "title": seo_title, 
-                        "description": meta_description,
-                        "keyphrases": {
-                            "focus": {
-                                "keyphrase": focus_keyphrase,
-                                "score": 100
-                            },
-                            "additional": [
-                                {"keyphrase": kp, "score": 75} 
-                                for kp in (additional_keyphrases or [])
-                            ]
-                        }
+                        "title": article_data['seo_title'],
+                        "description": article_data['meta_description']
                     }
                 }
+                if article_data.get('focus_keyphrase'):
+                    aioseo_data["aioseo_meta_data"]["keyphrases"] = {
+                        "focus": {
+                            "keyphrase": article_data['focus_keyphrase']
+                        },
+                        "additional": [
+                            {"keyphrase": kp} for kp in article_data.get('additional_keyphrases', [])
+                        ]
+                    }
                 
-                # Also add Yoast SEO meta fields for compatibility
-                yoast_meta = {
-                    "yoast_wpseo_focuskw": focus_keyphrase,
-                    "yoast_wpseo_metadesc": meta_description,
-                    "yoast_wpseo_title": seo_title
-                }
-                
-                # Try AIOSEO format first
-                upd = requests.put(f"{posts_url}/{post_id}", auth=auth, json=aioseo_meta, timeout=10)
-                if upd.status_code not in [200, 201]:
-                    # Fallback to Yoast format
-                    upd = requests.put(f"{posts_url}/{post_id}", auth=auth, json=yoast_meta, timeout=10)
-                
-                upd.raise_for_status()
-                self.logger.info(f"✅ SEO meta data updated with focus keyphrase: {focus_keyphrase}")
+                update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=aioseo_data, timeout=10)
+                update_resp.raise_for_status()
+                self.logger.info("✅ SEO metadata updated successfully")
                 
             except Exception as e:
-                self.logger.warning(f"Could not update SEO meta data: {e}")
-                # Try updating custom fields directly
-                try:
-                    meta_fields = {
-                        "meta": {
-                            "_yoast_wpseo_focuskw": focus_keyphrase,
-                            "_yoast_wpseo_metadesc": meta_description,
-                            "_yoast_wpseo_title": seo_title,
-                            "focus_keyphrase": focus_keyphrase,
-                            "additional_keyphrases": ", ".join(additional_keyphrases or [])
-                        }
-                    }
-                    upd = requests.put(f"{posts_url}/{post_id}", auth=auth, json=meta_fields, timeout=10)
-                    self.logger.info(f"✅ SEO custom fields updated with keyphrases")
-                except Exception as e2:
-                    self.logger.warning(f"Could not update custom fields either: {e2}")
+                self.logger.warning(f"⚠️ Failed to update SEO metadata: {e}")
 
             self.logger.info(f"✅ WordPress draft post created (ID: {post_id})")
-            return post_id, seo_title
+            return post_id
 
-        except HTTPError as e:
-            self.logger.error(f"HTTP error creating WordPress post: {e}")
-            return None, None
         except Exception as e:
-            self.logger.error(f"Error creating WordPress post: {e}")
-            return None, None
+            self.logger.error(f"❌ Error posting to WordPress: {e}")
+            return None
 
-    def load_posted_links(self) -> set:
-        """Load previously posted links"""
-        if os.path.exists(self.posted_links_file):
-            try:
-                with open(self.posted_links_file, "r") as f:
-                    return set(json.load(f))
-            except Exception as e:
-                self.logger.error(f"Error loading posted links: {e}")
-        return set()
+    def generate_tags_fallback(self, content: str) -> list:
+        """Fallback tag generation: extract capitalized words as possible names/clubs."""
+        import re
+        # Extract capitalized words (simple heuristic for names/clubs)
+        words = re.findall(r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\b', content)
+        # Remove duplicates and filter short words
+        tags = list({w for w in words if len(w) > 2})
+        self.logger.info(f"Fallback tags generated: {tags}")
+        return tags[:10]
 
-    def save_posted_links(self, links: set):
-        """Save posted links to file"""
+    def extract_keyphrases_with_gemini(self, content: str, title: str = "") -> dict:
+        """Extract focus and additional keyphrases using Gemini or fallback."""
+        gemini_api_key = self.config.get('gemini_api_key', '')
+        if not gemini_api_key:
+            self.logger.warning("No Gemini API key found, using fallback keyphrase extraction.")
+            return self.extract_keyphrases_fallback(content, title)
         try:
-            with open(self.posted_links_file, "w") as f:
-                json.dump(list(links), f)
-        except Exception as e:
-            self.logger.error(f"Error saving posted links: {e}")
-
-    def extract_keyphrases_with_gemini(self, title: str, content: str) -> Tuple[str, List[str]]:
-        """Extract focus keyphrase and additional keyphrases using Gemini AI"""
-        try:
-            gemini_api_key = self.config.get('gemini_api_key', '')
-            if not gemini_api_key:
-                return self.extract_keyphrases_fallback(title, content)
-
-            # Clean content for analysis
-            clean_content = re.sub(r'<[^>]+>', '', content).strip()
-            
-            prompt = f"""
-Analyze this football article and extract SEO keyphrases:
-
-Title: {title}
-Content: {clean_content[:1000]}...
-
-Based on this content, provide:
-1. ONE primary focus keyphrase (2-4 words, most important topic)
-2. 3-5 additional keyphrases (2-4 words each, related topics)
-
-The keyphrases should be:
-- Natural search terms people would use
-- Related to football/soccer, clubs, players, transfers, matches
-- Found naturally in the content
-- Good for SEO ranking
-
-Format your response exactly like this:
-FOCUS: primary keyphrase here
-ADDITIONAL: keyphrase1, keyphrase2, keyphrase3, keyphrase4, keyphrase5
-"""
-            
+            # Use the configurable prompt from GEMINI_PROMPTS
+            prompt = self.GEMINI_PROMPTS.get('keyphrase_extraction_prompt', '')
+            if not prompt:
+                # Fallback to default prompt if not configured
+                prompt = "You are an SEO expert specializing in football content. Analyze the following article and extract:\n\n1. **Focus Keyphrase**: The single most important 2-4 word keyphrase that represents the core topic of this article. This should be what people would search for to find this specific article.\n\n2. **Additional Keyphrases**: 3-5 additional relevant keyphrases (2-4 words each) that are naturally mentioned in the content and would help with SEO ranking.\n\nRules:\n- Focus on keyphrases that football fans would actually search for\n- Include player names, club names, and football-specific terms\n- Avoid generic words like 'football', 'player', 'team' unless they're part of a specific phrase\n- Keyphrases should feel natural and be present in the content\n- Use British English spelling (e.g., 'rumours' not 'rumors')\n\nReturn format:\nFOCUS_KEYPHRASE:\n<main keyphrase here>\n\nADDITIONAL_KEYPHRASES:\n<keyphrase 1>\n<keyphrase 2>\n<keyphrase 3>\n<keyphrase 4>\n<keyphrase 5>\n\nArticle Title: {title}\n\nArticle Content:\n{content}"
+            prompt = prompt.format(title=title, content=content)
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
-            
-            resp = requests.post(
+            response = requests.post(
                 url,
                 headers={"Content-Type": "application/json"},
                 json={"contents": [{"parts": [{"text": prompt}]}]},
                 timeout=30
             )
-            
-            if resp.status_code == 200:
-                raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-                
-                # Parse response
-                focus_keyphrase = ""
-                additional_keyphrases = []
-                
-                for line in raw.split('\n'):
-                    line = line.strip()
-                    if line.startswith('FOCUS:'):
-                        focus_keyphrase = line.replace('FOCUS:', '').strip()
-                    elif line.startswith('ADDITIONAL:'):
-                        additional_text = line.replace('ADDITIONAL:', '').strip()
-                        additional_keyphrases = [kp.strip() for kp in additional_text.split(',') if kp.strip()]
-                
-                # Validate and clean keyphrases
-                if focus_keyphrase:
-                    focus_keyphrase = re.sub(r'\s+', ' ', focus_keyphrase).lower()
-                
-                additional_keyphrases = [
-                    re.sub(r'\s+', ' ', kp).lower() 
-                    for kp in additional_keyphrases 
-                    if kp and len(kp.split()) <= 4
-                ][:5]  # Limit to 5 additional keyphrases
-                
-                self.logger.info(f"Extracted focus keyphrase: {focus_keyphrase}")
-                self.logger.info(f"Extracted additional keyphrases: {additional_keyphrases}")
-                
-                return focus_keyphrase, additional_keyphrases
-            else:
-                self.logger.error(f"Gemini Keyphrase API Error {resp.status_code}: {resp.text}")
-                
-        except Exception as e:
-            self.logger.error(f"❌ Error extracting keyphrases with Gemini: {e}")
-        
-        # Fallback
-        return self.extract_keyphrases_fallback(title, content)
-
-    def extract_keyphrases_fallback(self, title: str, content: str) -> Tuple[str, List[str]]:
-        """Fallback keyphrase extraction without Gemini"""
-        # Clean content
-        clean_title = re.sub(r'<[^>]+>', '', title).strip().lower()
-        clean_content = re.sub(r'<[^>]+>', '', content).strip().lower()
-        combined_text = f"{clean_title} {clean_content}"
-        
-        # Common football keywords that might be focus keyphrases
-        football_terms = [
-            "premier league", "transfer news", "manchester united", "liverpool", 
-            "arsenal", "chelsea", "manchester city", "tottenham", "leeds united",
-            "champions league", "europa league", "fa cup", "injury update",
-            "match report", "player profile", "transfer deal", "contract extension",
-            "goal scorer", "midfielder", "defender", "striker", "goalkeeper"
-        ]
-        
-        # Find focus keyphrase (most prominent term)
-        focus_keyphrase = ""
-        max_mentions = 0
-        
-        for term in football_terms:
-            mentions = len(re.findall(rf'\b{re.escape(term)}\b', combined_text))
-            if mentions > max_mentions:
-                max_mentions = mentions
-                focus_keyphrase = term
-        
-        # If no specific term found, use title words
-        if not focus_keyphrase:
-            title_words = re.findall(r'\b[a-z]+\b', clean_title)
-            if len(title_words) >= 2:
-                focus_keyphrase = ' '.join(title_words[:2])
-        
-        # Extract additional keyphrases from most frequent word combinations
-        words = re.findall(r'\b[a-z]+\b', combined_text)
-        word_freq = {}
-        
-        # Count 2-3 word combinations
-        for i in range(len(words) - 1):
-            if words[i] not in self.STOP_WORDS and words[i+1] not in self.STOP_WORDS:
-                phrase = f"{words[i]} {words[i+1]}"
-                word_freq[phrase] = word_freq.get(phrase, 0) + 1
-                
-                # Also check 3-word combinations
-                if i < len(words) - 2 and words[i+2] not in self.STOP_WORDS:
-                    phrase3 = f"{words[i]} {words[i+1]} {words[i+2]}"
-                    word_freq[phrase3] = word_freq.get(phrase3, 0) + 1
-        
-        # Get top additional keyphrases
-        additional_keyphrases = []
-        sorted_phrases = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-        
-        for phrase, count in sorted_phrases:
-            if (count >= 2 and 
-                phrase != focus_keyphrase and 
-                len(phrase.split()) <= 3 and
-                len(additional_keyphrases) < 5):
-                additional_keyphrases.append(phrase)
-        
-        self.logger.info(f"Fallback focus keyphrase: {focus_keyphrase}")
-        self.logger.info(f"Fallback additional keyphrases: {additional_keyphrases}")
-        
-        return focus_keyphrase, additional_keyphrases
-
-    def generate_and_upload_featured_image(self, title: str, content: str, post_id: int) -> Optional[int]:
-        """Generate an image using OpenAI and upload it as a featured image to WordPress"""
-        try:
-            openai_api_key = self.config.get('openai_api_key', '')
-            if not openai_api_key:
-                self.logger.error("OpenAI API key not configured")
-                return None
-            
-            # Load OpenAI image configuration
-            openai_config = self.load_openai_image_config()
-            
-            # Clean content for prompt creation
-            clean_content = re.sub(r'<[^>]+>', '', content[:500])
-            clean_title = re.sub(r'<[^>]+>', '', title)
-            
-            # Create enhanced prompt using configuration
-            prompt = self.create_openai_image_prompt(clean_title, clean_content, openai_config, is_featured=True)
-            
-            self.logger.info(f"🎨 Generating featured image with OpenAI for: {clean_title[:50]}...")
-            
-            # Make OpenAI API request
-            import base64
-            import requests
-            from io import BytesIO
-            
-            response = requests.post(
-                "https://api.openai.com/v1/images/generations",
-                headers={
-                    "Authorization": f"Bearer {openai_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": openai_config.get('image_model', 'dall-e-3'),
-                    "prompt": prompt,
-                    "n": openai_config.get('num_images', 1),
-                    "size": openai_config.get('image_size', '1024x1024'),
-                    "response_format": "b64_json",
-                    "style": openai_config.get('image_style', 'photorealistic') if openai_config.get('image_model') == 'dall-e-3' else None
-                },
-                timeout=60
-            )
-            
             if response.status_code != 200:
-                self.logger.error(f"❌ OpenAI API error: {response.status_code} - {response.text}")
-                return None
-            
-            # Get the image data
-            image_data = response.json()["data"][0]["b64_json"]
-            image_bytes = base64.b64decode(image_data)
-            
-            # Upload to WordPress
-            wp_base_url = self.config.get('wp_base_url', '')
-            username = self.config.get('wp_username', '')
-            password = self.config.get('wp_password', '')
-            
-            if not all([wp_base_url, username, password]):
-                self.logger.error("WordPress credentials not properly configured")
-                return None
-            
-            auth = HTTPBasicAuth(username, password)
-            
-            # Generate a filename based on the post title
-            title_hash = hashlib.md5(clean_title.encode()).hexdigest()[:10]
-            timestamp = int(time.time())
-            filename = f"ai-generated-{title_hash}-{timestamp}.png"
-            
-            # Upload the image to WordPress
-            media_url = f"{wp_base_url}/media"
-            
-            upload_response = requests.post(
-                media_url,
-                auth=auth,
-                headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"',
-                    "Content-Type": "image/png"
-                },
-                data=image_bytes,
-                timeout=30
-            )
-            
-            if upload_response.status_code not in [200, 201]:
-                self.logger.error(f"❌ WordPress media upload error: {upload_response.status_code} - {upload_response.text}")
-                return None
-            
-            media_id = upload_response.json().get("id")
-            if not media_id:
-                self.logger.error("❌ Media uploaded but ID not returned")
-                return None
-            
-            # Set as featured image for the post
-            if post_id:
-                update_url = f"{wp_base_url}/posts/{post_id}"
-                update_response = requests.post(
-                    update_url,
-                    auth=auth,
-                    json={"featured_media": media_id},
-                    timeout=10
-                )
+                self.logger.error(f"Gemini Keyphrase API Error {response.status_code}: {response.text}")
+                return self.extract_keyphrases_fallback(content, title)
                 
-                if update_response.status_code not in [200, 201]:
-                    self.logger.error(f"❌ Failed to set featured image: {update_response.status_code} - {update_response.text}")
-                    return None
+            response_data = response.json()
+            if not response_data.get("candidates") or len(response_data["candidates"]) == 0:
+                self.logger.error("Empty or invalid Gemini API response for keyphrase extraction")
+                return self.extract_keyphrases_fallback(content, title)
                 
-                self.logger.info(f"✅ Featured image set for post ID {post_id}")
-            
-            return media_id
-            
+            candidate = response_data["candidates"][0]
+            if not candidate.get("content") or not candidate["content"].get("parts") or len(candidate["content"]["parts"]) == 0:
+                self.logger.error("Invalid content structure in Gemini API response for keyphrase extraction")
+                return self.extract_keyphrases_fallback(content, title)
+                
+            text = candidate["content"]["parts"][0].get("text", "")
+            # Parse the result
+            focus = ""
+            additional = []
+            in_focus = False
+            in_additional = False
+            for line in text.splitlines():
+                if line.strip().lower().startswith('focus_keyphrase:'):
+                    in_focus = True
+                    in_additional = False
+                    continue
+                if line.strip().lower().startswith('additional_keyphrases:'):
+                    in_focus = False
+                    in_additional = True
+                    continue
+                if in_focus and line.strip():
+                    focus = line.strip()
+                if in_additional and line.strip():
+                    additional.append(line.strip())
+            return {"focus_keyphrase": focus, "additional_keyphrases": additional}
         except Exception as e:
-            self.logger.error(f"❌ Error generating/uploading image: {e}")
-            return None
+            self.logger.error(f"Error extracting keyphrases with Gemini: {e}")
+            return self.extract_keyphrases_fallback(content, title)
+
+    def extract_keyphrases_fallback(self, content: str, title: str = "") -> dict:
+        """Fallback: extract keyphrases by picking most frequent capitalized words."""
+        import re
+        words = re.findall(r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\b', content)
+        freq = {}
+        for w in words:
+            freq[w] = freq.get(w, 0) + 1
+        sorted_words = sorted(freq, key=freq.get, reverse=True)
+        focus = sorted_words[0] if sorted_words else ''
+        additional = sorted_words[1:6] if len(sorted_words) > 1 else []
+        return {"focus_keyphrase": focus, "additional_keyphrases": additional}
+
+    def generate_seo_title_and_meta_jupyter(self, title: str, content: str) -> Tuple[str, str]:
+        """Enhanced SEO title and meta generation using Jupyter notebook implementation"""
+        return self.generate_seo_title_and_meta(title, content)
+        
+    def extract_keyphrases_jupyter(self, title: str, content: str) -> Tuple[str, List[str]]:
+        """Enhanced keyphrase extraction using Jupyter notebook implementation"""
+        result = self.extract_keyphrases_with_gemini(content, title)
+        focus = result.get('focus_keyphrase', '')
+        additional = result.get('additional_keyphrases', [])
+        return focus, additional
 
     def search_getty_images(self, query: str, num_results: int = 5) -> List[Dict[str, str]]:
         """Search for editorial images - now uses reliable sports image sources"""
@@ -1257,7 +1544,7 @@ ADDITIONAL: keyphrase1, keyphrase2, keyphrase3, keyphrase4, keyphrase5
             # Unsplash has a public API for accessing high-quality images
             # Using their Source API which doesn't require API keys for basic usage
             
-            self.logger.info(f"� Searching Unsplash for sports images: {query}")
+            self.logger.info(f"📷 Searching Unsplash for sports images: {query}")
             
             # Extract sports-related keywords from query
             sports_keywords = self.extract_sports_keywords(query)
@@ -1395,123 +1682,6 @@ ADDITIONAL: keyphrase1, keyphrase2, keyphrase3, keyphrase4, keyphrase5
                 "source": "emergency",
                 "is_fallback": True
             }]
-
-    def get_getty_embed_code(self, image_id: str, title: str, is_fallback: bool = False) -> str:
-        """Generate Getty Images embed code"""
-        try:
-            self.logger.info(f"🎨 Generating embed code for image ID: {image_id}")
-            
-            if is_fallback:
-                # For fallback images, create a placeholder div instead of iframe
-                embed_code = f'''<div style="padding: 16px;">
-<div style="display: flex; align-items: center; justify-content: center; flex-direction: column; width: 100%; background-color: #F4F4F4; border-radius: 4px; text-decoration: none; min-height: 200px;">
-    <div style="background: linear-gradient(45deg, #E0E0E0, #F0F0F0); width: 594px; height: 396px; max-width: 100%; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
-        <p style="color: #666; font-family: Arial,sans-serif; font-size: 16px; text-align: center; margin: 0;">📸 Editorial Image<br>Getty Images</p>
-    </div>
-    <p style="margin: 0; color: #000; font-family: Arial,sans-serif; font-size: 14px; font-weight: normal; line-height: 17px; margin-bottom: 0; margin-top: 8px; text-align: center;">{title}</p>
-</div>
-</div>'''
-            else:
-                # Standard Getty Images embed code structure
-                embed_code = f'''<div style="padding: 16px;">
-<div style="display: flex; align-items: center; justify-content: center; flex-direction: column; width: 100%; background-color: #F4F4F4; border-radius: 4px; text-decoration: none;">
-    <iframe src="https://embed.gettyimages.com/embed/{image_id}" width="594" height="396" frameborder="0" scrolling="no" style="display: inline-block; position: relative; max-width: 100%;"></iframe>
-    <p style="margin: 0; color: #000; font-family: Arial,sans-serif; font-size: 14px; font-weight: normal; line-height: 17px; margin-bottom: 0; margin-top: 8px; text-align: center;">{title}</p>
-</div>
-</div>'''
-            
-            self.logger.info(f"✅ Generated embed code ({len(embed_code)} chars)")
-            return embed_code
-            
-        except Exception as e:
-            self.logger.error(f"❌ Error generating Getty embed code: {e}")
-            return ""
-
-    def add_getty_image_to_content(self, content: str, title: str, topic_keywords: List[str] = None) -> str:
-        """Add Getty Images to content based on the article topic"""
-        try:
-            self.logger.info(f"🖼️ Adding Getty image to content for: {title}")
-            
-            # Extract main topic from title for better search
-            search_query = title
-            if topic_keywords and len(topic_keywords) > 0:
-                # Use provided keywords for more specific search
-                search_query = " ".join(topic_keywords[:3])  # Use first 3 keywords
-                self.logger.info(f"🔍 Using keywords for search: {search_query}")
-            else:
-                self.logger.info(f"🔍 Using title for search: {search_query}")
-            
-            # Search for relevant images
-            self.logger.info(f"📡 Starting Getty Images search...")
-            images = self.search_getty_images(search_query, num_results=3)
-            
-            if not images:
-                self.logger.warning(f"⚠️ No Getty Images found for query: {search_query}")
-                # Try with just the title if keywords didn't work
-                if topic_keywords and search_query != title:
-                    self.logger.info(f"🔄 Retrying search with title only: {title}")
-                    images = self.search_getty_images(title, num_results=3)
-                
-                if not images:
-                    self.logger.error(f"❌ Still no images found, content will remain unchanged")
-                    return content
-            
-            # Use the first/best result
-            selected_image = images[0]
-            is_fallback = selected_image.get("is_fallback", False)
-            
-            self.logger.info(f"📸 Selected image: {selected_image['title'][:50]}... (ID: {selected_image['id']}) {'[FALLBACK]' if is_fallback else ''}")
-            
-            embed_code = self.get_getty_embed_code(
-                selected_image["id"], 
-                selected_image["title"], 
-                is_fallback
-            )
-            
-            if not embed_code:
-                self.logger.error(f"❌ Failed to generate embed code")
-                return content
-            
-            self.logger.info(f"🎨 Generated embed code successfully")
-            
-            # Find a good place to insert the image (after first paragraph or heading)
-            # Split content into paragraphs
-            paragraphs = content.split('</p>')
-            
-            if len(paragraphs) >= 2:
-                # Insert after first paragraph
-                insert_point = 1
-                paragraphs.insert(insert_point, embed_code)
-                modified_content = '</p>'.join(paragraphs)
-                self.logger.info(f"✅ Image inserted after first paragraph")
-            else:
-                # If no clear paragraphs, append at the beginning after any opening content
-                if '<h1>' in content or '<h2>' in content:
-                    # Insert after first heading
-                    heading_match = re.search(r'(<h[1-6][^>]*>.*?</h[1-6]>)', content)
-                    if heading_match:
-                        insert_pos = heading_match.end()
-                        modified_content = content[:insert_pos] + '\n\n' + embed_code + '\n\n' + content[insert_pos:]
-                        self.logger.info(f"✅ Image inserted after first heading")
-                    else:
-                        modified_content = embed_code + '\n\n' + content
-                        self.logger.info(f"✅ Image inserted at beginning of content")
-                else:
-                    modified_content = embed_code + '\n\n' + content
-                    self.logger.info(f"✅ Image inserted at beginning of content")
-            
-            # Log the change in content length
-            original_length = len(content)
-            new_length = len(modified_content)
-            added_length = new_length - original_length
-            
-            self.logger.info(f"✅ Getty Image successfully added! Content length: {original_length} → {new_length} (+{added_length} chars)")
-            return modified_content
-            
-        except Exception as e:
-            self.logger.error(f"❌ Error adding Getty image to content: {e}")
-            self.logger.error(f"❌ Stack trace: {traceback.format_exc()}")
-            return content
 
     def generate_getty_search_terms_with_gemini(self, title: str, content: str) -> str:
         """Use Gemini AI to generate optimal search terms for finding the best editorial image on Getty Images"""
@@ -1661,350 +1831,123 @@ Your response (search terms only):
             self.logger.error(f"❌ Failed to create minimal placeholder: {e}")
             return None
 
-    def generate_and_upload_getty_featured_image(self, title: str, content: str, post_id: int) -> Optional[int]:
-        """Search Getty Images, download first result, and set as WordPress featured image"""
+    def generate_and_upload_getty_featured_image(self, title: str, content: str, post_id: int) -> bool:
+        """Generate and upload a Getty Images featured image for a WordPress post"""
         try:
-            self.logger.info(f"🖼️ Setting up Getty Images as featured image for: {title}")
+            self.logger.info(f"🖼️ Starting Getty featured image generation for post {post_id}")
             
-            # Step 1: Use Gemini to generate optimal search terms
+            # Step 1: Generate optimized search terms using Gemini AI
             search_terms = self.generate_getty_search_terms_with_gemini(title, content)
+            self.logger.info(f"🔍 Using search terms: {search_terms}")
             
-            # Step 2: Search Getty Images for the first good image
-            images = self.search_getty_images(search_terms, num_results=5)
-            
-            if not images:
-                self.logger.warning("⚠️ No Getty Images found, trying with title only")
-                images = self.search_getty_images(title, num_results=5)
+            # Step 2: Search for sports images using our reliable image sources
+            images = self.search_getty_images(search_terms)
             
             if not images:
-                self.logger.error("❌ No Getty Images found for featured image")
-                return None
+                self.logger.warning("⚠️ No images found, using fallback")
+                images = self.get_fallback_getty_images()
             
-            # Step 3: Get the first image's download URL
-            selected_image = images[0]
-            self.logger.info(f"📸 Selected Getty image: {selected_image['title'][:50]}...")
+            # Step 3: Try to download and upload the best image
+            for i, image in enumerate(images[:3]):  # Try top 3 images
+                try:
+                    self.logger.info(f"🔄 Attempting image {i+1}/3: {image['url']}")
+                    
+                    # Download the image
+                    image_data = self.download_getty_image(image['url'], f"featured_image_{post_id}")
+                    
+                    if image_data:
+                        # Upload to WordPress as featured image
+                        success = self.upload_featured_image_to_wordpress(image_data, post_id, image.get('title', 'Sports Image'))
+                        
+                        if success:
+                            self.logger.info(f"✅ Successfully set featured image for post {post_id}")
+                            return True
+                        else:
+                            self.logger.warning(f"⚠️ Failed to upload image {i+1}, trying next...")
+                    else:
+                        self.logger.warning(f"⚠️ Failed to download image {i+1}, trying next...")
+                        
+                except Exception as e:
+                    self.logger.error(f"❌ Error processing image {i+1}: {e}")
+                    continue
             
-            # Get the download URL
-            image_url = selected_image.get('download_url') or selected_image.get('thumbnail', '')
-            if not image_url:
-                self.logger.error("❌ No downloadable image URL found")
-                return None
+            # If all images failed, try one final fallback
+            self.logger.warning("⚠️ All primary images failed, trying emergency fallback")
+            fallback_data = self.download_fallback_placeholder_image()
             
-            self.logger.info(f"🔗 Image URL: {image_url}")
+            if fallback_data:
+                success = self.upload_featured_image_to_wordpress(fallback_data, post_id, "Sports Placeholder")
+                if success:
+                    self.logger.info(f"✅ Successfully set fallback featured image for post {post_id}")
+                    return True
             
-            # Step 4: Download the image
-            image_data = self.download_getty_image(image_url, f"getty_{selected_image['id']}.jpg")
-            
-            if not image_data:
-                self.logger.error("❌ Failed to download Getty image")
-                return None
-            
-            # Step 5: Upload to WordPress as featured image
-            wp_base_url = self.config.get('wp_base_url', '')
-            username = self.config.get('wp_username', '')
-            password = self.config.get('wp_password', '')
-            
-            if not all([wp_base_url, username, password]):
-                self.logger.error("❌ WordPress credentials not properly configured")
-                return None
-            
-            auth = HTTPBasicAuth(username, password)
-            
-            # Generate filename
-            title_hash = hashlib.md5(title.encode()).hexdigest()[:10]
-            timestamp = int(time.time())
-            filename = f"getty-featured-{title_hash}-{timestamp}.jpg"
-            
-            # Upload the image to WordPress
-            media_url = f"{wp_base_url}/media"
-            
-            upload_response = requests.post(
-                media_url,
-                auth=auth,
-                headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"',
-                    "Content-Type": "image/jpeg"
-                },
-                data=image_data,
-                timeout=30
-            )
-            
-            if upload_response.status_code not in [200, 201]:
-                self.logger.error(f"❌ WordPress media upload error: {upload_response.status_code} - {upload_response.text}")
-                return None
-            
-            media_id = upload_response.json().get("id")
-            if not media_id:
-                self.logger.error("❌ Media uploaded but ID not returned")
-                return None
-            
-            self.logger.info(f"✅ Getty image uploaded to WordPress (Media ID: {media_id})")
-            
-            # Step 6: Set as featured image for the post
-            if post_id:
-                update_url = f"{wp_base_url}/posts/{post_id}"
-                update_response = requests.post(
-                    update_url,
-                    auth=auth,
-                    json={"featured_media": media_id},
-                    timeout=10
-                )
-                
-                if update_response.status_code not in [200, 201]:
-                    self.logger.error(f"❌ Failed to set featured image: {update_response.status_code} - {update_response.text}")
-                    return None
-                
-                self.logger.info(f"✅ Getty image set as featured image for post ID {post_id}")
-            
-            return media_id
+            self.logger.error(f"❌ Failed to set any featured image for post {post_id}")
+            return False
             
         except Exception as e:
-            self.logger.error(f"❌ Error setting Getty featured image: {e}")
-            self.logger.error(f"❌ Stack trace: {traceback.format_exc()}")
-            return None
+            self.logger.error(f"❌ Error in generate_and_upload_getty_featured_image: {e}")
+            return False
 
-    def load_openai_image_config(self) -> Dict:
-        """Load OpenAI image configuration from config file"""
-        config_path = os.path.join(self.config_dir, "openai_image_config.json")
-        default_config = {
-            "image_size": "1024x1024",
-            "image_style": "photorealistic",
-            "image_model": "dall-e-3",
-            "num_images": 1,
-            "prompt_prefix": "",
-            "prompt_suffix": ""
-        }
-        
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r') as f:
-                    config = json.load(f)
-                    # Merge with defaults to ensure all keys exist
-                    for key, default_value in default_config.items():
-                        if key not in config:
-                            config[key] = default_value
-                    return config
-            except Exception as e:
-                self.logger.warning(f"⚠️ Error loading OpenAI image config: {e}, using defaults")
-        
-        return default_config
-    
-    def create_openai_image_prompt(self, title: str, content: str, config: Dict, is_featured: bool = False, custom_prompt: str = None) -> str:
-        """Create an enhanced prompt for OpenAI image generation"""
-        
-        # If custom prompt is provided, use it with minimal modification
-        if custom_prompt and custom_prompt.strip():
-            base_prompt = custom_prompt.strip()
-            self.logger.info(f"🎨 Using custom prompt for image generation")
-        else:
-            # Generate prompt based on content
-            clean_title = re.sub(r'<[^>]+>', '', title)
-            clean_content = re.sub(r'<[^>]+>', '', content[:300])
-            
-            # Extract key themes from the content
-            themes = self.extract_content_themes(clean_title, clean_content)
-            
-            if is_featured:
-                base_prompt = f"Create a professional, high-quality featured image for a sports blog article titled: '{clean_title}'. The image should capture the essence of {themes} and be suitable as a cover image for the article. Make it visually striking and relevant to football/soccer."
-            else:
-                base_prompt = f"Create a relevant, professional image to complement an article about {themes}. The image should enhance the reader's understanding of the topic and be suitable for insertion within blog content about: '{clean_title}'"
-            
-            self.logger.info(f"🎨 Using auto-generated prompt for image generation")
-        
-        # Add prefix and suffix from configuration
-        prompt_prefix = config.get('prompt_prefix', '').strip()
-        prompt_suffix = config.get('prompt_suffix', '').strip()
-        
-        # Construct final prompt
-        final_prompt = ""
-        if prompt_prefix:
-            final_prompt += prompt_prefix + " "
-        
-        final_prompt += base_prompt
-        
-        if prompt_suffix:
-            final_prompt += " " + prompt_suffix
-        
-        # Ensure prompt doesn't exceed reasonable length
-        if len(final_prompt) > 1000:
-            final_prompt = final_prompt[:997] + "..."
-        
-        return final_prompt
-    
-    def extract_content_themes(self, title: str, content: str) -> str:
-        """Extract main themes from title and content for better image prompts"""
-        # Combine title and content
-        combined_text = f"{title} {content}".lower()
-        
-        # Define theme keywords and their descriptions
-        theme_keywords = {
-            'transfer': 'player transfers and signings',
-            'goal': 'goal scoring and celebrations',
-            'match': 'football match action',
-            'training': 'team training and preparation',
-            'injury': 'player fitness and medical concerns',
-            'derby': 'rivalry matches and intense competition',
-            'champions league': 'European football competition',
-            'premier league': 'English Premier League football',
-            'celebration': 'team celebrations and victories',
-            'tactics': 'football strategy and formations',
-            'stadium': 'football stadiums and venues',
-            'fans': 'football supporters and crowds'
-        }
-        
-        # Find matching themes
-        detected_themes = []
-        for keyword, description in theme_keywords.items():
-            if keyword in combined_text:
-                detected_themes.append(description)
-        
-        # If no specific themes found, use general football theme
-        if not detected_themes:
-            detected_themes = ['football/soccer action and excitement']
-        
-        return ', '.join(detected_themes[:3])  # Limit to 3 themes
-    
-    def add_openai_image_to_content(self, content: str, title: str, custom_prompt: str = None) -> str:
-        """Generate and add OpenAI images to content based on the article topic"""
+    def upload_featured_image_to_wordpress(self, image_data: bytes, post_id: int, title: str = "Featured Image") -> bool:
+        """Upload image data to WordPress and set as featured image"""
         try:
-            openai_api_key = self.config.get('openai_api_key', '')
-            if not openai_api_key:
-                self.logger.warning("⚠️ OpenAI API key not configured, skipping content image generation")
-                return content
+            self.logger.info(f"📤 Uploading featured image to WordPress for post {post_id}")
             
-            self.logger.info(f"🎨 Adding OpenAI generated image to content for: {title}")
+            # Prepare the image file for upload
+            files = {
+                'file': (f'featured_image_{post_id}.jpg', image_data, 'image/jpeg')
+            }
             
-            # Load OpenAI configuration
-            openai_config = self.load_openai_image_config()
+            # WordPress media upload endpoint
+            media_url = f"{self.config['wordpress_url']}/wp-json/wp/v2/media"
             
-            # Clean content for prompt creation
-            clean_content = re.sub(r'<[^>]+>', '', content[:500])
-            clean_title = re.sub(r'<[^>]+>', '', title)
-            
-            # Create enhanced prompt
-            prompt = self.create_openai_image_prompt(clean_title, clean_content, openai_config, is_featured=False, custom_prompt=custom_prompt)
-            
-            self.logger.info(f"🖼️ Generating content image with prompt: {prompt[:100]}...")
-            
-            # Make OpenAI API request
-            import base64
-            import requests
-            
+            # Upload the image
             response = requests.post(
-                "https://api.openai.com/v1/images/generations",
+                media_url,
+                files=files,
                 headers={
-                    "Authorization": f"Bearer {openai_api_key}",
-                    "Content-Type": "application/json"
+                    'Authorization': f"Bearer {self.config['wordpress_token']}"
                 },
-                json={
-                    "model": openai_config.get('image_model', 'dall-e-3'),
-                    "prompt": prompt,
-                    "n": 1,
-                    "size": openai_config.get('image_size', '1024x1024'),
-                    "response_format": "b64_json",
-                    "style": openai_config.get('image_style', 'photorealistic') if openai_config.get('image_model') == 'dall-e-3' else None
+                data={
+                    'title': title,
+                    'alt_text': title,
+                    'caption': title
                 },
                 timeout=60
             )
             
-            if response.status_code != 200:
-                self.logger.error(f"❌ OpenAI API error: {response.status_code} - {response.text}")
-                return content
-            
-            # Get the image data
-            image_data = response.json()["data"][0]["b64_json"]
-            image_bytes = base64.b64decode(image_data)
-            
-            # Upload to WordPress
-            wp_base_url = self.config.get('wp_base_url', '')
-            username = self.config.get('wp_username', '')
-            password = self.config.get('wp_password', '')
-            
-            if not all([wp_base_url, username, password]):
-                self.logger.error("WordPress credentials not properly configured")
-                return content
-            
-            auth = HTTPBasicAuth(username, password)
-            
-            # Generate a filename based on the content
-            title_hash = hashlib.md5(clean_title.encode()).hexdigest()[:10]
-            timestamp = int(time.time())
-            filename = f"ai-content-{title_hash}-{timestamp}.png"
-            
-            # Upload the image to WordPress
-            media_url = f"{wp_base_url}/media"
-            
-            upload_response = requests.post(
-                media_url,
-                auth=auth,
-                headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"',
-                    "Content-Type": "image/png"
-                },
-                data=image_bytes,
-                timeout=30
-            )
-            
-            if upload_response.status_code not in [200, 201]:
-                self.logger.error(f"❌ WordPress media upload error: {upload_response.status_code} - {upload_response.text}")
-                return content
-            
-            # Get the uploaded image URL
-            media_response = upload_response.json()
-            image_url = media_response.get("source_url", "")
-            image_id = media_response.get("id", "")
-            
-            if not image_url:
-                self.logger.error("❌ Image uploaded but URL not returned")
-                return content
-            
-            # Create HTML for the image
-            image_html = f'''
-<figure class="wp-block-image aligncenter size-large">
-    <img src="{image_url}" alt="AI generated image for {clean_title[:50]}" class="wp-image-{image_id}"/>
-    <figcaption>Generated illustration for this article</figcaption>
-</figure>
-'''
-            
-            # Find a good place to insert the image (after first or second paragraph)
-            paragraphs = content.split('</p>')
-            
-            if len(paragraphs) >= 3:
-                # Insert after second paragraph for better flow
-                insert_point = 2
-                paragraphs.insert(insert_point, image_html)
-                modified_content = '</p>'.join(paragraphs)
-                self.logger.info(f"✅ OpenAI image inserted after second paragraph")
-            elif len(paragraphs) >= 2:
-                # Insert after first paragraph
-                insert_point = 1
-                paragraphs.insert(insert_point, image_html)
-                modified_content = '</p>'.join(paragraphs)
-                self.logger.info(f"✅ OpenAI image inserted after first paragraph")
-            else:
-                # If no clear paragraphs, append after any heading or at the beginning
-                if '<h1>' in content or '<h2>' in content:
-                    heading_match = re.search(r'(<h[1-6][^>]*>.*?</h[1-6]>)', content)
-                    if heading_match:
-                        insert_pos = heading_match.end()
-                        modified_content = content[:insert_pos] + '\n\n' + image_html + '\n\n' + content[insert_pos:]
-                        self.logger.info(f"✅ OpenAI image inserted after first heading")
-                    else:
-                        modified_content = image_html + '\n\n' + content
-                        self.logger.info(f"✅ OpenAI image inserted at beginning of content")
+            if response.status_code == 201:
+                media_data = response.json()
+                media_id = media_data['id']
+                
+                self.logger.info(f"✅ Image uploaded successfully, media ID: {media_id}")
+                
+                # Set as featured image for the post
+                post_url = f"{self.config['wordpress_url']}/wp-json/wp/v2/posts/{post_id}"
+                
+                update_response = requests.post(
+                    post_url,
+                    headers={
+                        'Authorization': f"Bearer {self.config['wordpress_token']}",
+                        'Content-Type': 'application/json'
+                    },
+                    json={
+                        'featured_media': media_id
+                    },
+                    timeout=30
+                )
+                
+                if update_response.status_code == 200:
+                    self.logger.info(f"✅ Featured image set successfully for post {post_id}")
+                    return True
                 else:
-                    modified_content = image_html + '\n\n' + content
-                    self.logger.info(f"✅ OpenAI image inserted at beginning of content")
-            
-            # Log the change in content length
-            original_length = len(content)
-            new_length = len(modified_content)
-            added_length = new_length - original_length
-            
-            self.logger.info(f"✅ OpenAI Image successfully added! Content length: {original_length} → {new_length} (+{added_length} chars)")
-            return modified_content
-            
+                    self.logger.error(f"❌ Failed to set featured image: {update_response.status_code}")
+                    return False
+                    
+            else:
+                self.logger.error(f"❌ Failed to upload image: {response.status_code} - {response.text}")
+                return False
+                
         except Exception as e:
-            self.logger.error(f"❌ Error adding OpenAI image to content: {e}")
-            self.logger.error(f"❌ Stack trace: {traceback.format_exc()}")
-            return content
+            self.logger.error(f"❌ Error uploading featured image: {e}")
+            return False

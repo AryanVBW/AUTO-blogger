@@ -1,0 +1,10 @@
+2025-06-29 02:02:21 | INFO | [SYSTEM] | 🚀 Unified logging system initialized
+2025-06-29 02:02:21 | INFO | [SYSTEM] | 📁 Session: session_20250629_020221
+2025-06-29 02:02:21 | INFO | [SYSTEM] | 📄 Unified log file: logs/session_20250629_020221_unified.log
+2025-06-29 02:02:21 | INFO | [SYSTEM] | Starting WebDriver and logging test
+2025-06-29 02:02:21 | ERROR | [ERROR] | Test failed: 'UnifiedLogManager' object has no attribute 'error'
+2025-06-29 02:02:21 | INFO | [API] | API REQUEST | Testing API logging with enhanced colors 
+2025-06-29 02:02:21 | WARNING | [SECURITY] | SECURITY TESTING SECURITY LOGGING | 
+2025-06-29 02:02:21 | INFO | [CONTENT] | CONTENT TESTING CONTENT LOGGING
+2025-06-29 02:02:21 | INFO | [UI] | UI TESTING UI LOGGING
+2025-06-29 02:02:21 | INFO | [SYSTEM] | 📋 Session finalized: session_20250629_020221

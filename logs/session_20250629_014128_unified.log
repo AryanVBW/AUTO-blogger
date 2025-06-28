@@ -1,0 +1,22 @@
+2025-06-29 01:41:28 | INFO | [SYSTEM] | 🚀 Unified logging system initialized
+2025-06-29 01:41:28 | INFO | [SYSTEM] | 📁 Session: session_20250629_014128
+2025-06-29 01:41:28 | INFO | [SYSTEM] | 📄 Unified log file: logs/session_20250629_014128_unified.log
+2025-06-29 01:41:28 | INFO | [MAIN] | 🚀 Application started
+2025-06-29 01:41:28 | INFO | [SYSTEM] | 🔧 Configuration loaded
+2025-06-29 01:41:28 | INFO | [AUTOMATION] | 🤖 Starting blog automation process | articles=5 | source=example.com
+2025-06-29 01:41:28 | INFO | [AUTOMATION] | 📝 Processing article 1/5 | title=Sample Article
+2025-06-29 01:41:28 | INFO | [API] | API GET https://api.wordpress.com/posts | Status: 200 | 0.50s
+2025-06-29 01:41:28 | INFO | [API] | API POST https://api.wordpress.com/posts | Status: 201 | 1.20s
+2025-06-29 01:41:28 | INFO | [UI] | UI BUTTON_CLICK | Start automation button clicked
+2025-06-29 01:41:28 | INFO | [UI] | UI FORM_SUBMIT | Configuration form submitted
+2025-06-29 01:41:28 | INFO | [WEBDRIVER] | WEBDRIVER BROWSER_LAUNCH | Chrome browser launched successfully
+2025-06-29 01:41:28 | INFO | [WEBDRIVER] | WEBDRIVER PAGE_LOAD | Loaded page: https://example.com
+2025-06-29 01:41:28 | INFO | [CONTENT] | CONTENT ARTICLE_EXTRACTED | Title and content extracted successfully
+2025-06-29 01:41:28 | INFO | [CONTENT] | CONTENT IMAGE_PROCESSED | Featured image downloaded and resized
+2025-06-29 01:41:28 | INFO | [SECURITY] | SECURITY LOGIN_ATTEMPT | User login successful
+2025-06-29 01:41:28 | WARNING | [SECURITY] | SECURITY SUSPICIOUS_ACTIVITY | Multiple failed login attempts detected
+2025-06-29 01:41:28 | DEBUG | [DEBUG] | 🐛 Debug information | variable=test_value
+2025-06-29 01:41:28 | WARNING | [MAIN] | ⚠️ Warning message | issue=minor_issue
+2025-06-29 01:41:28 | ERROR | [ERROR] | ❌ Error occurred | error_code=500
+2025-06-29 01:41:28 | ERROR | [AUTOMATION] | 💥 Failed to process article | article_id=123 | reason=network_timeout
+2025-06-29 01:41:30 | INFO | [SYSTEM] | 📋 Session finalized: session_20250629_014128

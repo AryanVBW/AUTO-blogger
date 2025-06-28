@@ -1,0 +1,7 @@
+2025-06-29 01:34:52 | INFO | [SYSTEM] | 🚀 Unified logging system initialized
+2025-06-29 01:34:52 | INFO | [SYSTEM] | 📁 Session: session_20250629_013452
+2025-06-29 01:34:52 | INFO | [SYSTEM] | 📄 Unified log file: logs/session_20250629_013452_unified.log
+2025-06-29 01:34:52 | INFO | [MAIN] | 🚀 Application started
+2025-06-29 01:34:52 | INFO | [SYSTEM] | 🔧 Configuration loaded
+2025-06-29 01:34:52 | INFO | [AUTOMATION] | 🤖 Starting blog automation process | articles=5 | source=example.com
+2025-06-29 01:34:52 | INFO | [AUTOMATION] | 📝 Processing article 1/5 | title=Sample Article

@@ -75,6 +75,36 @@ class BlogAutomationGUI:
         self.root.geometry("1200x800")
         self.root.minsize(1000, 700)
         
+        # Additional macOS-specific window enhancements
+        try:
+            # Set window class for better dock integration (if available)
+            if hasattr(self.root, 'wm_class'):
+                self.root.wm_class("AUTO Blogger", "AUTO Blogger")
+            
+            # Set application name for macOS dock
+            import platform
+            if platform.system() == "Darwin":  # macOS
+                # Try to set bundle identifier for better app identification
+                try:
+                    import subprocess
+                    subprocess.run([
+                        "defaults", "write", 
+                        f"{os.path.expanduser('~')}/Library/Preferences/com.aryanvbw.autoblogger.plist",
+                        "CFBundleName", "AUTO Blogger"
+                    ], check=False)
+                except:
+                    pass  # Fail silently if we can't set bundle preferences
+                    
+                # Set application name in dock (if available)
+                try:
+                    self.root.call('::tk::mac::standardAboutPanel')
+                except:
+                    pass  # Not available in all Tk versions
+                
+        except Exception as e:
+            # Don't let window enhancement errors break the app
+            print(f"Note: Some window enhancements not available: {e}")
+        
         # Set theme
         style = ttk.Style()
         style.theme_use('clam')  # Use a modern theme
@@ -125,47 +155,39 @@ class BlogAutomationGUI:
         # Start log processing
         self.process_log_queue()
         
-        # Add startup test logs to verify logging is working
+        # Add startup logs to verify logging is working
         self.logger.info("🎯 AUTO Blogger GUI started successfully")
-        self.logger.debug("🔧 Debug logging is working")
-        self.logger.warning("⚠️ Warning logging is working")
-        self.logger.error("❌ Error logging is working (this is just a test)")
+        self.logger.info(f"📁 Configuration directory: {self.base_config_dir}")
+        self.logger.debug("🔧 Debug logging is active")
+        
+        # Log system information
+        import platform
+        self.logger.info(f"💻 System: {platform.system()} {platform.release()}")
+        self.logger.info(f"🐍 Python: {platform.python_version()}")
+        
+        # Check and log Selenium availability
+        try:
+            from selenium import webdriver
+            self.logger.info("✅ Selenium WebDriver available")
+        except ImportError:
+            self.logger.warning("⚠️ Selenium not available - install with: pip install selenium webdriver-manager")
+        
+        # Log initial status
+        self.logger.info("🔄 Application ready for use")
         self.logger.info("📋 Check logs tab to view all application logs")
         
     def setup_logging(self):
         """Setup advanced session-based logging to capture all messages"""
-        # Import the log manager
+        # Import the unified log manager
         try:
-            from log_manager import initialize_logging, get_log_manager
+            from unified_log_manager import initialize_unified_logging, get_unified_log_manager
         except ImportError:
-            # Fallback to basic logging if log_manager not available
+            # Fallback to basic logging if unified_log_manager not available
             self._setup_basic_logging()
             return
         
-        # Initialize session-based logging
-        self.log_manager = initialize_logging()
-        self.session_info = self.log_manager.get_session_info()
-        
-        # Setup our main logger
-        self.logger = logging.getLogger('BlogAutomation')
-        self.logger.setLevel(logging.DEBUG)
-        
-        # Clear any existing handlers
-        for handler in self.logger.handlers[:]:
-            self.logger.removeHandler(handler)
-        
-    def setup_logging(self):
-        """Setup advanced session-based logging to capture all messages"""
-        # Import the log manager
-        try:
-            from log_manager import initialize_logging, get_log_manager
-        except ImportError:
-            # Fallback to basic logging if log_manager not available
-            self._setup_basic_logging()
-            return
-        
-        # Initialize session-based logging
-        self.log_manager = initialize_logging()
+        # Initialize unified session-based logging
+        self.log_manager = initialize_unified_logging()
         self.session_info = self.log_manager.get_session_info()
         
         # Setup our main logger
@@ -238,9 +260,9 @@ class BlogAutomationGUI:
         self.logger.propagate = False
         
         # Log startup message with session info (only once)
-        self.logger.info(f"🚀 Advanced logging system initialized - Session: {self.session_info['session_id']}")
+        self.logger.info(f"🚀 Unified logging system initialized - Session: {self.session_info['session_id']}")
         self.logger.info(f"📁 Session logs in: {self.session_info['base_dir']}")
-        self.logger.info(f"📄 Log files: {len(self.session_info['log_files'])} categories")
+        self.logger.info(f"📄 Unified log file: {self.session_info['unified_log_file']}")
         
     def _setup_basic_logging(self):
         """Fallback to basic logging if log_manager is not available"""
@@ -699,11 +721,22 @@ Licensed under the MIT License"""
             "prompt_suffix": ""
         }
         
+        weights_defaults = {
+            "summary_length": 120,
+            "title_length": 60,
+            "content_weight": 1.0,
+            "seo_weight": 1.0,
+            "image_weight": 1.0
+        }
+        
         for key, var in self.openai_image_vars.items():
             var.set(str(openai_defaults.get(key, "")))
         
+        for key, var in self.weights_vars.items():
+            var.set(str(weights_defaults.get(key, "")))
+        
         self.custom_prompt_text.delete(1.0, tk.END)
-        messagebox.showinfo("Reset", "OpenAI image configuration reset to defaults.")
+        messagebox.showinfo("Reset", "OpenAI image configuration and weights reset to defaults.")
 
     def save_openai_image_config(self):
         """Save OpenAI image configuration to current domain directory"""
@@ -1039,6 +1072,12 @@ Licensed under the MIT License"""
         self.force_processing_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(settings_frame, text="Force Processing (ignore history)", variable=self.force_processing_var).pack(side=tk.LEFT, padx=20)
         
+        # Jupyter notebook style option
+        self.use_jupyter_style_var = tk.BooleanVar(value=False)
+        jupyter_checkbox = ttk.Checkbutton(settings_frame, text="Enhanced Processing (Jupyter Style)", variable=self.use_jupyter_style_var)
+        jupyter_checkbox.pack(side=tk.LEFT, padx=20)
+        ToolTip(jupyter_checkbox, "Use enhanced processing methods from Jupyter notebook with improved SEO, tags, and content optimization")
+        
         # Image generation options
         image_frame = ttk.LabelFrame(settings_frame, text="Featured Images", padding=10)
         image_frame.pack(side=tk.LEFT, padx=20, fill=tk.BOTH)
@@ -1236,17 +1275,26 @@ Licensed under the MIT License"""
         self.logs_text = scrolledtext.ScrolledText(self.logs_frame, wrap=tk.WORD, height=25)
         self.logs_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        # Configure text tags for colored output
-        self.logs_text.tag_configure("ERROR", foreground="red")
-        self.logs_text.tag_configure("WARNING", foreground="orange")
-        self.logs_text.tag_configure("INFO", foreground="blue")
-        self.logs_text.tag_configure("DEBUG", foreground="gray")
-        self.logs_text.tag_configure("AUTOMATION", foreground="green")
-        self.logs_text.tag_configure("API", foreground="purple")
-        self.logs_text.tag_configure("SECURITY", foreground="darkred")
+        # Configure text tags for enhanced colored output with backgrounds
+        self.logs_text.tag_configure("ERROR", foreground="#FF4444", background="#FFE6E6", font=("Consolas", 10, "bold"))
+        self.logs_text.tag_configure("WARNING", foreground="#FF8800", background="#FFF4E6", font=("Consolas", 10))
+        self.logs_text.tag_configure("INFO", foreground="#0066CC", background="#E6F3FF", font=("Consolas", 10))
+        self.logs_text.tag_configure("DEBUG", foreground="#666666", background="#F5F5F5", font=("Consolas", 9))
+        self.logs_text.tag_configure("AUTOMATION", foreground="#00AA44", background="#E6FFE6", font=("Consolas", 10, "bold"))
+        self.logs_text.tag_configure("API", foreground="#8800CC", background="#F0E6FF", font=("Consolas", 10))
+        self.logs_text.tag_configure("SECURITY", foreground="#CC0000", background="#FFE6E6", font=("Consolas", 10, "bold"))
+        self.logs_text.tag_configure("WEBDRIVER", foreground="#FF6600", background="#FFF0E6", font=("Consolas", 10))
+        self.logs_text.tag_configure("CONTENT", foreground="#0088CC", background="#E6F8FF", font=("Consolas", 10))
+        self.logs_text.tag_configure("SYSTEM", foreground="#444444", background="#F0F0F0", font=("Consolas", 10, "bold"))
+        
+        # Configure the text widget for better appearance
+        self.logs_text.configure(font=("Consolas", 10), bg="#FAFAFA", fg="#333333")
         
         # Load existing logs from session files if available
         self.load_session_logs()
+        
+        # Start real-time log monitoring
+        self.start_realtime_log_monitoring()
         
     def load_session_logs(self):
         """Load existing logs from session files"""
@@ -1284,6 +1332,57 @@ Licensed under the MIT License"""
             self.logs_text.insert(tk.END, f"⚠️ Could not load session logs: {e}\n")
             # Fallback to basic logs
             self.load_existing_logs()
+            
+    def start_realtime_log_monitoring(self):
+        """Start real-time monitoring of log files"""
+        self.log_file_positions = {}
+        self.monitor_log_files()
+        
+    def monitor_log_files(self):
+        """Monitor log files for new entries and update display"""
+        try:
+            if hasattr(self, 'session_info') and self.session_info:
+                # Monitor unified log file for real-time updates
+                unified_log_file = self.session_info.get('unified_log_file')
+                if unified_log_file and os.path.exists(unified_log_file):
+                    self.check_log_file_updates(unified_log_file)
+                    
+        except Exception as e:
+            print(f"Error monitoring log files: {e}")
+        finally:
+            # Schedule next check in 1 second
+            self.root.after(1000, self.monitor_log_files)
+            
+    def check_log_file_updates(self, log_file):
+        """Check for new lines in a log file and add them to display"""
+        try:
+            file_path = str(log_file)
+            current_size = os.path.getsize(log_file)
+            
+            # Initialize position tracking for this file
+            if file_path not in self.log_file_positions:
+                self.log_file_positions[file_path] = current_size
+                return
+                
+            last_position = self.log_file_positions[file_path]
+            
+            # Check if file has grown
+            if current_size > last_position:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    f.seek(last_position)
+                    new_lines = f.readlines()
+                    
+                    for line in new_lines:
+                        line = line.strip()
+                        if line:
+                            # Add new log entry to display
+                            self.add_log_message(line, add_timestamp=False)
+                            
+                # Update position
+                self.log_file_positions[file_path] = current_size
+                
+        except Exception as e:
+            print(f"Error checking log file updates: {e}")
             
     def on_log_category_change(self, event=None):
         """Handle log category selection change"""
@@ -1504,6 +1603,9 @@ Log Files:"""
             ("Internal Links", "internal_links", "🔗"),
             ("External Links", "external_links", "🌐"),
             ("Style Prompt", "style_prompt", "📝"),
+            ("SEO Title & Meta Prompt", "seo_title_meta_prompt", "🎯"),
+            ("Tag Generation Prompt", "tag_generation_prompt", "🏷️"),
+            ("Keyphrase Extraction Prompt", "keyphrase_extraction_prompt", "🔑"),
             ("Category Keywords", "category_keywords", "🏷️"),
             ("Tag Synonyms", "tag_synonyms", "🔄"),
             ("Static Clubs", "static_clubs", "⚽"),
@@ -1529,10 +1631,38 @@ Log Files:"""
         save_btn.pack(side=tk.LEFT, padx=10)
         cancel_btn = ttk.Button(button_frame, text="Cancel", command=self.refresh_config_tab)
         cancel_btn.pack(side=tk.LEFT, padx=10)
+        
+        # Add reset to default button for individual prompts
+        reset_btn = ttk.Button(button_frame, text="Reset to Default", command=self.reset_prompt_to_default)
+        reset_btn.pack(side=tk.LEFT, padx=10)
 
         # Show the first section by default
         sidebar.selection_set("0")
         self.show_section_editor(0)
+        
+    def reset_prompt_to_default(self):
+        """Reset current prompt section to default value"""
+        if not hasattr(self, 'current_section_key'):
+            return
+            
+        key = self.current_section_key
+        
+        # Default prompts for different sections
+        defaults = {
+            "seo_title_meta_prompt": "Generate an SEO-optimized title (max 60 characters) and meta description (max 160 characters) for this football article. Focus on including relevant keywords while maintaining readability.",
+            "tag_generation_prompt": "Extract relevant tags from this football article content. Focus on player names, club names, competitions, and football-related keywords. Return as a comma-separated list.",
+            "keyphrase_extraction_prompt": "Extract the main focus keyphrase and 3-5 additional SEO keyphrases from this football article. The focus keyphrase should be 2-4 words that best represent the article's main topic.",
+            "style_prompt": "Rewrite this football article in an engaging, professional style suitable for a football news website. Maintain all factual information while improving readability and flow."
+        }
+        
+        default_value = defaults.get(key, "")
+        
+        if default_value and hasattr(self, 'section_text'):
+            self.section_text.delete(1.0, tk.END)
+            self.section_text.insert(1.0, default_value)
+            messagebox.showinfo("Reset", f"Reset {key.replace('_', ' ').title()} to default value.")
+        else:
+            messagebox.showinfo("No Default", f"No default value available for {key.replace('_', ' ').title()}.")
 
     def on_sidebar_select(self, event=None):
         idxs = self.sidebar.selection()
@@ -1552,6 +1682,23 @@ Log Files:"""
         section_label = ttk.Label(self.editor_frame, text=f"{emoji}  {label}", font=("Arial", 12, "bold"))
         section_label.pack(anchor=tk.W, pady=(0, 6))
         
+        # Add helpful descriptions for individual prompt sections
+        if key == "seo_title_meta_prompt":
+            desc_text = ("This prompt generates SEO-optimized titles and meta descriptions for articles.\n"
+                        "It should include instructions for character limits and keyword optimization.")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="gray")
+            desc_label.pack(anchor=tk.W, pady=(0, 10))
+        elif key == "tag_generation_prompt":
+            desc_text = ("This prompt extracts relevant tags from article content.\n"
+                        "It should focus on football players, clubs, and relevant keywords.")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="gray")
+            desc_label.pack(anchor=tk.W, pady=(0, 10))
+        elif key == "keyphrase_extraction_prompt":
+            desc_text = ("This prompt extracts focus keyphrases and additional SEO keyphrases.\n"
+                        "It helps optimize content for search engines.")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="gray")
+            desc_label.pack(anchor=tk.W, pady=(0, 10))
+        
         # Show current domain info
         if self.current_domain:
             domain_info = ttk.Label(self.editor_frame, text=f"Editing for domain: {self.current_domain}", 
@@ -1568,10 +1715,44 @@ Log Files:"""
         
         # Load configuration from domain-specific directory
         config_dir = self.get_current_config_dir()
-        value = self.config.get(key, "" if key == "style_prompt" else {} if key.endswith("links") or key.endswith("keywords") or key.endswith("synonyms") else [] if key in ("static_clubs", "stop_words", "do_follow_urls") else "")
+        value = self.config.get(key, "" if key in ("style_prompt", "seo_title_meta_prompt", "tag_generation_prompt", "keyphrase_extraction_prompt") else {} if key.endswith("links") or key.endswith("keywords") or key.endswith("synonyms") or key == "gemini_prompts" else [] if key in ("static_clubs", "stop_words", "do_follow_urls") else "")
         
         # Try to load from specific config files in domain directory
-        if key != "style_prompt":
+        if key in ("seo_title_meta_prompt", "tag_generation_prompt", "keyphrase_extraction_prompt"):
+            # Load individual prompts from gemini_prompts.json
+            config_file = os.path.join(config_dir, "gemini_prompts.json")
+            if os.path.exists(config_file):
+                try:
+                    import json
+                    with open(config_file) as f:
+                        data = json.load(f)
+                        value = data.get(key, "")
+                except Exception as e:
+                    self.logger.warning(f"Could not load {key} from gemini_prompts.json: {e}")
+                    # Fall back to main configs directory
+                    main_config_file = os.path.join(self.base_config_dir, "gemini_prompts.json")
+                    if os.path.exists(main_config_file):
+                        try:
+                            with open(main_config_file) as f:
+                                data = json.load(f)
+                                value = data.get(key, "")
+                        except Exception as e2:
+                            self.logger.warning(f"Could not load {key} from main gemini_prompts.json: {e2}")
+                            value = ""
+            else:
+                # Fall back to main configs directory
+                main_config_file = os.path.join(self.base_config_dir, "gemini_prompts.json")
+                if os.path.exists(main_config_file):
+                    try:
+                        with open(main_config_file) as f:
+                            data = json.load(f)
+                            value = data.get(key, "")
+                    except Exception as e:
+                        self.logger.warning(f"Could not load {key} from main gemini_prompts.json: {e}")
+                        value = ""
+                else:
+                    value = ""
+        elif key not in ("style_prompt", "gemini_prompts"):
             config_file = os.path.join(config_dir, f"{key}.json")
             if os.path.exists(config_file):
                 try:
@@ -1580,7 +1761,7 @@ Log Files:"""
                         value = json.load(f)
                 except Exception as e:
                     self.logger.warning(f"Could not load {key}.json from domain directory: {e}")
-        else:
+        elif key == "style_prompt":
             # Style prompt is stored differently
             config_file = os.path.join(config_dir, "style_prompt.json")
             if os.path.exists(config_file):
@@ -1591,9 +1772,28 @@ Log Files:"""
                         value = data.get("style_prompt", "")
                 except Exception as e:
                     self.logger.warning(f"Could not load style_prompt.json from domain directory: {e}")
+        elif key == "gemini_prompts":
+            # Load enhanced Gemini prompts
+            config_file = os.path.join(config_dir, "gemini_prompts.json")
+            if os.path.exists(config_file):
+                try:
+                    import json
+                    with open(config_file) as f:
+                        value = json.load(f)
+                except Exception as e:
+                    self.logger.warning(f"Could not load gemini_prompts.json from domain directory: {e}")
+                    # Fall back to main configs directory
+                    main_config_file = os.path.join(self.base_config_dir, "gemini_prompts.json")
+                    if os.path.exists(main_config_file):
+                        try:
+                            with open(main_config_file) as f:
+                                value = json.load(f)
+                        except Exception as e2:
+                            self.logger.warning(f"Could not load gemini_prompts.json from main configs: {e2}")
+                            value = {}
         
         import json
-        if key == "style_prompt":
+        if key in ("style_prompt", "seo_title_meta_prompt", "tag_generation_prompt", "keyphrase_extraction_prompt"):
             self.section_text.insert(tk.END, value)
         else:
             self.section_text.insert(tk.END, json.dumps(value, indent=2))
@@ -1613,6 +1813,55 @@ Log Files:"""
                 style_prompt_file = os.path.join(config_dir, "style_prompt.json")
                 with open(style_prompt_file, "w") as f:
                     json.dump({"style_prompt": text}, f, indent=2)
+            elif key in ("seo_title_meta_prompt", "tag_generation_prompt", "keyphrase_extraction_prompt"):
+                # Save individual prompts to gemini_prompts.json
+                gemini_prompts_file = os.path.join(config_dir, "gemini_prompts.json")
+                
+                # Load existing data or create new structure
+                gemini_data = {}
+                if os.path.exists(gemini_prompts_file):
+                    try:
+                        with open(gemini_prompts_file) as f:
+                            gemini_data = json.load(f)
+                    except Exception as e:
+                        self.logger.warning(f"Error loading gemini_prompts.json: {e}")
+                        # Try to load from main configs directory as fallback
+                        main_config_file = os.path.join(self.base_config_dir, "gemini_prompts.json")
+                        if os.path.exists(main_config_file):
+                            try:
+                                with open(main_config_file) as f:
+                                    gemini_data = json.load(f)
+                            except Exception as e2:
+                                self.logger.warning(f"Error loading main gemini_prompts.json: {e2}")
+                else:
+                    # Copy from main configs directory if available
+                    main_config_file = os.path.join(self.base_config_dir, "gemini_prompts.json")
+                    if os.path.exists(main_config_file):
+                        try:
+                            with open(main_config_file) as f:
+                                gemini_data = json.load(f)
+                        except Exception as e:
+                            self.logger.warning(f"Error loading main gemini_prompts.json: {e}")
+                
+                # Update the specific prompt
+                gemini_data[key] = text
+                
+                # Save to domain-specific file
+                with open(gemini_prompts_file, "w") as f:
+                    json.dump(gemini_data, f, indent=2)
+                
+                # Update main config as well
+                if 'gemini_prompts' not in self.config:
+                    self.config['gemini_prompts'] = {}
+                self.config['gemini_prompts'][key] = text
+                
+            elif key == "gemini_prompts":
+                # Save enhanced Gemini prompts
+                data = json.loads(text)
+                self.config[key] = data
+                gemini_prompts_file = os.path.join(config_dir, "gemini_prompts.json")
+                with open(gemini_prompts_file, "w") as f:
+                    json.dump(data, f, indent=2)
             else:
                 # Parse JSON and save to both main config and specific file in domain directory
                 data = json.loads(text)
@@ -1815,95 +2064,106 @@ Log Files:"""
             # Schedule to run again
             self.root.after(100, self.process_log_queue)
             
-    def add_log_message(self, message):
-        """Add log message to the logs text area with filtering and formatting"""
+    def add_log_message(self, message, add_timestamp=True):
+        """Add log message to the logs text area with improved filtering and formatting"""
         if not hasattr(self, 'logs_text') or not self.logs_text:
+            return
+            
+        # Skip empty or whitespace-only messages
+        if not message or not message.strip():
             return
             
         # Get current log level setting
         current_level = self.log_level_var.get() if hasattr(self, 'log_level_var') else "INFO"
         
-        # Determine message level and category
+        # Determine message level and category with improved parsing
         message_level = "INFO"  # Default
         message_category = "INFO"  # Default
         
-        # Extract level from message
-        if "ERROR" in message:
+        # Extract level from message - improved parsing
+        message_upper = message.upper()
+        if "ERROR" in message_upper or "❌" in message:
             message_level = "ERROR"
             message_category = "ERROR"
-        elif "WARNING" in message:
+        elif "WARNING" in message_upper or "WARN" in message_upper or "⚠️" in message:
             message_level = "WARNING"
             message_category = "WARNING"
-        elif "DEBUG" in message:
+        elif "DEBUG" in message_upper or "🔧" in message:
             message_level = "DEBUG"
             message_category = "DEBUG"
-        elif "AUTOMATION" in message:
-            message_level = "INFO"
-            message_category = "AUTOMATION"
-        elif "API" in message:
-            message_level = "INFO"
-            message_category = "API"
-        elif "SECURITY" in message:
-            message_level = "WARNING"
-            message_category = "SECURITY"
-        elif "INFO" in message:
+        elif "INFO" in message_upper or "ℹ️" in message or "✅" in message or "🔄" in message:
             message_level = "INFO"
             message_category = "INFO"
         
-        # Also check message content for category hints
+        # Enhanced category detection with better patterns
         lower_message = message.lower()
-        if any(word in lower_message for word in ['automation', 'processing', 'article', 'blog']):
+        if any(word in lower_message for word in ['automation', 'processing', 'article', 'blog', '🤖', 'extracting', 'paraphrasing', 'generating']):
             message_category = "AUTOMATION"
-        elif any(word in lower_message for word in ['api', 'request', 'response', 'wordpress', 'endpoint']):
+        elif any(word in lower_message for word in ['api', 'request', 'response', 'wordpress', 'endpoint', '🌐', 'post', 'wp-json']):
             message_category = "API"
-        elif any(word in lower_message for word in ['security', 'auth', 'login', 'credential', 'password']):
+        elif any(word in lower_message for word in ['security', 'auth', 'login', 'credential', 'password', '🔒', 'authentication']):
             message_category = "SECURITY"
+        elif any(word in lower_message for word in ['webdriver', 'selenium', 'chrome', 'driver', 'browser', 'chromedriver']):
+            message_category = "WEBDRIVER"
+        elif any(word in lower_message for word in ['content', 'image', 'featured', 'title', 'meta', 'seo']):
+            message_category = "CONTENT"
+        elif any(word in lower_message for word in ['session', 'initialized', 'finalized', 'system', 'configuration']):
+            message_category = "SYSTEM"
             
         # Level hierarchy: DEBUG < INFO < WARNING < ERROR
         level_hierarchy = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
         
         # Only show if message level is >= current filter level
         if level_hierarchy.get(message_level, 1) >= level_hierarchy.get(current_level, 1):
-            # Add timestamp if not already present
-            if not message.startswith('20'):  # Simple check for timestamp
+            # Format message with timestamp if not already present and add_timestamp is True
+            formatted_message = message
+            if add_timestamp and not (message.startswith('20') and ' - ' in message[:25]):  # Check for existing timestamp
                 from datetime import datetime
                 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                message = f"{timestamp} - {message_level} - {message}"
+                formatted_message = f"{timestamp} | {message_level} | {message}"
             
             # Insert message
-            self.logs_text.insert(tk.END, message + "\n")
+            self.logs_text.insert(tk.END, formatted_message + "\n")
             
             # Apply color based on log category/level
-            start_line = self.logs_text.index(tk.END + "-2l")
-            end_line = self.logs_text.index(tk.END + "-1l")
-            
-            # Apply appropriate tag for coloring
-            self.logs_text.tag_add(message_category, start_line, end_line)
+            try:
+                start_line = self.logs_text.index(tk.END + "-2l")
+                end_line = self.logs_text.index(tk.END + "-1l")
                 
-            # Auto-scroll to bottom
-            self.logs_text.see(tk.END)
+                # Apply appropriate tag for coloring
+                self.logs_text.tag_add(message_category, start_line, end_line)
+            except tk.TclError:
+                pass  # Handle widget destruction gracefully
+                
+            # Auto-scroll to bottom only if user is at bottom
+            try:
+                if self.logs_text.yview()[1] >= 0.95:  # Only auto-scroll if near bottom
+                    self.logs_text.see(tk.END)
+            except tk.TclError:
+                pass
             
             # Update status bar based on message importance
             if hasattr(self, 'status_label'):
-                if message_level == "ERROR":
-                    self.status_label.config(text="❌ Error occurred - check logs")
-                elif "Starting" in message or "🚀" in message:
-                    self.status_label.config(text="🔄 Automation running...")
-                elif "Completed" in message or "✅" in message:
-                    self.status_label.config(text="✅ Automation completed")
-                elif "Processing" in message:
-                    self.status_label.config(text="📝 Processing articles...")
-                elif message_category == "AUTOMATION":
-                    self.status_label.config(text="🤖 Automation in progress...")
-                elif message_category == "API":
-                    self.status_label.config(text="🌐 API operations...")
-                elif message_category == "SECURITY":
-                    self.status_label.config(text="🔒 Security event logged")
+                try:
+                    if message_level == "ERROR":
+                        self.status_label.config(text="❌ Error occurred - check logs")
+                    elif "🚀" in message or "starting" in lower_message:
+                        self.status_label.config(text="🔄 Automation running...")
+                    elif "✅" in message or "completed" in lower_message or "success" in lower_message:
+                        self.status_label.config(text="✅ Operation completed")
+                    elif "🔄" in message or "initializing" in lower_message:
+                        self.status_label.config(text="🔄 Processing...")
+                except tk.TclError:
+                    pass
         
         # Limit log size to prevent memory issues
-        lines = self.logs_text.get(1.0, tk.END).count('\n')
-        if lines > 1000:  # Keep last 1000 lines
-            self.logs_text.delete(1.0, f"{lines-1000}.0")
+        try:
+            lines = self.logs_text.get(1.0, tk.END).count('\n')
+            if lines > 1000:  # Keep last 1000 lines
+                self.logs_text.delete(1.0, f"{lines-1000}.0")
+        except tk.TclError:
+            # Handle case where widget might be destroyed
+            pass
             
     def install_requirements(self):
         """Install missing Python requirements"""
@@ -2116,15 +2376,17 @@ Log Files:"""
             try:
                 # Try to initialize it
                 if self.has_valid_credentials():
+                    self.log_automation_event("🔄 Initializing automation engine...")
                     self.automation_engine = BlogAutomationEngine(self.config, self.logger)
-                    self.log_automation_event("Automation engine initialized successfully", "info")
+                    self.log_automation_event("✅ Automation engine initialized successfully")
                 else:
+                    self.log_automation_event("❌ Missing credentials for automation", "error")
                     messagebox.showerror("Error", "Please login first in the Authentication tab")
                     self.notebook.select(self.login_frame)
                     return
             except Exception as e:
-                self.log_automation_event(f"Failed to initialize automation engine: {e}", "error")
-                messagebox.showerror("Error", f"Failed to initialize automation engine: {e}")
+                self.log_automation_event(f"❌ Failed to initialize automation engine: {e}", "error")
+                messagebox.showerror("Error", f"Failed to initialize automation engine: {e}\n\nPlease check your configuration and try again.")
                 return
         
         # Get max articles
@@ -2168,7 +2430,22 @@ Log Files:"""
                 self.logger.error("Automation engine not initialized")
                 self.automation_completed()
                 return
+            
+            # Check if using Jupyter notebook style
+            use_jupyter_style = self.use_jupyter_style_var.get()
+            max_articles = self.max_articles_var.get()
+            
+            if use_jupyter_style:
+                self.logger.info("🚀 Using Enhanced Processing (Jupyter Style)")
+                # Run the Jupyter notebook style automation
+                processed = self.automation_engine.run_automation_jupyter_style(max_articles)
+                self.processed_count = processed
+                self.automation_completed()
+                return
                 
+            # Regular automation process
+            self.logger.info("🚀 Using Standard Processing")
+            
             # Initialize
             self.update_step_status(0, 'running', 'Fetching article links from source...')
             
@@ -2240,13 +2517,26 @@ Log Files:"""
             self.automation_completed()
             
         except Exception as e:
-            self.logger.error(f"Automation error: {e}")
+            self.log_automation_event(f"❌ Critical automation error: {e}", "error")
+            self.logger.error(f"Automation error: {e}", exc_info=True)
+            
+            # Show user-friendly error message
+            try:
+                messagebox.showerror(
+                    "Automation Error",
+                    f"The automation process encountered an error:\n\n{str(e)}\n\n"
+                    f"Please check the logs for more details and try again."
+                )
+            except:
+                pass
+            
             self.automation_completed()
             
     def process_single_article(self, article_url):
-        """Process a single article"""
+        """Process a single article with improved error handling and logging"""
         try:
             start_time = time.time()
+            self.log_automation_event(f"🔄 Starting article processing: {article_url}")
             
             # Step 0: Fetch article links (already done)
             self.update_step_status(0, 'completed', f'URL: {article_url[:50]}...', '')
@@ -2254,20 +2544,27 @@ Log Files:"""
             # Step 1: Extract content
             step_start = time.time()
             self.update_step_status(1, 'running', 'Extracting content with Selenium...')
+            self.log_automation_event("🔍 Initializing content extraction...")
             
             with self.automation_engine.get_selenium_driver_context() as driver:
                 if not driver:
-                    self.update_step_status(1, 'error', 'Failed to initialize WebDriver')
+                    error_msg = 'WebDriver initialization failed'
+                    self.update_step_status(1, 'error', error_msg)
+                    self.log_automation_event(f"❌ {error_msg}", "error")
                     return False
                     
+                self.log_automation_event("✅ WebDriver initialized, extracting content...")
                 title, content = self.automation_engine.extract_article_with_selenium(driver, article_url)
                 
             if not title or not content:
+                error_msg = f'Content extraction failed - Title: {bool(title)}, Content: {bool(content)}'
                 self.update_step_status(1, 'error', 'Failed to extract content')
+                self.log_automation_event(f"❌ {error_msg}", "error")
                 return False
             
             elapsed = f"{time.time() - step_start:.1f}s"
             self.update_step_status(1, 'completed', f'Title: {title[:50]}...', elapsed)
+            self.log_automation_event(f"✅ Content extracted successfully: '{title[:50]}...' ({len(content)} chars)")
             
             # Step 2: Paraphrase with Gemini
             step_start = time.time()
@@ -2450,7 +2747,21 @@ Log Files:"""
             return True
             
         except Exception as e:
-            self.logger.error(f"Error processing article: {e}")
+            self.log_automation_event(f"❌ Error processing article {article_url}: {e}", "error")
+            self.logger.error(f"Error processing article {article_url}: {e}", exc_info=True)
+            
+            # Update UI to show error
+            try:
+                self.update_step_status(12, 'error', f'Article processing failed: {str(e)[:50]}...')
+            except:
+                pass
+            
+            # Increment error count if it exists
+            if hasattr(self, 'error_count'):
+                self.error_count += 1
+            else:
+                self.error_count = 1
+            
             return False
             
     def automation_completed(self):
@@ -2482,11 +2793,24 @@ Log Files:"""
 🔗 Source URL: {source_url}
 🎯 Article Selector: {selector}
 
-Common solutions:
-• Check if the source website is accessible
-• Verify the article selector is correct
-• Ensure you have internet connection
-• Check logs for detailed error information
+Common solutions for TBR Football:
+• Check if https://tbrfootball.com is accessible in your browser
+• The correct selector for TBR Football should be: article h2 a OR article h3 a
+• Verify your internet connection is working
+• Try using a different article selector in Configuration tab
+• Check the Logs tab for detailed technical information
+
+Alternative selectors to try:
+• article h2 a (default)
+• article h3 a
+• h2 a
+• a[href*='tbrfootball.com']
+
+Debugging steps:
+1. Open https://tbrfootball.com/topic/english-premier-league/ in your browser
+2. Check if articles are visible on the page
+3. Try the 'Test Configuration' button below
+4. Review the detailed logs in the Logs tab
 
 See the Logs tab for more technical details."""
             
@@ -2881,30 +3205,90 @@ See the Logs tab for more technical details."""
         """Get the current configuration directory (domain-specific or base)"""
         return self.domain_config_dir or self.base_config_dir
 
-    # Convenience logging methods
+    # Convenience logging methods using unified logging
     def log_automation_event(self, message: str, level: str = "info"):
         """Log an automation-specific event"""
-        log_method = getattr(self.logger, level.lower(), self.logger.info)
-        log_method(f"🤖 AUTOMATION: {message}")
+        if hasattr(self, 'log_manager') and self.log_manager:
+            self.log_manager.log_automation_event(level, f"🤖 {message}")
+        else:
+            log_method = getattr(self.logger, level.lower(), self.logger.info)
+            log_method(f"🤖 AUTOMATION: {message}")
         
     def log_api_event(self, message: str, level: str = "info"):
         """Log an API-specific event"""
-        log_method = getattr(self.logger, level.lower(), self.logger.info)
-        log_method(f"🌐 API: {message}")
+        if hasattr(self, 'log_manager') and self.log_manager:
+            self.log_manager._log_with_category(level, f"🌐 {message}", "API")
+        else:
+            log_method = getattr(self.logger, level.lower(), self.logger.info)
+            log_method(f"🌐 API: {message}")
         
     def log_security_event(self, message: str, level: str = "warning"):
         """Log a security-specific event"""
-        log_method = getattr(self.logger, level.lower(), self.logger.warning)
-        log_method(f"🔒 SECURITY: {message}")
+        if hasattr(self, 'log_manager') and self.log_manager:
+            self.log_manager._log_with_category(level, f"🔒 {message}", "SECURITY")
+        else:
+            log_method = getattr(self.logger, level.lower(), self.logger.warning)
+            log_method(f"🔒 SECURITY: {message}")
         
     def log_ui_event(self, message: str, level: str = "debug"):
         """Log a UI-specific event"""
-        log_method = getattr(self.logger, level.lower(), self.logger.debug)
-        log_method(f"🖥️ UI: {message}")
+        if hasattr(self, 'log_manager') and self.log_manager:
+            self.log_manager._log_with_category(level, f"🖥️ {message}", "UI")
+        else:
+            log_method = getattr(self.logger, level.lower(), self.logger.debug)
+            log_method(f"🖥️ UI: {message}")
 
 def main():
-    """Main function to run the application"""
+    """Main function to run the application with global error handling"""
+    def handle_exception(exc_type, exc_value, exc_traceback):
+        """Global exception handler to prevent crashes"""
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        
+        error_msg = f"Unhandled exception: {exc_type.__name__}: {exc_value}"
+        print(f"ERROR: {error_msg}")
+        
+        # Try to show error dialog if tkinter is available
+        try:
+            import tkinter.messagebox as messagebox
+            messagebox.showerror(
+                "Application Error", 
+                f"An unexpected error occurred:\n\n{error_msg}\n\n"
+                f"The application will continue running, but some features may not work properly.\n\n"
+                f"Please check the logs for more details."
+            )
+        except:
+            pass
+    
+    # Set global exception handler
+    import sys
+    sys.excepthook = handle_exception
+    
     root = tk.Tk()
+    
+    # Set application icon
+    try:
+        icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+        if os.path.exists(icon_path):
+            # Method 1: Use iconphoto() - works best for modern systems including macOS
+            icon_image = tk.PhotoImage(file=icon_path)
+            root.iconphoto(True, icon_image)
+            
+            # Method 2: Also set the window icon name for better dock integration
+            root.wm_iconname("AUTO Blogger")
+            
+            print(f"✅ Application icon set: {icon_path}")
+        else:
+            print(f"⚠️ Icon file not found: {icon_path}")
+    except Exception as e:
+        print(f"❌ Error setting application icon: {e}")
+        # Fallback: At least set the window icon name
+        try:
+            root.wm_iconname("AUTO Blogger")
+        except:
+            pass
+    
     app = BlogAutomationGUI(root)
     
     # Center window on screen

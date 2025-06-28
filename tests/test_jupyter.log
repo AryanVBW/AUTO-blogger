@@ -1,0 +1,190 @@
+2025-06-28 18:19:36,747 - test_jupyter - ERROR - Error loading gemini_prompts.json: Expecting value: line 1 column 1 (char 0)
+2025-06-28 18:19:36,747 - test_jupyter - INFO - 🧪 Testing individual methods
+2025-06-28 18:19:36,747 - test_jupyter - ERROR - ❌ Error testing individual methods: BlogAutomationEngine.detect_categories_jupyter() takes 2 positional arguments but 3 were given
+2025-06-28 18:19:36,747 - test_jupyter - ERROR - Traceback (most recent call last):
+  File "/Users/vivek-w/Desktop/AUTO-blogger/test_jupyter_enhancement.py", line 113, in test_individual_methods
+    categories = engine.detect_categories_jupyter(test_content, test_title)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: BlogAutomationEngine.detect_categories_jupyter() takes 2 positional arguments but 3 were given
+
+2025-06-28 18:24:19,944 - test_jupyter - INFO - 🧪 Testing individual methods
+2025-06-28 18:24:19,944 - test_jupyter - INFO - Matched sub-category 'International' via keyword 'international'
+2025-06-28 18:24:19,944 - test_jupyter - INFO - Matched sub-category 'Transfer News' via keyword 'transfer'
+2025-06-28 18:24:19,944 - test_jupyter - INFO - ✅ Categories detected: ['Latest News', 'International', 'Transfer News']
+2025-06-28 18:24:19,944 - test_jupyter - ERROR - ❌ Error testing individual methods: 'BlogAutomationEngine' object has no attribute 'generate_tags_with_gemini_jupyter'
+2025-06-28 18:24:19,945 - test_jupyter - ERROR - Traceback (most recent call last):
+  File "/Users/vivek-w/Desktop/AUTO-blogger/test_jupyter_enhancement.py", line 117, in test_individual_methods
+    tags = engine.generate_tags_with_gemini_jupyter(test_content)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'BlogAutomationEngine' object has no attribute 'generate_tags_with_gemini_jupyter'. Did you mean: 'generate_tags_with_gemini'?
+
+2025-06-28 18:25:18,446 - test_jupyter - INFO - 🧪 Testing individual methods
+2025-06-28 18:25:18,446 - test_jupyter - ERROR - ❌ Error testing individual methods: 'BlogAutomationEngine' object has no attribute 'detect_categories_jupyter'
+2025-06-28 18:25:18,448 - test_jupyter - ERROR - Traceback (most recent call last):
+  File "/Users/vivek-w/Desktop/AUTO-blogger/test_jupyter_enhancement.py", line 113, in test_individual_methods
+    categories = engine.detect_categories_jupyter(test_content, test_title)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'BlogAutomationEngine' object has no attribute 'detect_categories_jupyter'
+
+2025-06-28 18:26:32,342 - test_jupyter - INFO - 🧪 Testing individual methods
+2025-06-28 18:26:32,342 - test_jupyter - INFO - Matched sub-category 'International' via keyword 'international'
+2025-06-28 18:26:32,342 - test_jupyter - INFO - Matched sub-category 'Transfer News' via keyword 'transfer'
+2025-06-28 18:26:32,342 - test_jupyter - INFO - Final categories: ['Latest News', 'International', 'Transfer News']
+2025-06-28 18:26:32,342 - test_jupyter - INFO - ✅ Categories detected: ['Latest News', 'International', 'Transfer News']
+2025-06-28 18:26:32,669 - test_jupyter - ERROR - Gemini Tag API Error 400: {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+2025-06-28 18:26:32,671 - test_jupyter - INFO - Generated tags: []
+2025-06-28 18:26:32,672 - test_jupyter - WARNING - No raw tags generated, using fallback
+2025-06-28 18:26:32,672 - test_jupyter - ERROR - Error in enhanced tag generation: 'BlogAutomationEngine' object has no attribute 'generate_tags_fallback'
+2025-06-28 18:26:32,672 - test_jupyter - ERROR - ❌ Error testing individual methods: 'BlogAutomationEngine' object has no attribute 'generate_tags_fallback'
+2025-06-28 18:26:32,679 - test_jupyter - ERROR - Traceback (most recent call last):
+  File "/Users/vivek-w/Desktop/AUTO-blogger/automation_engine.py", line 785, in generate_tags_with_gemini_jupyter
+    return self.generate_tags_fallback(content)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'BlogAutomationEngine' object has no attribute 'generate_tags_fallback'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/vivek-w/Desktop/AUTO-blogger/test_jupyter_enhancement.py", line 117, in test_individual_methods
+    tags = engine.generate_tags_with_gemini_jupyter(test_content)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vivek-w/Desktop/AUTO-blogger/automation_engine.py", line 799, in generate_tags_with_gemini_jupyter
+    return self.generate_tags_fallback(content)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'BlogAutomationEngine' object has no attribute 'generate_tags_fallback'
+
+2025-06-28 19:52:28,108 - test_jupyter - INFO - 🧪 Testing individual methods
+2025-06-28 19:52:28,108 - test_jupyter - INFO - Matched sub-category 'International' via keyword 'international'
+2025-06-28 19:52:28,108 - test_jupyter - INFO - Matched sub-category 'Transfer News' via keyword 'transfer'
+2025-06-28 19:52:28,108 - test_jupyter - INFO - Final categories: ['Latest News', 'International', 'Transfer News']
+2025-06-28 19:52:28,108 - test_jupyter - INFO - ✅ Categories detected: ['Latest News', 'International', 'Transfer News']
+2025-06-28 19:52:28,722 - test_jupyter - ERROR - Gemini Tag API Error 400: {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+2025-06-28 19:52:28,724 - test_jupyter - INFO - Generated tags: []
+2025-06-28 19:52:28,724 - test_jupyter - WARNING - No raw tags generated, using fallback
+2025-06-28 19:52:28,724 - test_jupyter - INFO - Fallback tags generated: ['Arsenal', 'His', 'Glasner', 'Manchester City', 'Oliver Glasner', 'Eze', 'Crystal Palace', 'Selhurst Park', 'Premier League', 'Eberechi Eze', 'Eberechi', 'England', 'Speaking', 'Austrian', 'The', 'Tottenham']
+2025-06-28 19:52:28,724 - test_jupyter - INFO - ✅ Tags generated: ['Arsenal', 'His', 'Glasner', 'Manchester City', 'Oliver Glasner']...
+2025-06-28 19:52:28,725 - test_jupyter - INFO - Generated slug: crystal-palace-boss-reveals-club-fight-keep
+2025-06-28 19:52:28,725 - test_jupyter - INFO - ✅ Slug generated: crystal-palace-boss-reveals-club-fight-keep
+2025-06-28 19:52:28,725 - test_jupyter - ERROR - ❌ Error testing individual methods: 'BlogAutomationEngine' object has no attribute 'extract_keyphrases_with_gemini'
+2025-06-28 19:52:28,728 - test_jupyter - ERROR - Traceback (most recent call last):
+  File "/Users/vivek-w/Desktop/AUTO-blogger/test_jupyter_enhancement.py", line 125, in test_individual_methods
+    keyphrases = engine.extract_keyphrases_with_gemini(test_content, test_title)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'BlogAutomationEngine' object has no attribute 'extract_keyphrases_with_gemini'
+
+2025-06-28 19:53:20,906 - test_jupyter - INFO - 🧪 Testing individual methods
+2025-06-28 19:53:20,906 - test_jupyter - INFO - Matched sub-category 'International' via keyword 'international'
+2025-06-28 19:53:20,906 - test_jupyter - INFO - Matched sub-category 'Transfer News' via keyword 'transfer'
+2025-06-28 19:53:20,906 - test_jupyter - INFO - Final categories: ['Latest News', 'International', 'Transfer News']
+2025-06-28 19:53:20,906 - test_jupyter - INFO - ✅ Categories detected: ['Latest News', 'International', 'Transfer News']
+2025-06-28 19:53:21,208 - test_jupyter - ERROR - Gemini Tag API Error 400: {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+2025-06-28 19:53:21,210 - test_jupyter - INFO - Generated tags: []
+2025-06-28 19:53:21,211 - test_jupyter - WARNING - No raw tags generated, using fallback
+2025-06-28 19:53:21,211 - test_jupyter - INFO - Fallback tags generated: ['Crystal Palace', 'Manchester City', 'Eberechi', 'Speaking', 'Eberechi Eze', 'Premier League', 'The', 'Arsenal', 'Glasner', 'Austrian', 'Tottenham', 'Selhurst Park', 'Oliver Glasner', 'His', 'England', 'Eze']
+2025-06-28 19:53:21,211 - test_jupyter - INFO - ✅ Tags generated: ['Crystal Palace', 'Manchester City', 'Eberechi', 'Speaking', 'Eberechi Eze']...
+2025-06-28 19:53:21,211 - test_jupyter - INFO - Generated slug: crystal-palace-boss-reveals-club-fight-keep
+2025-06-28 19:53:21,212 - test_jupyter - INFO - ✅ Slug generated: crystal-palace-boss-reveals-club-fight-keep
+2025-06-28 19:53:21,522 - test_jupyter - ERROR - Gemini Keyphrase API Error 400: {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+2025-06-28 19:53:21,522 - test_jupyter - INFO - ✅ Focus keyphrase: Premier League
+2025-06-28 19:53:21,522 - test_jupyter - INFO - ✅ Additional keyphrases: ['Crystal Palace', 'Oliver Glasner', 'Eberechi Eze', 'The', 'England']
+2025-06-28 19:53:21,523 - test_jupyter - INFO - 🚀 Starting Jupyter enhancement test
+2025-06-28 19:53:21,523 - test_jupyter - INFO - ✅ Automation engine initialized successfully
+2025-06-28 19:53:21,524 - test_jupyter - INFO - 🔍 Testing enhanced article processing with URL: https://premierleaguenewsnow.com/transfer-news/crystal-palace-manager-reveals-the-player-his-club-will-try-to-keep/
+2025-06-28 19:53:21,524 - test_jupyter - INFO - 🔗 Processing article: https://premierleaguenewsnow.com/transfer-news/crystal-palace-manager-reveals-the-player-his-club-will-try-to-keep/
+2025-06-28 19:53:21,524 - WDM - INFO - ====== WebDriver manager ======
+2025-06-28 19:53:21,621 - WDM - INFO - Get LATEST chromedriver version for google-chrome
+2025-06-28 19:53:21,724 - WDM - INFO - Get LATEST chromedriver version for google-chrome
+2025-06-28 19:53:21,811 - WDM - INFO - Driver [/Users/vivek-w/.wdm/drivers/chromedriver/mac64/138.0.7204.49/chromedriver-mac-arm64/chromedriver] found in cache
+2025-06-28 19:53:22,385 - test_jupyter - INFO - ✅ Selenium WebDriver initialized successfully
+2025-06-28 19:53:33,248 - test_jupyter - ERROR - ❌ Selenium extraction timed out for https://premierleaguenewsnow.com/transfer-news/crystal-palace-manager-reveals-the-player-his-club-will-try-to-keep/
+2025-06-28 19:53:33,248 - test_jupyter - WARNING - ⚠️ Failed to extract title/content
+2025-06-28 19:53:33,248 - test_jupyter - INFO - ℹ️ Quitting Selenium WebDriver
+2025-06-28 19:53:33,325 - test_jupyter - ERROR - ❌ Article processing failed - no data returned

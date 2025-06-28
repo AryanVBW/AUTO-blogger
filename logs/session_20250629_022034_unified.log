@@ -1,0 +1,19 @@
+2025-06-29 02:20:34 | INFO | [SYSTEM] | 🚀 Unified logging system initialized
+2025-06-29 02:20:34 | INFO | [SYSTEM] | 📁 Session: session_20250629_022034
+2025-06-29 02:20:34 | INFO | [SYSTEM] | 📄 Unified log file: logs/session_20250629_022034_unified.log
+2025-06-29 02:29:37 | INFO | [AUTOMATION] | 🤖 🔄 Initializing automation engine...
+2025-06-29 02:29:37 | INFO | [AUTOMATION] | 🤖 ✅ Automation engine initialized successfully
+2025-06-29 02:29:37 | INFO | [AUTOMATION] | 🤖 🚀 Blog automation session started
+2025-06-29 02:29:37 | INFO | [AUTOMATION] | 🤖 📊 Configuration: Max articles=2
+2025-06-29 02:29:37 | INFO | [AUTOMATION] | 🤖 🌐 Source URL: https://tbrfootball.com/topic/english-premier-league/
+2025-06-29 02:29:37 | INFO | [AUTOMATION] | 🤖 📝 WordPress URL: https://tottenhaminsight.com/wp-json/wp/v2
+2025-06-29 02:29:37 | INFO | [AUTOMATION] | 🤖 🖼️ Image source: none
+2025-06-29 02:29:38 | INFO | [AUTOMATION] | 🤖 🔄 Starting article processing: https://tbrfootball.com/spanish-media-think-tottenham-have-just-dropped-a-surprising-hint-about-cristian-romeros-future/
+2025-06-29 02:29:38 | INFO | [AUTOMATION] | 🤖 🔍 Initializing content extraction...
+2025-06-29 02:29:39 | ERROR | [AUTOMATION] | 🤖 ❌ WebDriver initialization failed
+2025-06-29 02:29:39 | INFO | [AUTOMATION] | 🤖 🔄 Starting article processing: https://tbrfootball.com/arsenal-have-discussed-signing-another-surprise-striker-other-than-benjamin-sesko-and-viktor-gyokeres/
+2025-06-29 02:29:39 | INFO | [AUTOMATION] | 🤖 🔍 Initializing content extraction...
+2025-06-29 02:29:40 | ERROR | [AUTOMATION] | 🤖 ❌ WebDriver initialization failed
+2025-06-29 02:29:40 | INFO | [AUTOMATION] | 🤖 🏁 Blog automation session completed
+2025-06-29 02:29:40 | INFO | [AUTOMATION] | 🤖 ✅ Successfully processed: 0 articles
+2025-06-29 02:29:40 | INFO | [AUTOMATION] | 🤖 📋 Session summary complete

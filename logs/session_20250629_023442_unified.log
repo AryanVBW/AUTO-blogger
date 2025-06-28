@@ -1,0 +1,20 @@
+2025-06-29 02:34:42 | INFO | [SYSTEM] | 🚀 Unified logging system initialized
+2025-06-29 02:34:42 | INFO | [SYSTEM] | 📁 Session: session_20250629_023442
+2025-06-29 02:34:42 | INFO | [SYSTEM] | 📄 Unified log file: logs/session_20250629_023442_unified.log
+2025-06-29 02:34:59 | INFO | [API] | 🌐 Testing WordPress connection
+2025-06-29 02:34:59 | INFO | [SECURITY] | 🔒 Connection test attempted for https://tottenhaminsight.com/wp-json/wp/v2 with user Vivek
+2025-06-29 02:35:00 | INFO | [API] | 🌐 WordPress connection successful - Status: 200
+2025-06-29 02:35:00 | INFO | [SECURITY] | 🔒 WordPress authentication successful
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 🔄 Initializing automation engine...
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 ✅ Automation engine initialized successfully
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 🚀 Blog automation session started
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 📊 Configuration: Max articles=2
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 🌐 Source URL: https://tbrfootball.com/topic/english-premier-league/
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 📝 WordPress URL: https://tottenhaminsight.com/wp-json/wp/v2
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 🖼️ Image source: none
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 🔄 Starting article processing: https://tbrfootball.com/spanish-media-think-tottenham-have-just-dropped-a-surprising-hint-about-cristian-romeros-future/
+2025-06-29 02:35:22 | INFO | [AUTOMATION] | 🤖 🔍 Initializing content extraction...
+2025-06-29 02:35:23 | ERROR | [AUTOMATION] | 🤖 ❌ WebDriver initialization failed
+2025-06-29 02:35:23 | INFO | [AUTOMATION] | 🤖 🏁 Blog automation session completed
+2025-06-29 02:35:23 | INFO | [AUTOMATION] | 🤖 ✅ Successfully processed: 0 articles
+2025-06-29 02:35:23 | INFO | [AUTOMATION] | 🤖 📋 Session summary complete

@@ -1,6 +1,6 @@
 {
-  "source_url": "https://tbrfootball.com/topic/english-premier-league/",
-  "article_selector": "article.article h2 a",
+  "source_url": "https://www.skysports.com/premier-league-news",
+  "article_selector": ".news-list__item .news-list__headline-link",
   "wp_base_url": "https://premierleaguenewsnow.com/wp-json/wp/v2",
   "wp_username": "Vivek",
   "wp_password": "asrqwwqdasdsaddasdsd",

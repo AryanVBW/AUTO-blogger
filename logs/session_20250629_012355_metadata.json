@@ -1,0 +1,32 @@
+{
+  "session_id": "session_20250629_012355",
+  "start_time": "2025-06-29T01:23:55.315929",
+  "timestamp": "20250629_012355",
+  "log_files": {
+    "main": "logs/session_20250629_012355_main.log",
+    "errors": "logs/session_20250629_012355_errors.log",
+    "debug": "logs/session_20250629_012355_debug.log",
+    "automation": "logs/session_20250629_012355_automation.log",
+    "api": "logs/session_20250629_012355_api.log",
+    "security": "logs/session_20250629_012355_security.log"
+  },
+  "categories": {
+    "main": "Main application logs",
+    "errors": "Error and exception logs",
+    "debug": "Debug and development logs",
+    "automation": "Blog automation process logs",
+    "api": "API requests and responses",
+    "security": "Security-related events"
+  },
+  "status": "completed",
+  "end_time": "2025-06-29T01:25:53.409619",
+  "duration_seconds": 118.09369,
+  "file_sizes": {
+    "main": 1154,
+    "errors": 0,
+    "debug": 0,
+    "automation": 0,
+    "api": 0,
+    "security": 0
+  }
+}

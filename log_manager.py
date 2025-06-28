@@ -161,50 +161,8 @@ class SessionLogManager:
         app_logger.handlers.clear()
         app_logger.setLevel(logging.DEBUG)
         
-        # Create a custom handler that routes messages to appropriate category loggers
-        class CategoryRoutingHandler(logging.Handler):
-            def __init__(self, log_manager):
-                super().__init__()
-                self.log_manager = log_manager
-                
-            def emit(self, record):
-                try:
-                    # Route to main logger by default
-                    main_logger = self.log_manager.loggers['main']
-                    
-                    # Route errors to error logger
-                    if record.levelno >= logging.ERROR:
-                        error_logger = self.log_manager.loggers['errors']
-                        error_logger.handle(record)
-                    
-                    # Route debug messages to debug logger
-                    if record.levelno == logging.DEBUG:
-                        debug_logger = self.log_manager.loggers['debug']
-                        debug_logger.handle(record)
-                    
-                    # Route automation messages
-                    if 'automation' in record.getMessage().lower() or 'processing' in record.getMessage().lower():
-                        automation_logger = self.log_manager.loggers['automation']
-                        automation_logger.handle(record)
-                    
-                    # Route API messages
-                    if 'api' in record.getMessage().lower() or 'request' in record.getMessage().lower() or 'response' in record.getMessage().lower():
-                        api_logger = self.log_manager.loggers['api']
-                        api_logger.handle(record)
-                    
-                    # Route security messages
-                    if 'security' in record.getMessage().lower() or 'auth' in record.getMessage().lower() or 'login' in record.getMessage().lower():
-                        security_logger = self.log_manager.loggers['security']
-                        security_logger.handle(record)
-                    
-                    # Always route to main logger
-                    main_logger.handle(record)
-                    
-                except Exception:
-                    pass  # Don't let logging errors break the app
-                    
-        routing_handler = CategoryRoutingHandler(self)
-        app_logger.addHandler(routing_handler)
+        # Don't use automatic routing - it causes conflicts
+        # Individual loggers should be used directly for each category
         
     def get_logger(self, category: str = 'main') -> logging.Logger:
         """

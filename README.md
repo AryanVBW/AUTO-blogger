@@ -48,6 +48,24 @@ A comprehensive GUI application for automating WordPress blog posting with AI-po
 - Error tracking and debugging
 - Performance monitoring
 
+## Project Structure
+
+```
+AUTO-blogger/
+├── 📁 configs/          # Configuration files for different domains
+├── 📁 docs/             # Documentation and implementation guides
+├── 📁 logs/             # Session-based log files
+├── 📁 scripts/          # Utility scripts and demos
+├── 📁 temp_fixes/       # Temporary fix scripts (can be removed)
+├── 📁 tests/            # Test files and debugging scripts
+├── 🐍 automation_engine.py    # Core automation logic
+├── 🐍 gui_blogger.py          # Main GUI application
+├── 🐍 log_manager.py          # Advanced logging system
+├── 📄 requirements.txt        # Python dependencies
+├── 📄 blog_config.json        # Main configuration file
+└── 📄 README.md               # This file
+```
+
 ## Installation
 
 ### Quick Installation (One-Line Command)
