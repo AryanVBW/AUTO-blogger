@@ -27,6 +27,8 @@ import unicodedata
 from contextlib import contextmanager
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError, RequestException
+import glob
+import copy
 
 # Import the automation engine
 try:
@@ -88,13 +90,28 @@ class BlogAutomationGUI:
         self.setup_logging()
         self.logger = logging.getLogger('blog_automation')
         
-        # Load configuration
-        self.config = self.load_config()
+        # Domain-based configuration system
+        self.base_config_dir = "configs"
+        self.current_domain = None
+        self.domain_config_dir = None
+        
+        # Load initial configuration (will be set when user logs in)
+        self.config_files = []
+        self.active_config_name = "default"
+        self.config = self.get_default_config()
         
         # Try to initialize automation engine if credentials exist
         if self.has_valid_credentials():
             try:
-                self.automation_engine = BlogAutomationEngine(self.config, self.logger)
+                # Pass domain-specific config directory to automation engine
+                domain_config_dir = self.get_current_config_dir()
+                if hasattr(BlogAutomationEngine, '__init__'):
+                    # Create temporary config with domain config dir
+                    temp_config = self.config.copy()
+                    temp_config['config_dir'] = domain_config_dir
+                    self.automation_engine = BlogAutomationEngine(temp_config, self.logger)
+                else:
+                    self.automation_engine = BlogAutomationEngine(self.config, self.logger)
                 self.logger.info("✅ Automation engine initialized on startup")
             except Exception as e:
                 self.logger.error(f"Failed to initialize automation engine on startup: {e}")
@@ -116,7 +133,117 @@ class BlogAutomationGUI:
         self.logger.info("📋 Check logs tab to view all application logs")
         
     def setup_logging(self):
-        """Setup logging to capture all messages"""
+        """Setup advanced session-based logging to capture all messages"""
+        # Import the log manager
+        try:
+            from log_manager import initialize_logging, get_log_manager
+        except ImportError:
+            # Fallback to basic logging if log_manager not available
+            self._setup_basic_logging()
+            return
+        
+        # Initialize session-based logging
+        self.log_manager = initialize_logging()
+        self.session_info = self.log_manager.get_session_info()
+        
+        # Setup our main logger
+        self.logger = logging.getLogger('BlogAutomation')
+        self.logger.setLevel(logging.DEBUG)
+        
+        # Clear any existing handlers
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
+        
+    def setup_logging(self):
+        """Setup advanced session-based logging to capture all messages"""
+        # Import the log manager
+        try:
+            from log_manager import initialize_logging, get_log_manager
+        except ImportError:
+            # Fallback to basic logging if log_manager not available
+            self._setup_basic_logging()
+            return
+        
+        # Initialize session-based logging
+        self.log_manager = initialize_logging()
+        self.session_info = self.log_manager.get_session_info()
+        
+        # Setup our main logger
+        self.logger = logging.getLogger('BlogAutomation')
+        self.logger.setLevel(logging.DEBUG)
+        
+        # Clear any existing handlers
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
+        
+        # Create custom handler that sends to queue AND session logs
+        class SessionAwareQueueHandler(logging.Handler):
+            def __init__(self, log_queue, log_manager):
+                super().__init__()
+                self.log_queue = log_queue
+                self.log_manager = log_manager
+                self._processing = False  # Prevent recursion
+                
+            def emit(self, record):
+                # Prevent recursive logging
+                if self._processing:
+                    return
+                    
+                try:
+                    self._processing = True
+                    
+                    # Format message for GUI queue
+                    msg = self.format(record)
+                    self.log_queue.put(msg)
+                    
+                    # Skip logging setup messages to prevent recursion
+                    if 'Advanced logging system initialized' in record.getMessage():
+                        return
+                    
+                    # Route to appropriate session logger
+                    message = record.getMessage().lower()
+                    
+                    # Determine the best category for this log
+                    if record.levelno >= logging.ERROR:
+                        category_logger = self.log_manager.get_logger('errors')
+                    elif 'automation' in message or 'processing' in message or 'article' in message:
+                        category_logger = self.log_manager.get_logger('automation')
+                    elif 'api' in message or 'request' in message or 'wordpress' in message:
+                        category_logger = self.log_manager.get_logger('api')
+                    elif 'security' in message or 'auth' in message or 'login' in message or 'credential' in message:
+                        category_logger = self.log_manager.get_logger('security')
+                    elif record.levelno == logging.DEBUG:
+                        category_logger = self.log_manager.get_logger('debug')
+                    else:
+                        category_logger = self.log_manager.get_logger('main')
+                    
+                    # Log to session category directly, bypass the handler chain
+                    if hasattr(category_logger, 'handle'):
+                        category_logger.handle(record)
+                    
+                except Exception:
+                    pass  # Don't let logging errors break the app
+                finally:
+                    self._processing = False
+        
+        # Create session-aware queue handler for GUI
+        session_handler = SessionAwareQueueHandler(self.log_queue, self.log_manager)
+        gui_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        session_handler.setFormatter(gui_formatter)
+        
+        # Add handler to our logger only (not root logger to avoid recursion)
+        self.logger.addHandler(session_handler)
+        
+        # Don't propagate to root logger to avoid duplicate logs
+        self.logger.propagate = False
+        
+        # Log startup message with session info (only once)
+        self.logger.info(f"🚀 Advanced logging system initialized - Session: {self.session_info['session_id']}")
+        self.logger.info(f"📁 Session logs in: {self.session_info['base_dir']}")
+        self.logger.info(f"📄 Log files: {len(self.session_info['log_files'])} categories")
+        
+    def _setup_basic_logging(self):
+        """Fallback to basic logging if log_manager is not available"""
         # Setup root logger to capture everything
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
@@ -163,34 +290,75 @@ class BlogAutomationGUI:
         self.logger.addHandler(queue_handler)
         
         # Log startup message
-        self.logger.info("🚀 Logging system initialized - capturing all logs")
+        self.logger.info("🚀 Basic logging system initialized - capturing all logs")
         
-    def load_config(self):
-        """Load configuration from file"""
-        config = {}
-        if os.path.exists("blog_config.json"):
-            try:
-                with open("blog_config.json", 'r') as f:
-                    config = json.load(f)
-                self.logger.info("Configuration loaded successfully")
-            except Exception as e:
-                self.logger.error(f"Error loading config: {e}")
-                config = {}
-        else:
-            config = self.get_default_config()
+    def get_config_files(self):
+        """Get configuration files from current domain directory"""
+        config_dir = self.get_current_config_dir()
+        files = glob.glob(os.path.join(config_dir, "*.json"))
+        return [os.path.splitext(os.path.basename(f))[0] for f in files if not f.endswith(("style_prompt.json","category_keywords.json","internal_links.json","external_links.json","tag_synonyms.json","static_clubs.json","stop_words.json","do_follow_urls.json","openai_image_config.json","weights.json"))]
+
+    def get_last_used_config(self):
+        """Get last used configuration for current domain"""
+        config_dir = self.get_current_config_dir()
+        path = os.path.join(config_dir, ".last_used")
+        if os.path.exists(path):
+            with open(path) as f:
+                return f.read().strip()
+        return None
+
+    def set_last_used_config(self, name):
+        """Set last used configuration for current domain"""
+        config_dir = self.get_current_config_dir()
+        path = os.path.join(config_dir, ".last_used")
+        with open(path, "w") as f:
+            f.write(name)
+
+    def load_config(self, name):
+        """Load configuration from current domain directory"""
+        import json, os
+        config_dir = self.get_current_config_dir()
+        path = os.path.join(config_dir, f"{name}.json")
+        config = self.get_default_config()
+        if os.path.exists(path):
+            with open(path) as f:
+                config.update(json.load(f))
+        # Migrate from old files if missing
+        migration_map = {
+            "internal_links": "internal_links.json",
+            "external_links": "external_links.json",
+            "style_prompt": "style_prompt.json",
+            "category_keywords": "category_keywords.json",
+            "tag_synonyms": "tag_synonyms.json",
+            "static_clubs": "static_clubs.json",
+            "stop_words": "stop_words.json",
+            "do_follow_urls": "do_follow_urls.json"
+        }
+        for key, fname in migration_map.items():
+            if key not in config or not config[key]:
+                fpath = os.path.join(config_dir, fname)
+                if os.path.exists(fpath):
+                    with open(fpath) as f:
+                        if key == "style_prompt":
+                            config[key] = json.load(f).get("style_prompt", "")
+                        else:
+                            config[key] = json.load(f)
+        self.active_config_name = name
+        self.set_last_used_config(name)
         return config
         
-    def save_config(self):
-        """Save configuration to file"""
-        try:
-            with open("blog_config.json", 'w') as f:
+    def save_config(self, name=None):
+        """Save configuration to current domain directory"""
+        if name is None:
+            name = self.active_config_name
+        config_dir = self.get_current_config_dir()
+        path = os.path.join(config_dir, f"{name}.json")
+        with open(path, "w") as f:
                 json.dump(self.config, f, indent=2)
-            self.logger.info("Configuration saved successfully")
-        except Exception as e:
-            self.logger.error(f"Error saving config: {e}")
+        self.set_last_used_config(name)
+        self.logger.info(f"Configuration '{name}' saved to domain directory: {self.current_domain}")
             
     def get_default_config(self):
-        """Get default configuration"""
         return {
             "source_url": "https://tbrfootball.com/topic/english-premier-league/",
             "article_selector": "article.article h2 a",
@@ -198,9 +366,18 @@ class BlogAutomationGUI:
             "wp_username": "",
             "wp_password": "",
             "gemini_api_key": "",
+            "openai_api_key": "",
             "max_articles": 2,
             "timeout": 10,
-            "headless_mode": True
+            "headless_mode": True,
+            "internal_links": {},
+            "external_links": {},
+            "style_prompt": "",
+            "category_keywords": {},
+            "tag_synonyms": {},
+            "static_clubs": [],
+            "stop_words": [],
+            "do_follow_urls": []
         }
         
     def create_ui(self):
@@ -217,8 +394,8 @@ class BlogAutomationGUI:
         self.create_automation_tab()
         self.create_logs_tab()
         self.create_config_tab()
-        
-        # Status bar
+        self.create_source_config_tab()
+        self.create_openai_image_tab()  # New tab for OpenAI image config
         self.create_status_bar()
         
     def create_menu_bar(self):
@@ -260,13 +437,16 @@ Licensed under the MIT License"""
         self.notebook.add(self.login_frame, text="🔐 Authentication")
         
         # Title
-        title_label = ttk.Label(self.login_frame, text="WordPress Blog Automation", 
-                               font=('Arial', 16, 'bold'))
+        title_label = ttk.Label(self.login_frame, text="WordPress Blog Automation", font=('Arial', 16, 'bold'))
         title_label.pack(pady=20)
+
+        # Main frame for form and sidebar
+        main_frame = ttk.Frame(self.login_frame)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=40, pady=10)
         
         # Login form frame
-        login_form = ttk.LabelFrame(self.login_frame, text="WordPress Credentials", padding=20)
-        login_form.pack(pady=20, padx=40, fill=tk.X)
+        login_form = ttk.LabelFrame(main_frame, text="WordPress Credentials", padding=20)
+        login_form.pack(side=tk.LEFT, fill=tk.Y, expand=False, padx=(0, 20))
         
         # WordPress URL
         ttk.Label(login_form, text="WordPress Site URL:").grid(row=0, column=0, sticky=tk.W, pady=5)
@@ -283,12 +463,12 @@ Licensed under the MIT License"""
         self.password_var = tk.StringVar(value=self.config.get('wp_password', ''))
         ttk.Entry(login_form, textvariable=self.password_var, show="*", width=50).grid(row=2, column=1, pady=5, padx=10)
         
-        # Gemini API Key
+        # Gemini API Key (global)
         ttk.Label(login_form, text="Gemini API Key:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.gemini_key_var = tk.StringVar(value=self.config.get('gemini_api_key', ''))
         ttk.Entry(login_form, textvariable=self.gemini_key_var, show="*", width=50).grid(row=3, column=1, pady=5, padx=10)
         
-        # OpenAI API Key
+        # OpenAI API Key (global)
         ttk.Label(login_form, text="OpenAI API Key:").grid(row=4, column=0, sticky=tk.W, pady=5)
         self.openai_key_var = tk.StringVar(value=self.config.get('openai_api_key', ''))
         ttk.Entry(login_form, textvariable=self.openai_key_var, show="*", width=50).grid(row=4, column=1, pady=5, padx=10)
@@ -296,23 +476,514 @@ Licensed under the MIT License"""
         # Buttons frame
         button_frame = ttk.Frame(login_form)
         button_frame.grid(row=5, column=0, columnspan=2, pady=20)
-        
-        # Test connection button
-        self.test_btn = ttk.Button(button_frame, text="Test Connection", 
-                                  command=self.test_connection, style="Accent.TButton")
+        self.test_btn = ttk.Button(button_frame, text="Test Connection", command=self.test_connection, style="Accent.TButton")
         self.test_btn.pack(side=tk.LEFT, padx=10)
-        
-        # Login button
-        self.login_btn = ttk.Button(button_frame, text="Login & Save", 
-                                   command=self.login, style="Accent.TButton")
+        self.login_btn = ttk.Button(button_frame, text="Login & Save", command=self.save_wp_credentials, style="Accent.TButton")
         self.login_btn.pack(side=tk.LEFT, padx=10)
         
         # Connection status
         self.connection_status = ttk.Label(login_form, text="Not connected", foreground="red")
         self.connection_status.grid(row=6, column=0, columnspan=2, pady=10)
         
-        # Prerequisites check
-        self.create_prerequisites_section()
+        # Sidebar for user credentials (modern look)
+        sidebar_frame = ttk.Frame(main_frame, style="Sidebar.TFrame")
+        sidebar_frame.pack(side=tk.LEFT, fill=tk.Y, expand=False)
+        sidebar_title = ttk.Label(sidebar_frame, text="Saved Users", font=("Arial", 11, "bold"))
+        sidebar_title.pack(anchor=tk.W, pady=(0, 6), padx=6)
+
+        style = ttk.Style()
+        style.configure("Sidebar.Treeview", rowheight=28, font=("Arial", 10))
+        style.map("Sidebar.Treeview", background=[('selected', '#e0eaff')])
+        style.configure("Sidebar.TFrame", background="#f4f6fa", borderwidth=1, relief="solid")
+
+        self.creds_tree = ttk.Treeview(sidebar_frame, columns=("site", "user"), show="headings", selectmode="browse", style="Sidebar.Treeview", height=8)
+        self.creds_tree.heading("site", text="🌐 Site URL")
+        self.creds_tree.heading("user", text="👤 Username")
+        self.creds_tree.column("site", width=180, anchor=tk.W)
+        self.creds_tree.column("user", width=120, anchor=tk.W)
+        self.creds_tree.pack(fill=tk.Y, expand=True, padx=4, pady=2)
+        self.creds_tree.bind('<<TreeviewSelect>>', self.on_select_credential)
+        self.load_saved_credentials()
+
+        btn_frame = ttk.Frame(sidebar_frame)
+        btn_frame.pack(fill=tk.X, pady=4)
+        select_btn = ttk.Button(btn_frame, text="Select User", command=self.select_credential)
+        select_btn.pack(side=tk.LEFT, padx=4)
+        del_btn = ttk.Button(btn_frame, text="🗑️ Delete", command=self.delete_credential)
+        del_btn.pack(side=tk.LEFT, padx=4)
+
+    def create_openai_image_tab(self):
+        import os
+        import json
+        self.openai_image_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.openai_image_frame, text="🖼️ OpenAI Images")
+
+        # Create a scrollable frame for all content
+        canvas = tk.Canvas(self.openai_image_frame)
+        scrollbar = ttk.Scrollbar(self.openai_image_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # OpenAI Image Configuration Section
+        form = ttk.LabelFrame(scrollable_frame, text="OpenAI Image Configuration", padding=20)
+        form.pack(pady=10, padx=20, fill=tk.X)
+
+        # Load config
+        config_dir = self.get_current_config_dir()
+        config_path = os.path.join(config_dir, "openai_image_config.json")
+        weights_path = os.path.join(config_dir, "weights.json")
+        openai_defaults = {
+            "image_size": "1024x1024",
+            "image_style": "photorealistic",
+            "image_model": "dall-e-3",
+            "num_images": 1,
+            "prompt_prefix": "",
+            "prompt_suffix": ""
+        }
+        weights_defaults = {
+            "summary_length": 120,
+            "title_length": 60,
+            "content_weight": 1.0,
+            "seo_weight": 1.0,
+            "image_weight": 1.0
+        }
+        if os.path.exists(config_path):
+            with open(config_path) as f:
+                openai_config = json.load(f)
+        else:
+            openai_config = openai_defaults.copy()
+        if os.path.exists(weights_path):
+            with open(weights_path) as f:
+                weights_config = json.load(f)
+        else:
+            weights_config = weights_defaults.copy()
+
+        # OpenAI image config fields
+        self.openai_image_vars = {}
+        row = 0
+        
+        # Image Size dropdown
+        ttk.Label(form, text="Image Size:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        size_var = tk.StringVar(value=openai_config.get("image_size", "1024x1024"))
+        size_combo = ttk.Combobox(form, textvariable=size_var, values=["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"], width=15, state="readonly")
+        size_combo.grid(row=row, column=1, pady=5, padx=10, sticky=tk.W)
+        self.openai_image_vars["image_size"] = size_var
+        row += 1
+
+        # Image Style dropdown (for DALL-E 3)
+        ttk.Label(form, text="Image Style:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        style_var = tk.StringVar(value=openai_config.get("image_style", "photorealistic"))
+        style_combo = ttk.Combobox(form, textvariable=style_var, values=["photorealistic", "natural", "vivid"], width=15, state="readonly")
+        style_combo.grid(row=row, column=1, pady=5, padx=10, sticky=tk.W)
+        self.openai_image_vars["image_style"] = style_var
+        row += 1
+
+        # Image Model dropdown
+        ttk.Label(form, text="Image Model:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        model_var = tk.StringVar(value=openai_config.get("image_model", "dall-e-3"))
+        model_combo = ttk.Combobox(form, textvariable=model_var, values=["dall-e-3", "dall-e-2"], width=15, state="readonly")
+        model_combo.grid(row=row, column=1, pady=5, padx=10, sticky=tk.W)
+        self.openai_image_vars["image_model"] = model_var
+        row += 1
+
+        # Number of Images
+        ttk.Label(form, text="Number of Images:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        num_var = tk.StringVar(value=str(openai_config.get("num_images", 1)))
+        num_spinbox = ttk.Spinbox(form, from_=1, to=4, textvariable=num_var, width=10)
+        num_spinbox.grid(row=row, column=1, pady=5, padx=10, sticky=tk.W)
+        self.openai_image_vars["num_images"] = num_var
+        row += 1
+
+        # Prompt Prefix
+        ttk.Label(form, text="Prompt Prefix:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        prefix_var = tk.StringVar(value=openai_config.get("prompt_prefix", ""))
+        prefix_entry = ttk.Entry(form, textvariable=prefix_var, width=60)
+        prefix_entry.grid(row=row, column=1, pady=5, padx=10, sticky=tk.W)
+        self.openai_image_vars["prompt_prefix"] = prefix_var
+        row += 1
+
+        # Prompt Suffix
+        ttk.Label(form, text="Prompt Suffix:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        suffix_var = tk.StringVar(value=openai_config.get("prompt_suffix", ""))
+        suffix_entry = ttk.Entry(form, textvariable=suffix_var, width=60)
+        suffix_entry.grid(row=row, column=1, pady=5, padx=10, sticky=tk.W)
+        self.openai_image_vars["prompt_suffix"] = suffix_var
+        row += 1
+
+        # Custom Prompt Section
+        custom_prompt_frame = ttk.LabelFrame(scrollable_frame, text="Custom Image Prompt (Optional)", padding=20)
+        custom_prompt_frame.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+
+        ttk.Label(custom_prompt_frame, text="Custom Prompt for Content Images:", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
+        ttk.Label(custom_prompt_frame, text="Leave empty to use auto-generated prompts based on article content.", foreground="gray").pack(anchor=tk.W, pady=(0, 10))
+        
+        self.custom_prompt_var = tk.StringVar()
+        custom_prompt_text = scrolledtext.ScrolledText(custom_prompt_frame, height=4, wrap=tk.WORD)
+        custom_prompt_text.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        # Store reference to text widget
+        self.custom_prompt_text = custom_prompt_text
+
+        # Add some example prompts
+        examples_frame = ttk.LabelFrame(custom_prompt_frame, text="Example Prompts", padding=10)
+        examples_frame.pack(fill=tk.X, pady=(10, 0))
+
+        examples = [
+            "A photorealistic image of a football stadium with dramatic lighting",
+            "An action shot of football players in motion, high-energy sports photography",
+            "A close-up of a football with dramatic shadows and professional lighting",
+            "An aerial view of a football pitch with players positioned strategically"
+        ]
+
+        for i, example in enumerate(examples):
+            btn = ttk.Button(examples_frame, text=f"Example {i+1}", 
+                           command=lambda ex=example: self.set_custom_prompt(ex))
+            btn.pack(side=tk.LEFT, padx=5, pady=2)
+
+        # Weights Section
+        weights_frame = ttk.LabelFrame(scrollable_frame, text="Processing Weights & Lengths", padding=20)
+        weights_frame.pack(pady=10, padx=20, fill=tk.X)
+
+        self.weights_vars = {}
+        weights_row = 0
+        for label, key in [
+            ("Summary Length", "summary_length"),
+            ("Title Length", "title_length"),
+            ("Content Weight", "content_weight"),
+            ("SEO Weight", "seo_weight"),
+            ("Image Weight", "image_weight")
+        ]:
+            ttk.Label(weights_frame, text=label+":").grid(row=weights_row, column=0, sticky=tk.W, pady=5)
+            var = tk.StringVar(value=str(weights_config.get(key, weights_defaults.get(key, ""))))
+            entry = ttk.Entry(weights_frame, textvariable=var, width=20)
+            entry.grid(row=weights_row, column=1, pady=5, padx=10, sticky=tk.W)
+            self.weights_vars[key] = var
+            weights_row += 1
+
+        # Save/Cancel buttons
+        button_frame = ttk.Frame(scrollable_frame)
+        button_frame.pack(pady=20)
+        save_btn = ttk.Button(button_frame, text="Save Configuration", command=self.save_openai_image_config, style="Accent.TButton")
+        save_btn.pack(side=tk.LEFT, padx=10)
+        cancel_btn = ttk.Button(button_frame, text="Reset to Defaults", command=self.reset_openai_image_config)
+        cancel_btn.pack(side=tk.LEFT, padx=10)
+
+    def set_custom_prompt(self, prompt):
+        """Set a custom prompt in the text area"""
+        self.custom_prompt_text.delete(1.0, tk.END)
+        self.custom_prompt_text.insert(1.0, prompt)
+
+    def get_custom_prompt(self):
+        """Get the custom prompt from the text area"""
+        return self.custom_prompt_text.get(1.0, tk.END).strip()
+
+    def reset_openai_image_config(self):
+        """Reset OpenAI image configuration to defaults"""
+        openai_defaults = {
+            "image_size": "1024x1024",
+            "image_style": "photorealistic",
+            "image_model": "dall-e-3",
+            "num_images": 1,
+            "prompt_prefix": "",
+            "prompt_suffix": ""
+        }
+        
+        for key, var in self.openai_image_vars.items():
+            var.set(str(openai_defaults.get(key, "")))
+        
+        self.custom_prompt_text.delete(1.0, tk.END)
+        messagebox.showinfo("Reset", "OpenAI image configuration reset to defaults.")
+
+    def save_openai_image_config(self):
+        """Save OpenAI image configuration to current domain directory"""
+        import os
+        import json
+        
+        config_dir = self.get_current_config_dir()
+        config_path = os.path.join(config_dir, "openai_image_config.json")
+        weights_path = os.path.join(config_dir, "weights.json")
+        
+        openai_config = {k: v.get() for k, v in self.openai_image_vars.items()}
+        
+        # Convert num_images to int
+        try:
+            openai_config["num_images"] = int(openai_config["num_images"])
+        except Exception:
+            openai_config["num_images"] = 1
+        
+        # Save custom prompt if provided
+        custom_prompt = self.get_custom_prompt()
+        openai_config["custom_prompt"] = custom_prompt
+        
+        with open(config_path, 'w') as f:
+            json.dump(openai_config, f, indent=2)
+        
+        weights_config = {k: v.get() for k, v in self.weights_vars.items()}
+        # Convert numeric fields
+        for k in ["summary_length", "title_length"]:
+            try:
+                weights_config[k] = int(weights_config[k])
+            except Exception:
+                weights_config[k] = 0
+        for k in ["content_weight", "seo_weight", "image_weight"]:
+            try:
+                weights_config[k] = float(weights_config[k])
+            except Exception:
+                weights_config[k] = 1.0
+        with open(weights_path, 'w') as f:
+            json.dump(weights_config, f, indent=2)
+        
+        domain_info = f" for domain: {self.current_domain}" if self.current_domain else ""
+        self.logger.info(f"✅ OpenAI image and weights configuration saved{domain_info}")
+        messagebox.showinfo("Success", f"OpenAI image and weights configuration saved{domain_info}.")
+
+    def cancel_openai_image_config(self):
+        self.openai_image_frame.destroy()
+        self.create_openai_image_tab()
+
+    def save_wp_credentials(self):
+        """Save credentials and setup domain-based configuration"""
+        # Get credentials from UI
+        wp_url = self.wp_base_url_var.get().strip()
+        username = self.username_var.get().strip()
+        password = self.password_var.get().strip()
+        
+        if not all([wp_url, username, password]):
+            messagebox.showerror("Error", "Please fill in all WordPress credentials")
+            return
+        
+        # Extract domain and setup domain-specific configuration
+        domain = self.extract_domain_from_url(wp_url)
+        self.setup_domain_config_directory(domain)
+        
+        self.logger.info(f"🌐 Setting up configuration for domain: {domain}")
+        self.logger.info(f"📁 Domain config directory: {self.domain_config_dir}")
+        
+        # Save credentials to config and domain-specific credentials.json
+        creds = {
+            'wp_base_url': wp_url,
+            'wp_username': username,
+            'wp_password': password,
+            'domain': domain
+        }
+        
+        # Update main config
+        self.config['wp_base_url'] = creds['wp_base_url']
+        self.config['wp_username'] = creds['wp_username']
+        self.config['wp_password'] = creds['wp_password']
+        self.config['gemini_api_key'] = self.gemini_key_var.get().strip()
+        self.config['openai_api_key'] = self.openai_key_var.get().strip()
+        self.save_config()
+        
+        # Save to domain-specific credentials.json
+        creds_path = os.path.join(self.domain_config_dir, 'credentials.json')
+        all_creds = []
+        if os.path.exists(creds_path):
+            with open(creds_path) as f:
+                all_creds = json.load(f)
+        
+        # Remove any existing entry for this (url, username) in this domain
+        all_creds = [c for c in all_creds if not (c['wp_base_url'] == creds['wp_base_url'] and c['wp_username'] == creds['wp_username'])]
+        all_creds.insert(0, creds)  # Insert as most recent/default
+        
+        with open(creds_path, 'w') as f:
+            json.dump(all_creds, f, indent=2)
+        
+        # Also maintain global credentials for easy switching between domains
+        global_creds_path = os.path.join(self.base_config_dir, 'credentials.json')
+        global_creds = []
+        if os.path.exists(global_creds_path):
+            with open(global_creds_path) as f:
+                global_creds = json.load(f)
+        
+        # Remove existing entry and add updated one
+        global_creds = [c for c in global_creds if not (c.get('wp_base_url') == creds['wp_base_url'] and c.get('wp_username') == creds['wp_username'])]
+        global_creds.insert(0, creds)
+        
+        with open(global_creds_path, 'w') as f:
+            json.dump(global_creds, f, indent=2)
+        
+        # Update UI to show domain-specific configurations
+        self.load_saved_credentials()
+        self.update_config_ui_for_domain()
+        
+        self.logger.info(f"✅ Credentials saved for domain: {domain}")
+        self.connection_status.config(text=f"✅ Saved for {domain}", foreground="green")
+        
+        messagebox.showinfo("Success", 
+            f"Credentials saved successfully!\n\n"
+            f"Domain: {domain}\n"
+            f"Configuration directory: {self.domain_config_dir}\n\n"
+            f"All settings for this domain are now isolated and separate from other domains.")
+        
+    def update_config_ui_for_domain(self):
+        """Update configuration UI elements after domain change"""
+        try:
+            # Update config files list for current domain
+            self.config_files = self.get_config_files()
+            
+            # Update config selector if it exists
+            if hasattr(self, 'config_selector'):
+                self.config_selector['values'] = self.config_files
+                # Load default config for this domain
+                self.active_config_name = self.get_last_used_config() or "default"
+                self.config_selector_var.set(self.active_config_name)
+                self.config = self.load_config(self.active_config_name)
+                
+            # Refresh config tab if it exists
+            if hasattr(self, 'config_frame'):
+                self.refresh_config_tab()
+                
+        except Exception as e:
+            self.logger.error(f"Error updating config UI for domain: {e}")
+
+    def load_saved_credentials(self):
+        """Load saved credentials from global credentials file (all domains)"""
+        # Clear existing items
+        for i in self.creds_tree.get_children():
+            self.creds_tree.delete(i)
+        
+        self.saved_creds = []
+        
+        # Load from global credentials file to show all domains
+        global_creds_path = os.path.join(self.base_config_dir, 'credentials.json')
+        if os.path.exists(global_creds_path):
+            with open(global_creds_path) as f:
+                self.saved_creds = json.load(f)
+        
+        # Group credentials by domain for better organization
+        domain_groups = {}
+        for idx, cred in enumerate(self.saved_creds):
+            domain = cred.get('domain', self.extract_domain_from_url(cred.get('wp_base_url', '')))
+            if domain not in domain_groups:
+                domain_groups[domain] = []
+            domain_groups[domain].append((idx, cred))
+        
+        # Display credentials grouped by domain
+        for domain, creds in domain_groups.items():
+            # Add domain header
+            domain_header = self.creds_tree.insert("", "end", iid=f"domain_{domain}", 
+                                                  values=(f"🌐 {domain.upper()}", ""), 
+                                                  tags=("domain_header",))
+            
+            # Add credentials under domain
+            for idx, cred in creds:
+                self.creds_tree.insert(domain_header, "end", iid=str(idx), 
+                                     values=(cred['wp_base_url'], cred['wp_username']),
+                                     tags=("credential",))
+        
+        # Expand all domain groups
+        for domain in domain_groups.keys():
+            self.creds_tree.item(f"domain_{domain}", open=True)
+        
+        # Configure tags for styling
+        self.creds_tree.tag_configure("domain_header", background="#e0e0e0", font=("Arial", 9, "bold"))
+        self.creds_tree.tag_configure("credential", background="#ffffff")
+
+    def on_select_credential(self, event=None):
+        """Handle credential selection from domain-organized tree"""
+        idxs = self.creds_tree.selection()
+        if idxs:
+            selected_id = idxs[0]
+            
+            # Skip if domain header is selected
+            if selected_id.startswith("domain_"):
+                return
+            
+            try:
+                idx = int(selected_id)
+                cred = self.saved_creds[idx]
+                
+                # Extract domain and setup domain configuration
+                domain = cred.get('domain', self.extract_domain_from_url(cred.get('wp_base_url', '')))
+                self.setup_domain_config_directory(domain)
+                
+                # Load credentials into UI
+                self.wp_base_url_var.set(cred['wp_base_url'])
+                self.username_var.set(cred['wp_username'])
+                self.password_var.set(cred['wp_password'])
+                
+                # Load domain-specific configuration
+                self.active_config_name = self.get_last_used_config() or "default"
+                self.config = self.load_config(self.active_config_name)
+                
+                # Update UI with domain-specific API keys if available
+                self.gemini_key_var.set(self.config.get('gemini_api_key', ''))
+                self.openai_key_var.set(self.config.get('openai_api_key', ''))
+                
+                # Update configuration UI for this domain
+                self.update_config_ui_for_domain()
+                
+                self.connection_status.config(
+                    text=f"✅ Loaded: {domain} | {cred['wp_username']}", 
+                    foreground="blue"
+                )
+                
+                self.logger.info(f"🔄 Switched to domain configuration: {domain}")
+                
+            except (ValueError, IndexError, KeyError) as e:
+                self.logger.error(f"Error selecting credential: {e}")
+
+    def select_credential(self):
+        """Select the currently highlighted credential"""
+        self.on_select_credential()
+
+    def delete_credential(self):
+        """Delete selected credential from both domain and global files"""
+        idxs = self.creds_tree.selection()
+        if idxs:
+            selected_id = idxs[0]
+            
+            # Skip if domain header is selected
+            if selected_id.startswith("domain_"):
+                messagebox.showinfo("Info", "Please select a specific credential to delete, not the domain header.")
+                return
+            
+            try:
+                idx = int(selected_id)
+                cred = self.saved_creds[idx]
+                
+                if messagebox.askyesno("Delete Credential", 
+                    f"Delete credentials for {cred['wp_username']} at {cred['wp_base_url']}?\n\n"
+                    f"This will remove the credential from both domain-specific and global storage."):
+                    
+                    # Remove from global credentials
+                    del self.saved_creds[idx]
+                    global_creds_path = os.path.join(self.base_config_dir, 'credentials.json')
+                    with open(global_creds_path, 'w') as f:
+                        json.dump(self.saved_creds, f, indent=2)
+                    
+                    # Remove from domain-specific credentials if exists
+                    domain = cred.get('domain', self.extract_domain_from_url(cred.get('wp_base_url', '')))
+                    domain_dir = os.path.join(self.base_config_dir, domain)
+                    domain_creds_path = os.path.join(domain_dir, 'credentials.json')
+                    
+                    if os.path.exists(domain_creds_path):
+                        with open(domain_creds_path) as f:
+                            domain_creds = json.load(f)
+                        
+                        # Remove matching credential
+                        domain_creds = [c for c in domain_creds if not (
+                            c['wp_base_url'] == cred['wp_base_url'] and 
+                            c['wp_username'] == cred['wp_username']
+                        )]
+                        
+                        with open(domain_creds_path, 'w') as f:
+                            json.dump(domain_creds, f, indent=2)
+                    
+                    self.load_saved_credentials()
+                    self.logger.info(f"🗑️ Deleted credentials for {cred['wp_username']} at {cred['wp_base_url']}")
+                    
+            except (ValueError, IndexError, KeyError) as e:
+                self.logger.error(f"Error deleting credential: {e}")
+                messagebox.showerror("Error", f"Error deleting credential: {e}")
         
     def create_prerequisites_section(self):
         """Create prerequisites check section"""
@@ -380,6 +1051,29 @@ Licensed under the MIT License"""
         # Add tooltips
         ToolTip(openai_radio, "Generates featured images using OpenAI DALL-E. Requires an OpenAI API key in the Authentication tab.")
         ToolTip(getty_radio, "Fetches editorial images from Getty Images and embeds them using standard Getty embed code. No API key required.")
+        
+        # Content Images section
+        content_image_frame = ttk.LabelFrame(settings_frame, text="Content Images", padding=10)
+        content_image_frame.pack(side=tk.LEFT, padx=20, fill=tk.BOTH)
+        
+        self.content_image_var = tk.StringVar(value="none")
+        
+        # Radio buttons for content image selection
+        ttk.Radiobutton(content_image_frame, text="No Content Images", variable=self.content_image_var, value="none").pack(anchor=tk.W)
+        openai_content_radio = ttk.Radiobutton(content_image_frame, text="OpenAI Generated Images", variable=self.content_image_var, value="openai")
+        openai_content_radio.pack(anchor=tk.W)
+        getty_content_radio = ttk.Radiobutton(content_image_frame, text="Getty Editorial Images", variable=self.content_image_var, value="getty")
+        getty_content_radio.pack(anchor=tk.W)
+        
+        # Custom prompt option
+        self.use_custom_prompt_var = tk.BooleanVar(value=False)
+        custom_prompt_check = ttk.Checkbutton(content_image_frame, text="Use Custom Prompt", variable=self.use_custom_prompt_var)
+        custom_prompt_check.pack(anchor=tk.W, pady=(5, 0))
+        
+        # Add tooltips for content images
+        ToolTip(openai_content_radio, "Generates and inserts images within article content using OpenAI DALL-E. Configure prompts in the OpenAI Images tab.")
+        ToolTip(getty_content_radio, "Inserts Getty Images editorial content within articles.")
+        ToolTip(custom_prompt_check, "Use the custom prompt from the OpenAI Images tab instead of auto-generated prompts.")
         
         # Buttons frame
         buttons_frame = ttk.Frame(control_panel)
@@ -468,9 +1162,10 @@ Licensed under the MIT License"""
             "Paraphrasing with Gemini",
             "Injecting internal links",
             "Injecting external links",
+            "Adding content images",
             "Generating SEO metadata",
             "Generating keyphrases",
-            "Processing images",
+            "Processing featured images",
             "Detecting categories",
             "Generating tags",
             "Creating WordPress post",
@@ -486,9 +1181,36 @@ Licensed under the MIT License"""
             self.steps_tree.insert('', 'end', iid=str(i), values=(step, '⏳ Pending', '', ''))
             
     def create_logs_tab(self):
-        """Create logs tab"""
+        """Create logs tab with session information and category viewing"""
         self.logs_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.logs_frame, text="📋 Logs")
+        
+        # Session info frame at top
+        session_frame = ttk.LabelFrame(self.logs_frame, text="Current Session", padding=5)
+        session_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Show session information if available
+        if hasattr(self, 'session_info'):
+            session_id_label = ttk.Label(session_frame, text=f"Session ID: {self.session_info['session_id']}", font=('Arial', 9, 'bold'))
+            session_id_label.pack(side=tk.LEFT)
+            
+            # Add buttons to open log directory and view categories
+            ttk.Button(session_frame, text="📁 Open Log Directory", 
+                      command=self.open_log_directory).pack(side=tk.RIGHT, padx=2)
+            ttk.Button(session_frame, text="📊 Session Info", 
+                      command=self.show_session_info).pack(side=tk.RIGHT, padx=2)
+        
+        # Log category selector frame
+        category_frame = ttk.Frame(self.logs_frame)
+        category_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Label(category_frame, text="Log Category:").pack(side=tk.LEFT)
+        self.log_category_var = tk.StringVar(value="All Logs")
+        log_categories = ["All Logs", "Main", "Automation", "Errors", "Debug", "API", "Security"]
+        category_combo = ttk.Combobox(category_frame, textvariable=self.log_category_var, 
+                                     values=log_categories, width=15, state="readonly")
+        category_combo.pack(side=tk.LEFT, padx=5)
+        category_combo.bind('<<ComboboxSelected>>', self.on_log_category_change)
         
         # Logs toolbar
         logs_toolbar = ttk.Frame(self.logs_frame)
@@ -515,9 +1237,182 @@ Licensed under the MIT License"""
         self.logs_text.tag_configure("WARNING", foreground="orange")
         self.logs_text.tag_configure("INFO", foreground="blue")
         self.logs_text.tag_configure("DEBUG", foreground="gray")
+        self.logs_text.tag_configure("AUTOMATION", foreground="green")
+        self.logs_text.tag_configure("API", foreground="purple")
+        self.logs_text.tag_configure("SECURITY", foreground="darkred")
         
-        # Load existing logs from file
-        self.load_existing_logs()
+        # Load existing logs from session files if available
+        self.load_session_logs()
+        
+    def load_session_logs(self):
+        """Load existing logs from session files"""
+        try:
+            if hasattr(self, 'session_info') and self.session_info:
+                # Load from current session files
+                self.logs_text.insert(tk.END, f"📋 Loading logs from session: {self.session_info['session_id']}\n")
+                self.logs_text.insert(tk.END, f"📁 Log directory: {self.session_info['base_dir']}\n\n")
+                
+                # Load main log first
+                main_log_file = self.session_info['log_files'].get('main')
+                if main_log_file and os.path.exists(main_log_file):
+                    with open(main_log_file, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                        # Load last 200 lines to avoid overwhelming the GUI
+                        recent_lines = lines[-200:] if len(lines) > 200 else lines
+                        
+                    for line in recent_lines:
+                        line = line.strip()
+                        if line:  # Skip empty lines
+                            self.add_log_message(line)
+                            
+                self.logs_text.insert(tk.END, "\n🔄 Real-time logs will appear below...\n")
+                self.logs_text.see(tk.END)
+                
+                # Add separator
+                separator = "=" * 80 + "\n"
+                self.logs_text.insert(tk.END, separator)
+                
+            else:
+                # Fallback to basic log file
+                self.load_existing_logs()
+                
+        except Exception as e:
+            self.logs_text.insert(tk.END, f"⚠️ Could not load session logs: {e}\n")
+            # Fallback to basic logs
+            self.load_existing_logs()
+            
+    def on_log_category_change(self, event=None):
+        """Handle log category selection change"""
+        category = self.log_category_var.get()
+        self.load_category_logs(category)
+        
+    def load_category_logs(self, category: str):
+        """Load logs for a specific category"""
+        if not hasattr(self, 'session_info') or not self.session_info:
+            return
+            
+        self.logs_text.delete(1.0, tk.END)
+        
+        try:
+            if category == "All Logs":
+                # Load all logs mixed together (current behavior)
+                self.load_session_logs()
+                return
+                
+            # Map GUI category names to log file keys
+            category_map = {
+                "Main": "main",
+                "Automation": "automation", 
+                "Errors": "errors",
+                "Debug": "debug",
+                "API": "api",
+                "Security": "security"
+            }
+            
+            log_key = category_map.get(category)
+            if not log_key:
+                return
+                
+            log_file = self.session_info['log_files'].get(log_key)
+            if not log_file or not os.path.exists(log_file):
+                self.logs_text.insert(tk.END, f"📄 No {category.lower()} logs found for this session.\n")
+                return
+                
+            self.logs_text.insert(tk.END, f"📋 Showing {category} logs from: {log_file}\n\n")
+            
+            with open(log_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                
+            for line in lines:
+                line = line.strip()
+                if line:
+                    self.add_log_message(line)
+                    
+            self.logs_text.see(tk.END)
+            
+        except Exception as e:
+            self.logs_text.insert(tk.END, f"⚠️ Error loading {category} logs: {e}\n")
+            
+    def open_log_directory(self):
+        """Open the log directory in file explorer"""
+        try:
+            if hasattr(self, 'session_info') and self.session_info:
+                log_dir = self.session_info['base_dir']
+            else:
+                log_dir = os.path.abspath('logs')
+                
+            # Open directory based on OS
+            import subprocess
+            import platform
+            
+            system = platform.system()
+            if system == "Darwin":  # macOS
+                subprocess.run(["open", log_dir])
+            elif system == "Windows":
+                subprocess.run(["explorer", log_dir])
+            else:  # Linux
+                subprocess.run(["xdg-open", log_dir])
+                
+            self.logger.info(f"📁 Opened log directory: {log_dir}")
+            
+        except Exception as e:
+            self.logger.error(f"Error opening log directory: {e}")
+            messagebox.showerror("Error", f"Could not open log directory: {e}")
+            
+    def show_session_info(self):
+        """Show detailed session information"""
+        try:
+            if not hasattr(self, 'session_info') or not self.session_info:
+                messagebox.showinfo("Session Info", "No session information available")
+                return
+                
+            info = self.session_info
+            
+            # Get log manager for additional details
+            if hasattr(self, 'log_manager'):
+                sessions = self.log_manager.list_previous_sessions()
+                current_session = next((s for s in sessions if s['session_id'] == info['session_id']), {})
+                
+                if current_session:
+                    info.update(current_session)
+            
+            # Build info display
+            info_text = f"""Session Information:
+
+Session ID: {info['session_id']}
+Timestamp: {info['timestamp']}
+Start Time: {info.get('start_time', 'N/A')}
+Status: {info.get('status', 'Active')}
+Base Directory: {info['base_dir']}
+
+Log Files:"""
+            
+            for category, filepath in info['log_files'].items():
+                try:
+                    size = os.path.getsize(filepath) if os.path.exists(filepath) else 0
+                    size_str = f" ({size:,} bytes)" if size > 0 else " (empty)"
+                    info_text += f"\n  • {category.title()}: {filepath}{size_str}"
+                except:
+                    info_text += f"\n  • {category.title()}: {filepath} (error reading size)"
+                    
+            if 'duration_seconds' in info:
+                duration = info['duration_seconds']
+                info_text += f"\n\nSession Duration: {duration:.1f} seconds"
+                
+            # Show in dialog
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Session Information")
+            dialog.geometry("600x400")
+            
+            text_widget = scrolledtext.ScrolledText(dialog, wrap=tk.WORD)
+            text_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            text_widget.insert(tk.END, info_text)
+            text_widget.config(state=tk.DISABLED)
+            
+            ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not show session info: {e}")
         
     def load_existing_logs(self):
         """Load existing logs from the log file"""
@@ -551,107 +1446,288 @@ Licensed under the MIT License"""
         self.load_existing_logs()
         
     def create_config_tab(self):
-        """Create configuration tab"""
+        """Create configuration tab with domain-aware settings"""
         self.config_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.config_frame, text="⚙️ Configuration")
         
-        # Create scrollable frame
-        canvas = tk.Canvas(self.config_frame)
-        scrollbar = ttk.Scrollbar(self.config_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        # Domain info section at the top
+        domain_info_frame = ttk.LabelFrame(self.config_frame, text="Domain Configuration", padding=10)
+        domain_info_frame.pack(fill=tk.X, pady=5, padx=10)
         
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        domain_text = self.current_domain or "No domain selected"
+        config_dir_text = self.domain_config_dir or "Using base configuration"
         
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        domain_label = ttk.Label(domain_info_frame, text=f"Current Domain: {domain_text}", font=("Arial", 10, "bold"))
+        domain_label.pack(side=tk.LEFT)
         
-        # Main config form
-        config_form = ttk.LabelFrame(scrollable_frame, text="Configuration Settings", padding=20)
-        config_form.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+        config_dir_label = ttk.Label(domain_info_frame, text=f"Config Directory: {config_dir_text}", font=("Arial", 8))
+        config_dir_label.pack(side=tk.LEFT, padx=(20, 0))
         
-        # Source configuration
-        source_frame = ttk.LabelFrame(config_form, text="Source Settings", padding=10)
-        source_frame.pack(fill=tk.X, pady=10)
+        if not self.current_domain:
+            warning_label = ttk.Label(domain_info_frame, text="⚠️ Please login to select a domain", foreground="orange")
+            warning_label.pack(side=tk.RIGHT)
         
-        ttk.Label(source_frame, text="Source URL:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.config_source_url = tk.StringVar(value=self.config.get('source_url', ''))
-        ttk.Entry(source_frame, textvariable=self.config_source_url, width=50).grid(row=0, column=1, pady=5, padx=10)
-        
-        ttk.Label(source_frame, text="Article Selector:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.config_selector = tk.StringVar(value=self.config.get('article_selector', ''))
-        ttk.Entry(source_frame, textvariable=self.config_selector, width=50).grid(row=1, column=1, pady=5, padx=10)
-        
-        # Processing configuration
-        proc_frame = ttk.LabelFrame(config_form, text="Processing Settings", padding=10)
-        proc_frame.pack(fill=tk.X, pady=10)
-        
-        ttk.Label(proc_frame, text="Default Max Articles:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.config_max_articles = tk.IntVar(value=self.config.get('max_articles', 2))
-        ttk.Spinbox(proc_frame, from_=1, to=20, textvariable=self.config_max_articles, width=10).grid(row=0, column=1, sticky=tk.W, pady=5, padx=10)
-        
-        ttk.Label(proc_frame, text="Timeout (seconds):").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.config_timeout = tk.IntVar(value=self.config.get('timeout', 10))
-        ttk.Spinbox(proc_frame, from_=5, to=60, textvariable=self.config_timeout, width=10).grid(row=1, column=1, sticky=tk.W, pady=5, padx=10)
-        
-        ttk.Label(proc_frame, text="Headless Mode:").grid(row=2, column=0, sticky=tk.W, pady=5)
-        self.config_headless = tk.BooleanVar(value=self.config.get('headless_mode', True))
-        ttk.Checkbutton(proc_frame, variable=self.config_headless).grid(row=2, column=1, sticky=tk.W, pady=5, padx=10)
-        
-        # Data management frame
-        data_frame = ttk.LabelFrame(config_form, text="Data Management", padding=10)
-        data_frame.pack(fill=tk.X, pady=10)
-        
-        # Add button to clear posted links history
-        ttk.Label(data_frame, text="Posted Links:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        
-        posted_links_count = 0
-        try:
-            if os.path.exists("posted_links.json"):
-                with open("posted_links.json", "r") as f:
-                    posted_links_count = len(json.load(f))
-        except:
-            pass
-        
-        posted_links_label = ttk.Label(data_frame, text=f"{posted_links_count} articles in history")
-        posted_links_label.grid(row=0, column=1, sticky=tk.W, pady=5, padx=10)
-        
-        clear_links_btn = ttk.Button(data_frame, text="Clear History", 
-                                   command=self.clear_posted_links)
-        clear_links_btn.grid(row=0, column=2, sticky=tk.W, pady=5, padx=10)
-        
-        # Links configuration - create text areas for complex configs
-        links_frame = ttk.LabelFrame(config_form, text="Links Configuration", padding=10)
-        links_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        
-        # Internal links
-        ttk.Label(links_frame, text="Internal Links (JSON format):").pack(anchor=tk.W)
-        self.internal_links_text = scrolledtext.ScrolledText(links_frame, height=8)
-        self.internal_links_text.pack(fill=tk.X, pady=5)
-        self.internal_links_text.insert(tk.END, json.dumps(self.get_internal_links(), indent=2))
-        
-        # External links
-        ttk.Label(links_frame, text="External Links (JSON format):").pack(anchor=tk.W, pady=(10, 0))
-        self.external_links_text = scrolledtext.ScrolledText(links_frame, height=8)
-        self.external_links_text.pack(fill=tk.X, pady=5)
-        self.external_links_text.insert(tk.END, json.dumps(self.get_external_links(), indent=2))
-        
-        # Buttons
-        button_frame = ttk.Frame(config_form)
-        button_frame.pack(pady=20)
-        
-        save_btn = ttk.Button(button_frame, text="Save Configuration", 
-                            command=self.save_configuration, style="Accent.TButton")
+        # Add config selector at the top
+        selector_frame = ttk.Frame(self.config_frame)
+        selector_frame.pack(fill=tk.X, pady=5, padx=10)
+        ttk.Label(selector_frame, text="Active Configuration:").pack(side=tk.LEFT)
+        self.config_selector_var = tk.StringVar(value=self.active_config_name)
+        self.config_selector = ttk.Combobox(selector_frame, textvariable=self.config_selector_var, values=self.get_config_files(), state="readonly", width=20)
+        self.config_selector.pack(side=tk.LEFT, padx=5)
+        self.config_selector.bind('<<ComboboxSelected>>', self.on_config_selected)
+        ttk.Button(selector_frame, text="Add", command=self.add_config).pack(side=tk.LEFT, padx=2)
+        ttk.Button(selector_frame, text="Duplicate", command=self.duplicate_config).pack(side=tk.LEFT, padx=2)
+        ttk.Button(selector_frame, text="Rename", command=self.rename_config).pack(side=tk.LEFT, padx=2)
+        ttk.Button(selector_frame, text="Delete", command=self.delete_config).pack(side=tk.LEFT, padx=2)
+
+        # Sidebar + main editor frame
+        main_frame = ttk.Frame(self.config_frame)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Sidebar frame for visual distinction
+        sidebar_frame = ttk.Frame(main_frame, style="Sidebar.TFrame")
+        sidebar_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10), pady=2)
+        sidebar_title = ttk.Label(sidebar_frame, text="Config Sections", font=("Arial", 11, "bold"))
+        sidebar_title.pack(anchor=tk.W, pady=(0, 6), padx=6)
+
+        # Enhanced sidebar with ttk.Treeview
+        style = ttk.Style()
+        style.configure("Sidebar.Treeview", rowheight=32, font=("Arial", 10))
+        style.map("Sidebar.Treeview", background=[('selected', '#e0eaff')])
+        style.configure("Sidebar.TFrame", background="#f4f6fa", borderwidth=1, relief="solid")
+
+        self.config_sections = [
+            ("Internal Links", "internal_links", "🔗"),
+            ("External Links", "external_links", "🌐"),
+            ("Style Prompt", "style_prompt", "📝"),
+            ("Category Keywords", "category_keywords", "🏷️"),
+            ("Tag Synonyms", "tag_synonyms", "🔄"),
+            ("Static Clubs", "static_clubs", "⚽"),
+            ("Stop Words", "stop_words", "🚫"),
+            ("Do-Follow URLs", "do_follow_urls", "✅")
+        ]
+        sidebar = ttk.Treeview(sidebar_frame, show="tree", selectmode="browse", style="Sidebar.Treeview", height=len(self.config_sections))
+        for idx, (label, _, emoji) in enumerate(self.config_sections):
+            sidebar.insert("", "end", iid=str(idx), text=f"{emoji}  {label}")
+        sidebar.pack(fill=tk.Y, expand=True, padx=4, pady=2)
+        sidebar.bind('<<TreeviewSelect>>', self.on_sidebar_select)
+        self.sidebar = sidebar
+
+        # Editor area
+        editor_frame = ttk.Frame(main_frame)
+        editor_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.editor_frame = editor_frame
+
+        # Save/Cancel buttons
+        button_frame = ttk.Frame(editor_frame)
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
+        save_btn = ttk.Button(button_frame, text="Save Section", command=self.save_current_section, style="Accent.TButton")
         save_btn.pack(side=tk.LEFT, padx=10)
-        
-        cancel_btn = ttk.Button(button_frame, text="Cancel", 
-                              command=lambda: self.load_config())
+        cancel_btn = ttk.Button(button_frame, text="Cancel", command=self.refresh_config_tab)
         cancel_btn.pack(side=tk.LEFT, padx=10)
+
+        # Show the first section by default
+        sidebar.selection_set("0")
+        self.show_section_editor(0)
+
+    def on_sidebar_select(self, event=None):
+        idxs = self.sidebar.selection()
+        if idxs:
+            idx = int(idxs[0])
+            self.show_section_editor(idx)
+
+    def show_section_editor(self, idx):
+        """Show section editor for domain-specific configuration"""
+        # Clear previous widgets
+        for widget in self.editor_frame.winfo_children():
+            if isinstance(widget, ttk.Frame):
+                continue  # keep button_frame
+            widget.destroy()
+        label, key, emoji = self.config_sections[idx]
+        # Section label
+        section_label = ttk.Label(self.editor_frame, text=f"{emoji}  {label}", font=("Arial", 12, "bold"))
+        section_label.pack(anchor=tk.W, pady=(0, 6))
         
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        # Show current domain info
+        if self.current_domain:
+            domain_info = ttk.Label(self.editor_frame, text=f"Editing for domain: {self.current_domain}", 
+                                  font=("Arial", 9, "italic"), foreground="blue")
+            domain_info.pack(anchor=tk.W, pady=(0, 10))
+        else:
+            warning_info = ttk.Label(self.editor_frame, text="⚠️ No domain selected - using base configuration", 
+                                   font=("Arial", 9, "italic"), foreground="orange")
+            warning_info.pack(anchor=tk.W, pady=(0, 10))
+        
+        # Editor
+        self.section_text = scrolledtext.ScrolledText(self.editor_frame, height=16)
+        self.section_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Load configuration from domain-specific directory
+        config_dir = self.get_current_config_dir()
+        value = self.config.get(key, "" if key == "style_prompt" else {} if key.endswith("links") or key.endswith("keywords") or key.endswith("synonyms") else [] if key in ("static_clubs", "stop_words", "do_follow_urls") else "")
+        
+        # Try to load from specific config files in domain directory
+        if key != "style_prompt":
+            config_file = os.path.join(config_dir, f"{key}.json")
+            if os.path.exists(config_file):
+                try:
+                    import json
+                    with open(config_file) as f:
+                        value = json.load(f)
+                except Exception as e:
+                    self.logger.warning(f"Could not load {key}.json from domain directory: {e}")
+        else:
+            # Style prompt is stored differently
+            config_file = os.path.join(config_dir, "style_prompt.json")
+            if os.path.exists(config_file):
+                try:
+                    import json
+                    with open(config_file) as f:
+                        data = json.load(f)
+                        value = data.get("style_prompt", "")
+                except Exception as e:
+                    self.logger.warning(f"Could not load style_prompt.json from domain directory: {e}")
+        
+        import json
+        if key == "style_prompt":
+            self.section_text.insert(tk.END, value)
+        else:
+            self.section_text.insert(tk.END, json.dumps(value, indent=2))
+        self.current_section_key = key
+
+    def save_current_section(self):
+        """Save current section to domain-specific configuration"""
+        key = self.current_section_key
+        text = self.section_text.get("1.0", tk.END).strip()
+        config_dir = self.get_current_config_dir()
+        
+        import json
+        try:
+            if key == "style_prompt":
+                # Save to both main config and style_prompt.json in domain directory
+                self.config[key] = text
+                style_prompt_file = os.path.join(config_dir, "style_prompt.json")
+                with open(style_prompt_file, "w") as f:
+                    json.dump({"style_prompt": text}, f, indent=2)
+            else:
+                # Parse JSON and save to both main config and specific file in domain directory
+                data = json.loads(text)
+                self.config[key] = data
+                specific_file = os.path.join(config_dir, f"{key}.json")
+                with open(specific_file, "w") as f:
+                    json.dump(data, f, indent=2)
+            
+            # Save main config
+            self.save_config()
+            
+            domain_info = f" for domain: {self.current_domain}" if self.current_domain else ""
+            self.logger.info(f"✅ Saved {key.replace('_', ' ').title()}{domain_info}")
+            messagebox.showinfo("Success", f"Saved {key.replace('_', ' ').title()}{domain_info} successfully.")
+            
+        except Exception as e:
+            self.logger.error(f"Error saving {key}: {e}")
+            messagebox.showerror("Invalid Data", f"Error in {key}: {e}")
+
+    def create_source_config_tab(self):
+        self.source_config_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.source_config_frame, text="🛠️ Source Configuration")
+
+        self.source_edit_mode = False
+        self.source_config_vars = {}
+        self.source_config_prev = {}
+
+        # Frame with edit icon
+        form = ttk.LabelFrame(self.source_config_frame, text="Edit Source Configuration", padding=20)
+        form.pack(pady=20, padx=40, fill=tk.BOTH, expand=True)
+        self.source_config_form = form
+
+        # Edit icon/button
+        self.edit_icon_btn = ttk.Button(form, text="✏️ Edit", width=7, command=self.toggle_source_edit_mode)
+        self.edit_icon_btn.place(relx=1.0, x=-10, y=10, anchor="ne")
+
+        # Fields
+        fields = [
+            ("Source URL", 'source_url'),
+            ("Article Selector", 'article_selector'),
+            ("WordPress Base URL", 'wp_base_url'),
+            ("WordPress Username", 'wp_username'),
+            ("WordPress Password", 'wp_password'),
+            ("Gemini API Key", 'gemini_api_key'),
+            ("OpenAI API Key", 'openai_api_key'),
+            ("Max Articles", 'max_articles'),
+            ("Timeout (seconds)", 'timeout'),
+            ("Headless Mode", 'headless_mode')
+        ]
+        self.source_config_fields = fields
+        for i, (label, key) in enumerate(fields):
+            ttk.Label(form, text=label+":").grid(row=i, column=0, sticky=tk.W, pady=5)
+            if key == 'headless_mode':
+                var = tk.BooleanVar(value=self.config.get(key, True))
+                entry = ttk.Checkbutton(form, variable=var, state='disabled')
+                entry.grid(row=i, column=1, sticky=tk.W, pady=5, padx=10)
+            elif key in ('max_articles', 'timeout'):
+                var = tk.IntVar(value=self.config.get(key, 2 if key=='max_articles' else 10))
+                entry = ttk.Spinbox(form, from_=1, to=60, textvariable=var, width=10, state='readonly')
+                entry.grid(row=i, column=1, sticky=tk.W, pady=5, padx=10)
+            else:
+                var = tk.StringVar(value=self.config.get(key, ''))
+                show = '*' if 'password' in key or 'key' in key else None
+                entry = ttk.Entry(form, textvariable=var, width=50, state='readonly', show=show)
+                entry.grid(row=i, column=1, pady=5, padx=10)
+            self.source_config_vars[key] = (var, entry)
+
+        # Save/Cancel/Set Default buttons (hidden unless in edit mode)
+        self.source_btn_frame = ttk.Frame(form)
+        self.source_btn_frame.grid(row=len(fields), column=0, columnspan=2, pady=20)
+        self.save_btn = ttk.Button(self.source_btn_frame, text="Save", command=self.save_source_config, style="Accent.TButton")
+        self.cancel_btn = ttk.Button(self.source_btn_frame, text="Cancel", command=self.cancel_source_edit)
+        self.set_default_btn = ttk.Button(self.source_btn_frame, text="Set as Default", command=self.set_source_config_default)
+        self.save_btn.pack(side=tk.LEFT, padx=10)
+        self.cancel_btn.pack(side=tk.LEFT, padx=10)
+        self.set_default_btn.pack(side=tk.LEFT, padx=10)
+        self.source_btn_frame.grid_remove()
+
+    def toggle_source_edit_mode(self):
+        self.source_edit_mode = not self.source_edit_mode
+        if self.source_edit_mode:
+            # Save previous values
+            self.source_config_prev = {k: v[0].get() for k, v in self.source_config_vars.items()}
+            # Enable all fields
+            for key, (var, entry) in self.source_config_vars.items():
+                if key == 'headless_mode':
+                    entry.config(state='normal')
+                elif key in ('max_articles', 'timeout'):
+                    entry.config(state='normal')
+                else:
+                    entry.config(state='normal')
+            self.edit_icon_btn.config(text="💾 Save", command=self.save_source_config)
+            self.source_btn_frame.grid()
+        else:
+            # Disable all fields
+            for key, (var, entry) in self.source_config_vars.items():
+                if key == 'headless_mode':
+                    entry.config(state='disabled')
+                elif key in ('max_articles', 'timeout'):
+                    entry.config(state='readonly')
+                else:
+                    entry.config(state='readonly')
+            self.edit_icon_btn.config(text="✏️ Edit", command=self.toggle_source_edit_mode)
+            self.source_btn_frame.grid_remove()
+
+    def save_source_config(self):
+        # Update config from UI
+        for key, (var, entry) in self.source_config_vars.items():
+            self.config[key] = var.get()
+        self.save_config()
+        self.logger.info("Source configuration saved successfully")
+        messagebox.showinfo("Success", "Source configuration saved successfully")
+        self.toggle_source_edit_mode()
+
+    def cancel_source_edit(self):
+        # Restore previous values
+        for key, (var, entry) in self.source_config_vars.items():
+            var.set(self.source_config_prev.get(key, var.get()))
+        self.toggle_source_edit_mode()
         
     def create_status_bar(self):
         """Create status bar"""
@@ -741,16 +1817,41 @@ Licensed under the MIT License"""
         # Get current log level setting
         current_level = self.log_level_var.get() if hasattr(self, 'log_level_var') else "INFO"
         
-        # Determine message level
+        # Determine message level and category
         message_level = "INFO"  # Default
+        message_category = "INFO"  # Default
+        
+        # Extract level from message
         if "ERROR" in message:
             message_level = "ERROR"
+            message_category = "ERROR"
         elif "WARNING" in message:
             message_level = "WARNING"
+            message_category = "WARNING"
         elif "DEBUG" in message:
             message_level = "DEBUG"
+            message_category = "DEBUG"
+        elif "AUTOMATION" in message:
+            message_level = "INFO"
+            message_category = "AUTOMATION"
+        elif "API" in message:
+            message_level = "INFO"
+            message_category = "API"
+        elif "SECURITY" in message:
+            message_level = "WARNING"
+            message_category = "SECURITY"
         elif "INFO" in message:
             message_level = "INFO"
+            message_category = "INFO"
+        
+        # Also check message content for category hints
+        lower_message = message.lower()
+        if any(word in lower_message for word in ['automation', 'processing', 'article', 'blog']):
+            message_category = "AUTOMATION"
+        elif any(word in lower_message for word in ['api', 'request', 'response', 'wordpress', 'endpoint']):
+            message_category = "API"
+        elif any(word in lower_message for word in ['security', 'auth', 'login', 'credential', 'password']):
+            message_category = "SECURITY"
             
         # Level hierarchy: DEBUG < INFO < WARNING < ERROR
         level_hierarchy = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
@@ -766,23 +1867,17 @@ Licensed under the MIT License"""
             # Insert message
             self.logs_text.insert(tk.END, message + "\n")
             
-            # Apply color based on log level
+            # Apply color based on log category/level
             start_line = self.logs_text.index(tk.END + "-2l")
             end_line = self.logs_text.index(tk.END + "-1l")
             
-            if message_level == "ERROR":
-                self.logs_text.tag_add("ERROR", start_line, end_line)
-            elif message_level == "WARNING":
-                self.logs_text.tag_add("WARNING", start_line, end_line)
-            elif message_level == "INFO":
-                self.logs_text.tag_add("INFO", start_line, end_line)
-            elif message_level == "DEBUG":
-                self.logs_text.tag_add("DEBUG", start_line, end_line)
+            # Apply appropriate tag for coloring
+            self.logs_text.tag_add(message_category, start_line, end_line)
                 
             # Auto-scroll to bottom
             self.logs_text.see(tk.END)
             
-            # Update status bar
+            # Update status bar based on message importance
             if hasattr(self, 'status_label'):
                 if message_level == "ERROR":
                     self.status_label.config(text="❌ Error occurred - check logs")
@@ -792,6 +1887,12 @@ Licensed under the MIT License"""
                     self.status_label.config(text="✅ Automation completed")
                 elif "Processing" in message:
                     self.status_label.config(text="📝 Processing articles...")
+                elif message_category == "AUTOMATION":
+                    self.status_label.config(text="🤖 Automation in progress...")
+                elif message_category == "API":
+                    self.status_label.config(text="🌐 API operations...")
+                elif message_category == "SECURITY":
+                    self.status_label.config(text="🔒 Security event logged")
         
         # Limit log size to prevent memory issues
         lines = self.logs_text.get(1.0, tk.END).count('\n')
@@ -832,6 +1933,9 @@ Licensed under the MIT License"""
                 messagebox.showerror("Error", "Please fill in all WordPress credentials")
                 return
                 
+            self.log_api_event("Testing WordPress connection", "info")
+            self.log_security_event(f"Connection test attempted for {wp_url} with user {username}", "info")
+            
             # Test API endpoint
             auth = HTTPBasicAuth(username, password)
             test_url = f"{wp_url}/posts"
@@ -841,16 +1945,19 @@ Licensed under the MIT License"""
             if response.status_code == 200:
                 self.connection_status.config(text="✅ Connected successfully", foreground="green")
                 self.connection_indicator.config(foreground="green")
-                self.logger.info("WordPress connection test successful")
+                self.log_api_event(f"WordPress connection successful - Status: {response.status_code}", "info")
+                self.log_security_event("WordPress authentication successful", "info")
                 return True
             else:
                 self.connection_status.config(text=f"❌ Connection failed ({response.status_code})", foreground="red")
-                self.logger.error(f"Connection test failed with status {response.status_code}")
+                self.log_api_event(f"Connection test failed - Status: {response.status_code}", "error")
+                self.log_security_event(f"WordPress authentication failed - Status: {response.status_code}", "warning")
                 return False
                 
         except Exception as e:
             self.connection_status.config(text=f"❌ Connection error: {str(e)}", foreground="red")
-            self.logger.error(f"Connection test error: {e}")
+            self.log_api_event(f"Connection test error: {e}", "error")
+            self.log_security_event(f"Connection test failed with exception: {e}", "error")
             return False
             
     def login(self):
@@ -916,6 +2023,16 @@ Licensed under the MIT License"""
                     self.automation_engine.EXTERNAL_LINKS = external_links
             except:
                 self.logger.error("Invalid JSON format for external links")
+            
+            # Save advanced configs
+            self.save_json_config_from_text("internal_links.json", self.internal_links_text.get("1.0", tk.END))
+            self.save_json_config_from_text("external_links.json", self.external_links_text.get("1.0", tk.END))
+            self.save_style_prompt_from_text(self.style_prompt_text.get("1.0", tk.END))
+            self.save_json_config_from_text("category_keywords.json", self.category_keywords_text.get("1.0", tk.END))
+            self.save_json_config_from_text("tag_synonyms.json", self.tag_synonyms_text.get("1.0", tk.END))
+            self.save_json_config_from_text("static_clubs.json", self.static_clubs_text.get("1.0", tk.END))
+            self.save_json_config_from_text("stop_words.json", self.stop_words_text.get("1.0", tk.END))
+            self.save_json_config_from_text("do_follow_urls.json", self.do_follow_urls_text.get("1.0", tk.END))
             
             # Save to file
             with open("blog_config.json", 'w') as f:
@@ -994,13 +2111,13 @@ Licensed under the MIT License"""
                 # Try to initialize it
                 if self.has_valid_credentials():
                     self.automation_engine = BlogAutomationEngine(self.config, self.logger)
-                    self.logger.info("✅ Automation engine initialized")
+                    self.log_automation_event("Automation engine initialized successfully", "info")
                 else:
                     messagebox.showerror("Error", "Please login first in the Authentication tab")
                     self.notebook.select(self.login_frame)
                     return
             except Exception as e:
-                self.logger.error(f"Failed to initialize automation engine: {e}")
+                self.log_automation_event(f"Failed to initialize automation engine: {e}", "error")
                 messagebox.showerror("Error", f"Failed to initialize automation engine: {e}")
                 return
         
@@ -1170,69 +2287,105 @@ Licensed under the MIT License"""
             elapsed = f"{time.time() - step_start:.1f}s"
             self.update_step_status(4, 'completed', 'External links added', elapsed)
             
-            # Step 5: Generate SEO metadata
+            # Step 4.5: Add content images if enabled
+            content_image_source = self.content_image_var.get()
+            if content_image_source != "none":
+                step_start = time.time()
+                self.update_step_status(5, 'running', f'Adding {content_image_source} content images...')
+                
+                if content_image_source == "openai":
+                    # Get custom prompt if enabled
+                    custom_prompt = None
+                    if self.use_custom_prompt_var.get():
+                        try:
+                            # Load the custom prompt from the saved config
+                            config_dir = self.get_current_config_dir()
+                            config_path = os.path.join(config_dir, "openai_image_config.json")
+                            if os.path.exists(config_path):
+                                with open(config_path, 'r') as f:
+                                    openai_config = json.load(f)
+                                    custom_prompt = openai_config.get('custom_prompt', '').strip()
+                                    if not custom_prompt:
+                                        custom_prompt = None
+                        except Exception as e:
+                            self.logger.warning(f"Could not load custom prompt: {e}")
+                    
+                    final_content = self.automation_engine.add_openai_image_to_content(
+                        final_content, paraphrased_title, custom_prompt
+                    )
+                elif content_image_source == "getty":
+                    final_content = self.automation_engine.add_getty_image_to_content(
+                        final_content, paraphrased_title
+                    )
+                
+                elapsed = f"{time.time() - step_start:.1f}s"
+                self.update_step_status(5, 'completed', f'{content_image_source.title()} content images added', elapsed)
+            else:
+                self.update_step_status(5, 'skipped', 'No content images selected', '')
+            
+            # Step 6: Generate SEO metadata
             step_start = time.time()
-            self.update_step_status(5, 'running', 'Generating SEO title and meta description...')
+            self.update_step_status(6, 'running', 'Generating SEO title and meta description...')
             
             seo_title, meta_description = self.automation_engine.generate_seo_title_and_meta(paraphrased_title, final_content)
             elapsed = f"{time.time() - step_start:.1f}s"
-            self.update_step_status(5, 'completed', f'SEO title: {len(seo_title)} chars', elapsed)
+            self.update_step_status(6, 'completed', f'SEO title: {len(seo_title)} chars', elapsed)
             
-            # Step 6: Extract keyphrases
+            # Step 7: Extract keyphrases
             step_start = time.time()
-            self.update_step_status(6, 'running', 'Extracting focus keyphrase and additional keyphrases...')
+            self.update_step_status(7, 'running', 'Extracting focus keyphrase and additional keyphrases...')
             
             focus_keyphrase, additional_keyphrases = self.automation_engine.extract_keyphrases_with_gemini(paraphrased_title, final_content)
             elapsed = f"{time.time() - step_start:.1f}s"
             keyphrase_count = 1 + len(additional_keyphrases) if focus_keyphrase else len(additional_keyphrases)
-            self.update_step_status(6, 'completed', f'Extracted {keyphrase_count} keyphrases', elapsed)
+            self.update_step_status(7, 'completed', f'Extracted {keyphrase_count} keyphrases', elapsed)
             
-            # Step 7: Handle images based on selected source
+            # Step 8: Handle featured images based on selected source
             image_source = self.image_source_var.get()
             media_id = None
             
             if image_source == "openai":
                 step_start = time.time()
-                self.update_step_status(7, 'running', 'Generating image with OpenAI...')
+                self.update_step_status(8, 'running', 'Preparing OpenAI featured image...')
                 
                 # We'll set the media_id but post_id will be None until we create the post
                 # We'll attach the image to the post later
                 media_id = None  # Will be set after post creation
                 elapsed = f"{time.time() - step_start:.1f}s"
-                self.update_step_status(7, 'completed', 'Image generated', elapsed)
+                self.update_step_status(8, 'completed', 'Featured image prepared', elapsed)
                 
             elif image_source == "getty":
                 step_start = time.time()
-                self.update_step_status(7, 'running', 'Preparing Getty Images for featured image...')
+                self.update_step_status(8, 'running', 'Preparing Getty Images for featured image...')
                 
                 # For Getty Images, we'll set it as featured image after post creation
                 # Just mark that we need to process Getty images later
                 media_id = None  # Will be set after post creation
                 elapsed = f"{time.time() - step_start:.1f}s"
-                self.update_step_status(7, 'completed', 'Getty Images prepared', elapsed)
+                self.update_step_status(8, 'completed', 'Getty Images prepared', elapsed)
                 
             else:
-                self.update_step_status(7, 'skipped', 'No images selected', '')
+                self.update_step_status(8, 'skipped', 'No featured images selected', '')
             
-            # Step 8: Detect categories
+            # Step 9: Detect categories
             step_start = time.time()
-            self.update_step_status(8, 'running', 'Detecting categories...')
+            self.update_step_status(9, 'running', 'Detecting categories...')
             
             categories = self.automation_engine.detect_categories(paraphrased_title + " " + final_content)
             elapsed = f"{time.time() - step_start:.1f}s"
-            self.update_step_status(8, 'completed', f'Found {len(categories)} categories', elapsed)
+            self.update_step_status(9, 'completed', f'Found {len(categories)} categories', elapsed)
             
-            # Step 9: Generate tags
+            # Step 10: Generate tags
             step_start = time.time()
-            self.update_step_status(9, 'running', 'Generating tags...')
+            self.update_step_status(10, 'running', 'Generating tags...')
             
             tags = self.automation_engine.generate_tags_with_gemini(final_content)
             elapsed = f"{time.time() - step_start:.1f}s"
-            self.update_step_status(9, 'completed', f'Generated {len(tags)} tags', elapsed)
+            self.update_step_status(10, 'completed', f'Generated {len(tags)} tags', elapsed)
             
-            # Step 10: Create WordPress post
+            # Step 11: Create WordPress post
             step_start = time.time()
-            self.update_step_status(10, 'running', 'Creating WordPress post...')
+            self.update_step_status(11, 'running', 'Creating WordPress post...')
             
             post_id, post_title = self.automation_engine.post_to_wordpress_with_seo(
                 title=paraphrased_title,
@@ -1246,16 +2399,16 @@ Licensed under the MIT License"""
             )
             
             if not post_id:
-                self.update_step_status(10, 'error', 'Failed to create WordPress post')
+                self.update_step_status(11, 'error', 'Failed to create WordPress post')
                 return False
                 
             elapsed = f"{time.time() - step_start:.1f}s"
-            self.update_step_status(10, 'completed', f'Post created (ID: {post_id})', elapsed)
+            self.update_step_status(11, 'completed', f'Post created (ID: {post_id})', elapsed)
             
-            # Step 7b: Now that we have a post ID, handle images based on selected source
+            # Step 8b: Now that we have a post ID, handle featured images based on selected source
             if image_source == "openai":
                 step_start = time.time()
-                self.update_step_status(7, 'running', 'Uploading OpenAI image and setting as featured...')
+                self.update_step_status(8, 'running', 'Uploading OpenAI featured image...')
                 
                 media_id = self.automation_engine.generate_and_upload_featured_image(
                     paraphrased_title, 
@@ -1265,13 +2418,13 @@ Licensed under the MIT License"""
                 
                 if media_id:
                     elapsed = f"{time.time() - step_start:.1f}s"
-                    self.update_step_status(7, 'completed', f'OpenAI featured image set (ID: {media_id})', elapsed)
+                    self.update_step_status(8, 'completed', f'OpenAI featured image set (ID: {media_id})', elapsed)
                 else:
-                    self.update_step_status(7, 'error', 'Failed to set OpenAI featured image')
+                    self.update_step_status(8, 'error', 'Failed to set OpenAI featured image')
                     
             elif image_source == "getty":
                 step_start = time.time()
-                self.update_step_status(7, 'running', 'Searching and downloading Getty Images...')
+                self.update_step_status(8, 'running', 'Searching and downloading Getty featured image...')
                 
                 media_id = self.automation_engine.generate_and_upload_getty_featured_image(
                     paraphrased_title, 
@@ -1281,12 +2434,12 @@ Licensed under the MIT License"""
                 
                 if media_id:
                     elapsed = f"{time.time() - step_start:.1f}s"
-                    self.update_step_status(7, 'completed', f'Getty featured image set (ID: {media_id})', elapsed)
+                    self.update_step_status(8, 'completed', f'Getty featured image set (ID: {media_id})', elapsed)
                 else:
-                    self.update_step_status(7, 'error', 'Failed to set Getty featured image')
+                    self.update_step_status(8, 'error', 'Failed to set Getty featured image')
             
-            # Step 11: Finalize
-            self.update_step_status(11, 'completed', f'Article processing completed in {time.time() - start_time:.1f}s')
+            # Step 12: Finalize
+            self.update_step_status(12, 'completed', f'Article processing completed in {time.time() - start_time:.1f}s')
             
             return True
             
@@ -1448,7 +2601,9 @@ See the Logs tab for more technical details."""
             messagebox.showerror("Error", f"Failed to clear posted links: {e}")
 
     def has_valid_credentials(self):
-        """Check if valid credentials exist in the config"""
+        """Check if valid credentials exist in the current domain config"""
+        if not self.config:
+            return False
         required_fields = ['wp_base_url', 'wp_username', 'wp_password', 'gemini_api_key']
         return all(field in self.config and self.config[field] for field in required_fields)
 
@@ -1464,21 +2619,282 @@ See the Logs tab for more technical details."""
         
     def log_automation_start(self):
         """Log automation start with detailed info"""
-        self.add_log_message("🚀 Starting blog automation...")
-        self.add_log_message(f"📊 Configuration: Max articles={self.config.get('max_articles', 'N/A')}")
-        self.add_log_message(f"🌐 Source URL: {self.config.get('source_url', 'N/A')}")
-        self.add_log_message(f"📝 WordPress URL: {self.config.get('wp_base_url', 'N/A')}")
+        self.log_automation_event("🚀 Blog automation session started")
+        self.log_automation_event(f"📊 Configuration: Max articles={self.config.get('max_articles', 'N/A')}")
+        self.log_automation_event(f"🌐 Source URL: {self.config.get('source_url', 'N/A')}")
+        self.log_automation_event(f"📝 WordPress URL: {self.config.get('wp_base_url', 'N/A')}")
         image_source = getattr(self, 'image_source_var', None)
         if image_source:
-            self.add_log_message(f"🖼️ Image source: {image_source.get()}")
+            self.log_automation_event(f"🖼️ Image source: {image_source.get()}")
+        
+        # Also log to main logger for visibility
+        self.logger.info("🚀 Starting blog automation...")
+        self.logger.info(f"📊 Configuration: Max articles={self.config.get('max_articles', 'N/A')}")
+        self.logger.info(f"🌐 Source URL: {self.config.get('source_url', 'N/A')}")
+        self.logger.info(f"📝 WordPress URL: {self.config.get('wp_base_url', 'N/A')}")
+        if image_source:
+            self.logger.info(f"🖼️ Image source: {image_source.get()}")
             
     def log_automation_complete(self, success_count=0, error_count=0):
         """Log automation completion with summary"""
-        self.add_log_message("🏁 Blog automation completed!")
-        self.add_log_message(f"✅ Successfully processed: {success_count} articles")
+        self.log_automation_event("🏁 Blog automation session completed")
+        self.log_automation_event(f"✅ Successfully processed: {success_count} articles")
         if error_count > 0:
-            self.add_log_message(f"❌ Errors encountered: {error_count} articles")
-        self.add_log_message("📋 Check logs above for detailed information")
+            self.log_automation_event(f"❌ Errors encountered: {error_count} articles", "warning")
+        self.log_automation_event("📋 Session summary complete")
+        
+        # Also log to main logger
+        self.logger.info("🏁 Blog automation completed!")
+        self.logger.info(f"✅ Successfully processed: {success_count} articles")
+        if error_count > 0:
+            self.logger.info(f"❌ Errors encountered: {error_count} articles")
+        self.logger.info("📋 Check logs above for detailed information")
+
+    def on_config_selected(self, event=None):
+        name = self.config_selector_var.get()
+        self.config = self.load_config(name)
+        self.refresh_config_tab()
+        self.notebook.select(self.config_frame)  # Ensure Configuration tab stays active
+
+    def refresh_config_tab(self):
+        # Destroy and recreate config tab to reflect new config
+        self.config_frame.destroy()
+        self.create_config_tab()
+        self.notebook.select(self.config_frame)  # Ensure Configuration tab stays active
+
+    def add_config(self):
+        name = self.prompt_for_name("New Configuration Name:")
+        if name and name not in self.get_config_files():
+            import copy
+            new_config = copy.deepcopy(self.config)
+            path = os.path.join(self.config_dir, f"{name}.json")
+            with open(path, "w") as f:
+                json.dump(new_config, f, indent=2)
+            self.config_files = self.get_config_files()
+            self.config_selector['values'] = self.config_files
+            self.config_selector_var.set(name)
+            self.on_config_selected()
+            messagebox.showinfo("Configuration Created", f"Configuration '{name}' has been created. You can now edit its settings.")
+
+    def duplicate_config(self):
+        name = self.prompt_for_name("Duplicate As:")
+        if name and name not in self.get_config_files():
+            self.save_config(name)
+            self.config_files = self.get_config_files()
+            self.config_selector['values'] = self.config_files
+            self.config_selector_var.set(name)
+            self.on_config_selected()
+
+    def rename_config(self):
+        old = self.active_config_name
+        name = self.prompt_for_name("Rename Configuration To:")
+        if name and name not in self.get_config_files():
+            old_path = os.path.join(self.config_dir, f"{old}.json")
+            new_path = os.path.join(self.config_dir, f"{name}.json")
+            os.rename(old_path, new_path)
+            self.config_files = self.get_config_files()
+            self.config_selector['values'] = self.config_files
+            self.config_selector_var.set(name)
+            self.on_config_selected()
+
+    def delete_config(self):
+        name = self.active_config_name
+        if name == "default":
+            messagebox.showerror("Error", "Cannot delete the default configuration.")
+            return
+        if messagebox.askyesno("Delete Configuration", f"Are you sure you want to delete '{name}'?"):
+            path = os.path.join(self.config_dir, f"{name}.json")
+            os.remove(path)
+            self.config_files = self.get_config_files()
+            self.config_selector['values'] = self.config_files
+            self.config_selector_var.set("default")
+            self.on_config_selected()
+
+    def prompt_for_name(self, prompt):
+        popup = tk.Toplevel(self.root)
+        popup.title(prompt)
+        tk.Label(popup, text=prompt).pack(padx=10, pady=10)
+        entry = tk.Entry(popup)
+        entry.pack(padx=10, pady=5)
+        entry.focus_set()
+        result = {'name': None}
+        def on_ok():
+            result['name'] = entry.get().strip()
+            popup.destroy()
+        tk.Button(popup, text="OK", command=on_ok).pack(pady=10)
+        self.root.wait_window(popup)
+        return result['name']
+
+    def load_json_config_text(self, filename):
+        path = os.path.join(self.config_dir, filename)
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.dumps(json.load(f), indent=2)
+        return "{}" if filename.endswith(".json") else "[]"
+
+    def load_style_prompt_text(self):
+        path = os.path.join(self.config_dir, "style_prompt.json")
+        if os.path.exists(path):
+            with open(path) as f:
+                data = json.load(f)
+                return data.get("style_prompt", "")
+        return ""
+
+    def save_json_config_from_text(self, filename, text):
+        path = os.path.join(self.config_dir, filename)
+        try:
+            data = json.loads(text)
+            with open(path, "w") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            self.logger.error(f"Invalid JSON for {filename}: {e}")
+            messagebox.showerror("Invalid JSON", f"Error in {filename}: {e}")
+            raise
+
+    def save_style_prompt_from_text(self, text):
+        path = os.path.join(self.config_dir, "style_prompt.json")
+        try:
+            with open(path, "w") as f:
+                json.dump({"style_prompt": text.strip()}, f, indent=2)
+        except Exception as e:
+            self.logger.error(f"Error saving style prompt: {e}")
+            messagebox.showerror("Error", f"Failed to save style prompt: {e}")
+            raise
+
+    def set_source_config_default(self):
+        # Save current config as default.json in configs/
+        import shutil
+        self.save_source_config()
+        default_path = os.path.join(self.config_dir, "default.json")
+        current_path = os.path.join(self.config_dir, f"{self.active_config_name}.json")
+        shutil.copyfile(current_path, default_path)
+        self.logger.info("Current source configuration set as default")
+        messagebox.showinfo("Default Set", "Current source configuration set as default.")
+
+    def extract_domain_from_url(self, url: str) -> str:
+        """Extract domain name from WordPress URL for configuration separation"""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower()
+            # Remove www. prefix if present
+            if domain.startswith('www.'):
+                domain = domain[4:]
+            # Remove common subdomains and clean up
+            domain = domain.replace('.', '_').replace('-', '_')
+            return domain
+        except Exception as e:
+            self.logger.error(f"Error extracting domain from URL: {e}")
+            return "default"
+    
+    def setup_domain_config_directory(self, domain: str):
+        """Setup configuration directory for a specific domain"""
+        try:
+            # Create domain-specific config directory
+            domain_dir = os.path.join(self.base_config_dir, domain)
+            if not os.path.exists(domain_dir):
+                os.makedirs(domain_dir, exist_ok=True)
+                self.logger.info(f"📁 Created configuration directory for domain: {domain}")
+            
+            self.current_domain = domain
+            self.domain_config_dir = domain_dir
+            
+            # Initialize default configuration files for this domain if they don't exist
+            self.initialize_domain_config_files(domain_dir)
+            
+            # Update config files list for this domain
+            self.config_files = self.get_config_files()
+            
+            return domain_dir
+            
+        except Exception as e:
+            self.logger.error(f"Error setting up domain config directory: {e}")
+            # Fallback to base directory
+            self.domain_config_dir = self.base_config_dir
+            return self.base_config_dir
+    
+    def initialize_domain_config_files(self, domain_dir: str):
+        """Initialize default configuration files for a new domain"""
+        try:
+            # List of configuration files to initialize
+            config_files = {
+                "default.json": self.get_default_config(),
+                "internal_links.json": {},
+                "external_links.json": {},
+                "style_prompt.json": {"style_prompt": ""},
+                "category_keywords.json": {},
+                "tag_synonyms.json": {},
+                "static_clubs.json": [],
+                "stop_words.json": [],
+                "do_follow_urls.json": [],
+                "openai_image_config.json": {
+                    "image_size": "1024x1024",
+                    "image_style": "photorealistic", 
+                    "image_model": "dall-e-3",
+                    "num_images": 1,
+                    "prompt_prefix": "",
+                    "prompt_suffix": "",
+                    "custom_prompt": ""
+                },
+                "weights.json": {
+                    "summary_length": 120,
+                    "title_length": 60,
+                    "content_weight": 1.0,
+                    "seo_weight": 1.0,
+                    "image_weight": 1.0
+                }
+            }
+            
+            # Copy from base config directory if files exist there, otherwise create defaults
+            for filename, default_content in config_files.items():
+                domain_file_path = os.path.join(domain_dir, filename)
+                base_file_path = os.path.join(self.base_config_dir, filename)
+                
+                if not os.path.exists(domain_file_path):
+                    if os.path.exists(base_file_path) and filename != "default.json":
+                        # Copy existing configuration as template (except default.json)
+                        import shutil
+                        shutil.copy2(base_file_path, domain_file_path)
+                        self.logger.info(f"📋 Copied template configuration: {filename}")
+                    else:
+                        # Create default configuration
+                        with open(domain_file_path, 'w') as f:
+                            json.dump(default_content, f, indent=2)
+                        self.logger.info(f"🆕 Created default configuration: {filename}")
+            
+            # Create .last_used file
+            last_used_path = os.path.join(domain_dir, ".last_used")
+            if not os.path.exists(last_used_path):
+                with open(last_used_path, 'w') as f:
+                    f.write("default")
+                    
+        except Exception as e:
+            self.logger.error(f"Error initializing domain config files: {e}")
+    
+    def get_current_config_dir(self) -> str:
+        """Get the current configuration directory (domain-specific or base)"""
+        return self.domain_config_dir or self.base_config_dir
+
+    # Convenience logging methods
+    def log_automation_event(self, message: str, level: str = "info"):
+        """Log an automation-specific event"""
+        log_method = getattr(self.logger, level.lower(), self.logger.info)
+        log_method(f"🤖 AUTOMATION: {message}")
+        
+    def log_api_event(self, message: str, level: str = "info"):
+        """Log an API-specific event"""
+        log_method = getattr(self.logger, level.lower(), self.logger.info)
+        log_method(f"🌐 API: {message}")
+        
+    def log_security_event(self, message: str, level: str = "warning"):
+        """Log a security-specific event"""
+        log_method = getattr(self.logger, level.lower(), self.logger.warning)
+        log_method(f"🔒 SECURITY: {message}")
+        
+    def log_ui_event(self, message: str, level: str = "debug"):
+        """Log a UI-specific event"""
+        log_method = getattr(self.logger, level.lower(), self.logger.debug)
+        log_method(f"🖥️ UI: {message}")
 
 def main():
     """Main function to run the application"""
@@ -1499,8 +2915,27 @@ def main():
         if app.is_running:
             if messagebox.askokcancel("Quit", "Automation is running. Are you sure you want to quit?"):
                 app.stop_requested = True
+                
+                # Finalize logging session
+                try:
+                    if hasattr(app, 'log_manager'):
+                        from log_manager import finalize_logging
+                        finalize_logging()
+                        app.logger.info("📋 Logging session finalized on application exit")
+                except Exception as e:
+                    print(f"Error finalizing logging: {e}")
+                
                 root.destroy()
         else:
+            # Finalize logging session on normal exit
+            try:
+                if hasattr(app, 'log_manager'):
+                    from log_manager import finalize_logging
+                    finalize_logging()
+                    app.logger.info("📋 Logging session finalized on application exit")
+            except Exception as e:
+                print(f"Error finalizing logging: {e}")
+                
             root.destroy()
             
     root.protocol("WM_DELETE_WINDOW", on_closing)

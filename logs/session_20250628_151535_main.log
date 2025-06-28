@@ -1,0 +1,10 @@
+2025-06-28 15:15:35,817 - session_20250628_151535_main - INFO - log_manager.py:96 - 🚀 Logging system initialized for session: session_20250628_151535
+2025-06-28 15:15:35,817 - session_20250628_151535_main - INFO - log_manager.py:97 - 📁 Log files created in: /Users/vivek-w/Desktop/AUTO-blogger/logs
+2025-06-28 15:15:35,817 - session_20250628_151535_main - INFO - log_manager.py:98 - 📄 Main log: logs/session_20250628_151535_main.log
+2025-06-28 15:15:35,817 - session_20250628_151535_main - INFO - log_manager.py:99 - 🚨 Error log: logs/session_20250628_151535_errors.log
+2025-06-28 15:15:35,817 - session_20250628_151535_main - INFO - log_manager.py:100 - 🔧 Debug log: logs/session_20250628_151535_debug.log
+2025-06-28 15:15:35,817 - session_20250628_151535_main - INFO - log_manager.py:101 - 🤖 Automation log: logs/session_20250628_151535_automation.log
+2025-06-28 15:15:35,817 - session_20250628_151535_main - INFO - log_manager.py:102 - 🌐 API log: logs/session_20250628_151535_api.log
+2025-06-28 15:15:35,817 - session_20250628_151535_main - INFO - log_manager.py:103 - 🔒 Security log: logs/session_20250628_151535_security.log
+2025-06-28 15:15:35,817 - BlogAutomation - INFO - gui_blogger.py:230 - 📁 Session logs in: /Users/vivek-w/Desktop/AUTO-blogger/logs
+2025-06-28 15:15:35,817 - BlogAutomation - INFO - gui_blogger.py:231 - 📄 Log files: 6 categories

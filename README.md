@@ -15,6 +15,15 @@ A comprehensive GUI application for automating WordPress blog posting with AI-po
 - Smart internal and external link injection
 - **Enhanced WordPress SEO compatibility with Yoast and AIOSEO plugins**
 
+🖼️ **Advanced Image Generation**
+- **NEW: OpenAI DALL-E integration for AI-generated images**
+- **Featured image generation** with customizable prompts
+- **Content image insertion** for enhanced article visuals
+- **Custom prompt support** for personalized image styles
+- **Configurable image settings** (size, style, model)
+- Getty Images editorial content integration
+- Professional sports photography enhancement
+
 📊 **Real-Time Progress Tracking**
 - Step-by-step progress visualization
 - Detailed logging with color-coded messages
@@ -90,12 +99,24 @@ python launch_blogger.py
 - Enter your WordPress site URL (e.g., `https://yoursite.com/wp-json/wp/v2`)
 - Enter your WordPress username and password
 - Enter your Gemini API key
+- **NEW: Enter your OpenAI API key** for image generation
 - Click **Test Connection** to verify
 - Click **Login & Save** to store credentials
 
-### 3. Configure Automation Settings
+### 3. Configure OpenAI Image Generation (Optional)
+- Go to the **🖼️ OpenAI Images** tab
+- Configure image settings (size, style, model)
+- Set prompt prefix and suffix for consistent styling
+- **Add custom prompts** for specific image styles
+- Test example prompts for different image types
+- Save configuration
+
+### 4. Configure Automation Settings
 - Go to the **🤖 Automation** tab
 - Set the maximum number of articles to process
+- **Select Featured Images option**: None, OpenAI DALL-E, or Getty Editorial
+- **Select Content Images option**: None, OpenAI Generated, or Getty Editorial
+- **Enable "Use Custom Prompt"** to use your custom image prompts
 - Verify the source URL for article scraping
 - Click **▶️ Start Automation**
 
@@ -136,11 +157,14 @@ The automation follows this step-by-step process:
 3. **AI Paraphrasing** - Use Gemini AI to rewrite and optimize content
 4. **Inject Internal Links** - Add relevant internal site links
 5. **Inject External Links** - Add authoritative external references
-6. **Generate SEO Metadata** - Create optimized titles and descriptions
-7. **Detect Categories** - Automatically categorize content
-8. **Generate Tags** - Extract and create relevant tags
-9. **Create WordPress Post** - Publish as draft to WordPress
-10. **Finalize** - Complete processing and update status
+6. **Add Content Images** - Generate and insert AI images or Getty editorial images within article content
+7. **Generate SEO Metadata** - Create optimized titles and descriptions
+8. **Extract Keyphrases** - Generate focus keyphrase and additional keyphrases for SEO
+9. **Process Featured Images** - Generate or source featured images using OpenAI DALL-E or Getty Images
+10. **Detect Categories** - Automatically categorize content
+11. **Generate Tags** - Extract and create relevant tags
+12. **Create WordPress Post** - Publish as draft to WordPress with all media attached
+13. **Finalize** - Complete processing and update status
 
 ## File Structure
 

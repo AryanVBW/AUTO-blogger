@@ -47,6 +47,9 @@ class BlogAutomationEngine:
         self.logger = logger
         self.posted_links_file = "posted_links.json"
         
+        # Use domain-specific config directory if provided, otherwise default
+        self.config_dir = config.get('config_dir', "configs")
+        
         # Initialize configurations
         self.setup_configurations()
         
@@ -54,114 +57,89 @@ class BlogAutomationEngine:
         """Setup all configuration dictionaries"""
         
         # Category keywords mapping
-        self.CATEGORY_KEYWORDS = {
-            "academy": "Academy",
-            "analysis": "Analysis", 
-            "champions league": "Champions League",
-            "europa league": "Europa League",
-            "exclusive": "Exclusive",
-            "fa cup": "FA Cup",
-            "fantasy premier league": "Fantasy Premier League",
-            "injury update": "Injury News",
-            "injury": "Injury News",
-            "international": "International",
-            "league cup": "League Cup",
-            "loan watch": "Loan Watch",
-            "match preview": "Match Preview",
-            "match report": "Match Report",
-            "player profile": "Player Profile",
-            "premier league derbies": "Premier League Derbies",
-            "transfer news": "Transfer News",
-            "transfer": "Transfer News",
-            "deal": "Transfer News",
-            "sign": "Transfer News",
-            "join": "Transfer News",
-            "agree": "Transfer News",
-            "reaction": "Exclusive",
-            "fans share": "Exclusive",
-            "derby": "Premier League Derbies",
-        }
+        self.CATEGORY_KEYWORDS = self.load_json_config(
+            "category_keywords.json",
+            {
+                "academy": "Academy",
+                "analysis": "Analysis",
+                "champions league": "Champions League",
+                "europa league": "Europa League",
+                "exclusive": "Exclusive",
+                "fa cup": "FA Cup",
+                "fantasy premier league": "Fantasy Premier League",
+                "injury update": "Injury News",
+                "injury": "Injury News",
+                "international": "International",
+                "league cup": "League Cup",
+                "loan watch": "Loan Watch",
+                "match preview": "Match Preview",
+                "match report": "Match Report",
+                "player profile": "Player Profile",
+                "premier league derbies": "Premier League Derbies",
+                "transfer news": "Transfer News",
+                "transfer": "Transfer News",
+                "deal": "Transfer News",
+                "sign": "Transfer News",
+                "join": "Transfer News",
+                "agree": "Transfer News",
+                "reaction": "Exclusive",
+                "fans share": "Exclusive",
+                "derby": "Premier League Derbies",
+            }
+        )
         
         # Internal links
-        self.INTERNAL_LINKS = {
-            "Latest News": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/",
-            "Academy": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/academy/",
-            "Analysis": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/analysis/",
-            "Champions League": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/champions-league/",
-            "Europa League": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/europa-league/",
-            "Exclusive": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/exclusive/",
-            "FA Cup": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/fa-cup/",
-            "Fantasy Premier League": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/fantasy-premier-league-fpl/",
-            "Injury News": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/premier-league-injury-news/",
-            "International": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/international/",
-            "League Cup": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/football-league-cup/",
-            "Loan Watch": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/loan-watch/",
-            "Match Preview": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/match-preview/",
-            "Match Report": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/match-report/",
-            "Player Profile": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/player-profile/",
-            "Premier League Derbies": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/premier-league-derbies/",
-            "Transfer News": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/premier-league-transfer-news-rumours/",
-            "Liverpool": "https://premierleaguenewsnow.com/tag/liverpool-news-now/",
-            "Arsenal": "https://premierleaguenewsnow.com/tag/arsenal-news-now/",
-            "Manchester United": "https://premierleaguenewsnow.com/tag/manchester-united-news-now/",
-            "Manchester City": "https://premierleaguenewsnow.com/tag/manchester-city-news-now/",
-            "Tottenham": "https://premierleaguenewsnow.com/tag/tottenham-hotspur-news-now/",
-            "Chelsea": "https://premierleaguenewsnow.com/tag/chelsea-news-now/",
-            "West Ham": "https://premierleaguenewsnow.com/tag/west-ham-united-news-now/",
-            "Wolves": "https://premierleaguenewsnow.com/tag/wolverhampton-wanderers-news-now/",
-            "Newcastle United": "https://premierleaguenewsnow.com/tag/newcastle-united-news-now/",
-            "Leicester City": "https://premierleaguenewsnow.com/tag/leicester-city-news-now/",
-            "Aston Villa": "https://premierleaguenewsnow.com/tag/aston-villa-news-now/",
-            "Brighton": "https://premierleaguenewsnow.com/tag/brighton-hove-albion-news-now/",
-            "Crystal Palace": "https://premierleaguenewsnow.com/tag/crystal-palace-news-now/",
-            "Brentford": "https://premierleaguenewsnow.com/tag/brentford-news-now/",
-        }
+        self.INTERNAL_LINKS = self.load_json_config(
+            "internal_links.json",
+            {}
+        )
         
         # External links
-        self.EXTERNAL_LINKS = {
-            "premier league": "https://www.premierleague.com/",
-            "leeds united": "https://unitedleeds.com/",
-            "tottenham": "https://tottenhaminsight.com/",
-            "tottenham hotspur": "https://tottenhaminsight.com/",
-            "spurs": "https://tottenhaminsight.com/",
-            "stats": "https://fbref.com/en/",
-            "transfer news": "https://www.transfermarkt.com/",
-            "transfer update": "https://www.transfermarkt.com/",
-        }
+        self.EXTERNAL_LINKS = self.load_json_config(
+            "external_links.json",
+            {}
+        )
         
         # Static clubs for tag generation
-        self.STATIC_CLUBS = {
-            "AFC Bournemouth", "Arsenal", "Aston Villa", "Brentford",
-            "Brighton", "Burnley", "Chelsea", "Crystal Palace",
-            "Everton", "Fulham", "Huddersfield Town", "Leeds United",
-            "Leicester City", "Liverpool", "Manchester City", "Manchester United",
-            "Newcastle United", "Norwich City", "Nottingham Forest", "Sheffield United",
-            "Southampton", "Tottenham Hotspur", "Watford", "West Bromwich Albion",
-            "West Ham United", "Wolverhampton Wanderers", "Women's Super League"
-        }
+        self.STATIC_CLUBS = set(self.load_json_config(
+            "static_clubs.json",
+            []
+        ))
         
         # Tag synonyms
-        self.TAG_SYNONYMS = {
-            "Spurs": "Tottenham Hotspur",
-            "Tottenham": "Tottenham Hotspur",
-            "Leeds": "Leeds United",
-            "Newcastle": "Newcastle United",
-        }
+        self.TAG_SYNONYMS = self.load_json_config(
+            "tag_synonyms.json",
+            {}
+        )
         
         # Stop words for slug generation
-        self.STOP_WORDS = {
-            'a', 'an', 'and', 'the', 'of', 'in', 'on', 'at', 'to', 'for', 'from',
-            'by', 'with', 'is', 'are', 'was', 'were', 'be', 'has', 'had', 'will',
-            'would', 'this', 'that', 'these', 'those', 'as', 'it', 'its', 'but',
-            'or', 'not', 'so', 'can', 'amid'
-        }
+        self.STOP_WORDS = set(self.load_json_config(
+            "stop_words.json",
+            []
+        ))
         
         # Do-follow URLs
-        self.DO_FOLLOW_URLS = {
-            "https://tottenhaminsight.com/",
-            "https://unitedleeds.com/",
-        }
+        self.DO_FOLLOW_URLS = set(self.load_json_config(
+            "do_follow_urls.json",
+            []
+        ))
         
+        # Style prompt for Gemini
+        self.STYLE_PROMPT = self.load_json_config(
+            "style_prompt.json",
+            {"style_prompt": ""}
+        )["style_prompt"]
+        
+    def load_json_config(self, filename, default):
+        path = os.path.join(self.config_dir, filename)
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    return json.load(f)
+            except Exception as e:
+                self.logger.error(f"Error loading {filename}: {e}")
+        return default
+
     @contextmanager
     def get_selenium_driver_context(self):
         """Context manager for Chrome WebDriver"""
@@ -435,42 +413,7 @@ class BlogAutomationEngine:
     def gemini_paraphrase_content_and_title(self, original_title: str, article_html: str) -> Tuple[str, str]:
         """Use Gemini to paraphrase content and generate title"""
         
-        style_prompt = """
-You are a highly skilled and passionate Premier League football blogger. Your task is to rewrite the provided HTML article content into a clean, engaging, and SEO-optimized blog post, specifically tailored for avid football fans. Adhere to every single rule below with utmost precision, without exception:
-
-**Crucial Note on Keywords:** Before generating content, thoroughly analyze the provided article to identify its main subjects, key players (even if names aren't used directly in headlines/headings), clubs, and central themes. These will serve as the "article-specific keywords" required for your headings and overall SEO optimization.
-
-**CONTENT REWRITE RULES:**
-
-1. **Opening Hook:** Begin with 2–3 exciting, punchy introductory sentences (no heading). These must immediately highlight the central story, **explicitly incorporating the most prominent article-related keywords, including main club(s) and relevant player names**, and clearly stating why the topic matters to football fans.
-2. **Strategic Headings:** Insert exactly 2 or 3 `<h3>` headings. Each heading **must prominently feature key article-related keywords, including main club names and specific player names where relevant**. These headings must follow **sentence case** (only the first word and proper nouns capitalized).
-3. **Authentic Voice:** Maintain a confident, energetic, fan-first tone. Write as if you're talking to fellow football fans, offering strong opinions and insider-style commentary.
-4. **Active Voice:** Ensure that at least 90% of all sentences use the active voice.
-5. **Concise Sentences:** Keep every sentence **under 15 words**.
-6. **Clear Language:** Use simple, everyday football language. Avoid jargon, buzzwords, formal tones, or robotic phrasing.
-7. **Paragraph Structure:** Use short paragraphs — each with a maximum of 2–3 sentences.
-8. **Smooth Transitions:** Use transition words like "however," "meanwhile," "furthermore," "as a result," or "consequently" in at least 30% of sentences to ensure seamless flow.
-9. **HTML Integrity:** Wrap **every paragraph** in proper `<p>` tags. Do **not** use any Markdown or bullet points.
-10. **Definitive Conclusion:** Conclude with a strong opinion or outlook using **one of the following exact headings**: `<h3>Author's take</h3>`, `<h3>Conclusion</h3>`, `<h3>What's next</h3>`
-11. **Word Count:** The total output must be **at least 400 words**.
-12. **Readability Score:** Ensure a **Flesch Reading Ease score between 60–70**.
-13. **Human Tone:** The writing must sound natural, emotional, and undeniably human — never robotic.
-14. **WordPress Ready:** The output must begin directly with a `<p>` tag and contain valid HTML only (no Markdown, no code blocks, no system messages).
-
-**HEADLINE GENERATION RULES:**
-
-- **Singular Headline:** Generate **exactly one headline** for the rewritten article. No more, no less.
-- **No Specific Names:** **Crucially, explicitly avoid using any specific player or manager names** in the headline.
-- **Indirect Identifiers Only:** Instead of names, utilize indirect and descriptive phrases. Examples include: "25yo winger," "veteran midfielder," "Championship side's new target," or "former Arsenal ace."
-- **Curiosity-Driven Hook:** The headline must be intensely **curiosity-driven and indirect**. Its primary purpose is to strongly tease the story without revealing its core details immediately, compelling the reader to click and learn more.
-- **Clean Punctuation:** Do **NOT** include any quotes or punctuation marks in the headline whatsoever.
-- **Strict Sentence Case:** Write the headline strictly in **sentence case**. This means:
-  * Only the first word of the headline must be capitalized.
-  * All proper nouns (e.g., specific player names, club names, league names like "Premier League," competition names like "Champions League," specific stadium names like "Old Trafford") must be capitalized according to standard English capitalization rules.
-  * All other words within the headline must remain in lowercase.
-  * **Example: Championship side eyes striker with similar traits to former Premier League ace**
-- **Engaging Vocabulary:** Use simple, clear vocabulary that genuinely connects with football fans, ensuring the headline functions as a strong, compelling hook.
-"""
+        style_prompt = self.STYLE_PROMPT
 
         prompt = f"""
 {style_prompt}
@@ -1157,14 +1100,17 @@ ADDITIONAL: keyphrase1, keyphrase2, keyphrase3, keyphrase4, keyphrase5
                 self.logger.error("OpenAI API key not configured")
                 return None
             
+            # Load OpenAI image configuration
+            openai_config = self.load_openai_image_config()
+            
             # Clean content for prompt creation
             clean_content = re.sub(r'<[^>]+>', '', content[:500])
             clean_title = re.sub(r'<[^>]+>', '', title)
             
-            # Create a prompt for image generation
-            prompt = f"Create a realistic, professional image for a football article with title: {clean_title}. The image should be suitable as a featured image for a sports blog, showing relevant football/soccer imagery. Make it look like a professional sports photograph."
+            # Create enhanced prompt using configuration
+            prompt = self.create_openai_image_prompt(clean_title, clean_content, openai_config, is_featured=True)
             
-            self.logger.info(f"🎨 Generating image with OpenAI for: {clean_title[:50]}...")
+            self.logger.info(f"🎨 Generating featured image with OpenAI for: {clean_title[:50]}...")
             
             # Make OpenAI API request
             import base64
@@ -1178,11 +1124,12 @@ ADDITIONAL: keyphrase1, keyphrase2, keyphrase3, keyphrase4, keyphrase5
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "dall-e-3",
+                    "model": openai_config.get('image_model', 'dall-e-3'),
                     "prompt": prompt,
-                    "n": 1,
-                    "size": "1024x1024",
-                    "response_format": "b64_json"
+                    "n": openai_config.get('num_images', 1),
+                    "size": openai_config.get('image_size', '1024x1024'),
+                    "response_format": "b64_json",
+                    "style": openai_config.get('image_style', 'photorealistic') if openai_config.get('image_model') == 'dall-e-3' else None
                 },
                 timeout=60
             )
@@ -1815,3 +1762,249 @@ Your response (search terms only):
             self.logger.error(f"❌ Error setting Getty featured image: {e}")
             self.logger.error(f"❌ Stack trace: {traceback.format_exc()}")
             return None
+
+    def load_openai_image_config(self) -> Dict:
+        """Load OpenAI image configuration from config file"""
+        config_path = os.path.join(self.config_dir, "openai_image_config.json")
+        default_config = {
+            "image_size": "1024x1024",
+            "image_style": "photorealistic",
+            "image_model": "dall-e-3",
+            "num_images": 1,
+            "prompt_prefix": "",
+            "prompt_suffix": ""
+        }
+        
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    # Merge with defaults to ensure all keys exist
+                    for key, default_value in default_config.items():
+                        if key not in config:
+                            config[key] = default_value
+                    return config
+            except Exception as e:
+                self.logger.warning(f"⚠️ Error loading OpenAI image config: {e}, using defaults")
+        
+        return default_config
+    
+    def create_openai_image_prompt(self, title: str, content: str, config: Dict, is_featured: bool = False, custom_prompt: str = None) -> str:
+        """Create an enhanced prompt for OpenAI image generation"""
+        
+        # If custom prompt is provided, use it with minimal modification
+        if custom_prompt and custom_prompt.strip():
+            base_prompt = custom_prompt.strip()
+            self.logger.info(f"🎨 Using custom prompt for image generation")
+        else:
+            # Generate prompt based on content
+            clean_title = re.sub(r'<[^>]+>', '', title)
+            clean_content = re.sub(r'<[^>]+>', '', content[:300])
+            
+            # Extract key themes from the content
+            themes = self.extract_content_themes(clean_title, clean_content)
+            
+            if is_featured:
+                base_prompt = f"Create a professional, high-quality featured image for a sports blog article titled: '{clean_title}'. The image should capture the essence of {themes} and be suitable as a cover image for the article. Make it visually striking and relevant to football/soccer."
+            else:
+                base_prompt = f"Create a relevant, professional image to complement an article about {themes}. The image should enhance the reader's understanding of the topic and be suitable for insertion within blog content about: '{clean_title}'"
+            
+            self.logger.info(f"🎨 Using auto-generated prompt for image generation")
+        
+        # Add prefix and suffix from configuration
+        prompt_prefix = config.get('prompt_prefix', '').strip()
+        prompt_suffix = config.get('prompt_suffix', '').strip()
+        
+        # Construct final prompt
+        final_prompt = ""
+        if prompt_prefix:
+            final_prompt += prompt_prefix + " "
+        
+        final_prompt += base_prompt
+        
+        if prompt_suffix:
+            final_prompt += " " + prompt_suffix
+        
+        # Ensure prompt doesn't exceed reasonable length
+        if len(final_prompt) > 1000:
+            final_prompt = final_prompt[:997] + "..."
+        
+        return final_prompt
+    
+    def extract_content_themes(self, title: str, content: str) -> str:
+        """Extract main themes from title and content for better image prompts"""
+        # Combine title and content
+        combined_text = f"{title} {content}".lower()
+        
+        # Define theme keywords and their descriptions
+        theme_keywords = {
+            'transfer': 'player transfers and signings',
+            'goal': 'goal scoring and celebrations',
+            'match': 'football match action',
+            'training': 'team training and preparation',
+            'injury': 'player fitness and medical concerns',
+            'derby': 'rivalry matches and intense competition',
+            'champions league': 'European football competition',
+            'premier league': 'English Premier League football',
+            'celebration': 'team celebrations and victories',
+            'tactics': 'football strategy and formations',
+            'stadium': 'football stadiums and venues',
+            'fans': 'football supporters and crowds'
+        }
+        
+        # Find matching themes
+        detected_themes = []
+        for keyword, description in theme_keywords.items():
+            if keyword in combined_text:
+                detected_themes.append(description)
+        
+        # If no specific themes found, use general football theme
+        if not detected_themes:
+            detected_themes = ['football/soccer action and excitement']
+        
+        return ', '.join(detected_themes[:3])  # Limit to 3 themes
+    
+    def add_openai_image_to_content(self, content: str, title: str, custom_prompt: str = None) -> str:
+        """Generate and add OpenAI images to content based on the article topic"""
+        try:
+            openai_api_key = self.config.get('openai_api_key', '')
+            if not openai_api_key:
+                self.logger.warning("⚠️ OpenAI API key not configured, skipping content image generation")
+                return content
+            
+            self.logger.info(f"🎨 Adding OpenAI generated image to content for: {title}")
+            
+            # Load OpenAI configuration
+            openai_config = self.load_openai_image_config()
+            
+            # Clean content for prompt creation
+            clean_content = re.sub(r'<[^>]+>', '', content[:500])
+            clean_title = re.sub(r'<[^>]+>', '', title)
+            
+            # Create enhanced prompt
+            prompt = self.create_openai_image_prompt(clean_title, clean_content, openai_config, is_featured=False, custom_prompt=custom_prompt)
+            
+            self.logger.info(f"🖼️ Generating content image with prompt: {prompt[:100]}...")
+            
+            # Make OpenAI API request
+            import base64
+            import requests
+            
+            response = requests.post(
+                "https://api.openai.com/v1/images/generations",
+                headers={
+                    "Authorization": f"Bearer {openai_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": openai_config.get('image_model', 'dall-e-3'),
+                    "prompt": prompt,
+                    "n": 1,
+                    "size": openai_config.get('image_size', '1024x1024'),
+                    "response_format": "b64_json",
+                    "style": openai_config.get('image_style', 'photorealistic') if openai_config.get('image_model') == 'dall-e-3' else None
+                },
+                timeout=60
+            )
+            
+            if response.status_code != 200:
+                self.logger.error(f"❌ OpenAI API error: {response.status_code} - {response.text}")
+                return content
+            
+            # Get the image data
+            image_data = response.json()["data"][0]["b64_json"]
+            image_bytes = base64.b64decode(image_data)
+            
+            # Upload to WordPress
+            wp_base_url = self.config.get('wp_base_url', '')
+            username = self.config.get('wp_username', '')
+            password = self.config.get('wp_password', '')
+            
+            if not all([wp_base_url, username, password]):
+                self.logger.error("WordPress credentials not properly configured")
+                return content
+            
+            auth = HTTPBasicAuth(username, password)
+            
+            # Generate a filename based on the content
+            title_hash = hashlib.md5(clean_title.encode()).hexdigest()[:10]
+            timestamp = int(time.time())
+            filename = f"ai-content-{title_hash}-{timestamp}.png"
+            
+            # Upload the image to WordPress
+            media_url = f"{wp_base_url}/media"
+            
+            upload_response = requests.post(
+                media_url,
+                auth=auth,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Content-Type": "image/png"
+                },
+                data=image_bytes,
+                timeout=30
+            )
+            
+            if upload_response.status_code not in [200, 201]:
+                self.logger.error(f"❌ WordPress media upload error: {upload_response.status_code} - {upload_response.text}")
+                return content
+            
+            # Get the uploaded image URL
+            media_response = upload_response.json()
+            image_url = media_response.get("source_url", "")
+            image_id = media_response.get("id", "")
+            
+            if not image_url:
+                self.logger.error("❌ Image uploaded but URL not returned")
+                return content
+            
+            # Create HTML for the image
+            image_html = f'''
+<figure class="wp-block-image aligncenter size-large">
+    <img src="{image_url}" alt="AI generated image for {clean_title[:50]}" class="wp-image-{image_id}"/>
+    <figcaption>Generated illustration for this article</figcaption>
+</figure>
+'''
+            
+            # Find a good place to insert the image (after first or second paragraph)
+            paragraphs = content.split('</p>')
+            
+            if len(paragraphs) >= 3:
+                # Insert after second paragraph for better flow
+                insert_point = 2
+                paragraphs.insert(insert_point, image_html)
+                modified_content = '</p>'.join(paragraphs)
+                self.logger.info(f"✅ OpenAI image inserted after second paragraph")
+            elif len(paragraphs) >= 2:
+                # Insert after first paragraph
+                insert_point = 1
+                paragraphs.insert(insert_point, image_html)
+                modified_content = '</p>'.join(paragraphs)
+                self.logger.info(f"✅ OpenAI image inserted after first paragraph")
+            else:
+                # If no clear paragraphs, append after any heading or at the beginning
+                if '<h1>' in content or '<h2>' in content:
+                    heading_match = re.search(r'(<h[1-6][^>]*>.*?</h[1-6]>)', content)
+                    if heading_match:
+                        insert_pos = heading_match.end()
+                        modified_content = content[:insert_pos] + '\n\n' + image_html + '\n\n' + content[insert_pos:]
+                        self.logger.info(f"✅ OpenAI image inserted after first heading")
+                    else:
+                        modified_content = image_html + '\n\n' + content
+                        self.logger.info(f"✅ OpenAI image inserted at beginning of content")
+                else:
+                    modified_content = image_html + '\n\n' + content
+                    self.logger.info(f"✅ OpenAI image inserted at beginning of content")
+            
+            # Log the change in content length
+            original_length = len(content)
+            new_length = len(modified_content)
+            added_length = new_length - original_length
+            
+            self.logger.info(f"✅ OpenAI Image successfully added! Content length: {original_length} → {new_length} (+{added_length} chars)")
+            return modified_content
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error adding OpenAI image to content: {e}")
+            self.logger.error(f"❌ Stack trace: {traceback.format_exc()}")
+            return content

@@ -1,0 +1,22 @@
+{
+  "session_id": "session_20250628_154400",
+  "start_time": "2025-06-28T15:44:00.784360",
+  "timestamp": "20250628_154400",
+  "log_files": {
+    "main": "logs/session_20250628_154400_main.log",
+    "errors": "logs/session_20250628_154400_errors.log",
+    "debug": "logs/session_20250628_154400_debug.log",
+    "automation": "logs/session_20250628_154400_automation.log",
+    "api": "logs/session_20250628_154400_api.log",
+    "security": "logs/session_20250628_154400_security.log"
+  },
+  "categories": {
+    "main": "Main application logs",
+    "errors": "Error and exception logs",
+    "debug": "Debug and development logs",
+    "automation": "Blog automation process logs",
+    "api": "API requests and responses",
+    "security": "Security-related events"
+  },
+  "status": "active"
+}
