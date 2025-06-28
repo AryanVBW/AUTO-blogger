@@ -530,6 +530,10 @@ Licensed under the MIT License"""
 
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack the canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
         # OpenAI Image Configuration Section
         form = ttk.LabelFrame(scrollable_frame, text="OpenAI Image Configuration", padding=20)
@@ -1630,14 +1634,21 @@ Log Files:"""
 
     def create_source_config_tab(self):
         self.source_config_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.source_config_frame, text="🛠️ Source Configuration")
+        self.notebook.add(self.source_config_frame, text="🛠️ Source & Automation")
 
         self.source_edit_mode = False
         self.source_config_vars = {}
         self.source_config_prev = {}
 
+        # Credentials info section
+        info_frame = ttk.LabelFrame(self.source_config_frame, text="ℹ️ Credential Management", padding=10)
+        info_frame.pack(pady=10, padx=40, fill=tk.X)
+        
+        info_text = "WordPress credentials and API keys are managed in the 🔐 Authentication tab.\nThis tab contains only source scraping and automation settings."
+        ttk.Label(info_frame, text=info_text, foreground="blue", font=("Arial", 9)).pack(anchor=tk.W)
+
         # Frame with edit icon
-        form = ttk.LabelFrame(self.source_config_frame, text="Edit Source Configuration", padding=20)
+        form = ttk.LabelFrame(self.source_config_frame, text="Source & Automation Settings", padding=20)
         form.pack(pady=20, padx=40, fill=tk.BOTH, expand=True)
         self.source_config_form = form
 
@@ -1645,15 +1656,10 @@ Log Files:"""
         self.edit_icon_btn = ttk.Button(form, text="✏️ Edit", width=7, command=self.toggle_source_edit_mode)
         self.edit_icon_btn.place(relx=1.0, x=-10, y=10, anchor="ne")
 
-        # Fields
+        # Fields - Only source and automation settings (credentials are managed in Authentication tab)
         fields = [
             ("Source URL", 'source_url'),
             ("Article Selector", 'article_selector'),
-            ("WordPress Base URL", 'wp_base_url'),
-            ("WordPress Username", 'wp_username'),
-            ("WordPress Password", 'wp_password'),
-            ("Gemini API Key", 'gemini_api_key'),
-            ("OpenAI API Key", 'openai_api_key'),
             ("Max Articles", 'max_articles'),
             ("Timeout (seconds)", 'timeout'),
             ("Headless Mode", 'headless_mode')
