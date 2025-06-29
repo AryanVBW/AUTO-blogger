@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# AUTO-blogger Launcher Script
-# This script activates the virtual environment and launches the application
-# Banner
-
+# AUTO-blogger Direct Launcher
+# This script launches AUTO-blogger without requiring system-wide installation
 
 echo -e "\033[96m+===========================================================================+\033[0m"
 echo -e "\033[96m| █████   █████  ███                       █████         █████   ███   █████ |\033[0m"
@@ -21,33 +19,52 @@ echo -e "\033[95m|                           💖Instagram: Aryan_Technolog1es  
 echo -e "\033[95m|                           📧Email:    vivek.aryanvbw@gmail.com             |\033[0m"
 echo -e "\033[32m+===========================================================================+\033[0m"
 echo -e "\033[93m|                            Welcome to AUTO Blogger!                        |\033[0m"
+echo ""
 
-# Get the directory where this script is located (resolve symlinks)
-SOURCE="${BASH_SOURCE[0]}"
-while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-  SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-  SOURCE="$(readlink "$SOURCE")"
-  [[ $SOURCE != /* ]] && SOURCE="$SCRIPT_DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-done
-SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Change to the installation directory
 cd "$SCRIPT_DIR"
 
-# Check if virtual environment exists
-if [ ! -d "$SCRIPT_DIR/venv" ]; then
-    echo "❌ Virtual environment not found at $SCRIPT_DIR/venv"
-    echo "Please run the installation script again or check the installation directory."
+echo "🚀 Starting AUTO-blogger..."
+echo "📁 Working directory: $SCRIPT_DIR"
+
+# Try different Python commands
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "❌ Error: Python not found. Please install Python 3.7 or higher."
     exit 1
 fi
 
-# Activate virtual environment
-if [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-    source "$SCRIPT_DIR/venv/Scripts/activate"
+echo "🐍 Using Python: $PYTHON_CMD"
+
+# Check if virtual environment exists and activate it
+if [ -d "venv" ]; then
+    echo "🔧 Activating virtual environment..."
+    if [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+        source venv/Scripts/activate
+    else
+        source venv/bin/activate
+    fi
 else
-    source "$SCRIPT_DIR/venv/bin/activate"
+    echo "⚠️ Virtual environment not found. Using system Python."
+fi
+
+# Check if gui_blogger.py exists
+if [ ! -f "gui_blogger.py" ]; then
+    echo "❌ Error: gui_blogger.py not found in $SCRIPT_DIR"
+    echo "Please make sure you're running this script from the AUTO-blogger directory."
+    exit 1
 fi
 
 # Launch the application
-echo "🚀 Starting AUTO-blogger..."
-python gui_blogger.py
+$PYTHON_CMD gui_blogger.py
+
+# Keep terminal open briefly to show any final messages
+echo ""
+echo "✅ AUTO-blogger session ended."
+sleep 1

@@ -1,0 +1,20 @@
+2025-06-29 20:26:20,621 - BlogAutomation - INFO - 🚀 Basic logging system initialized - capturing all logs
+2025-06-29 20:26:20,621 - BlogAutomation - INFO - 🚀 Basic logging system initialized - capturing all logs
+2025-06-29 20:26:20,673 - blog_automation - INFO - 🎯 AUTO Blogger GUI started successfully
+2025-06-29 20:26:20,673 - blog_automation - INFO - 📁 Configuration directory: /Users/vivek-w/Desktop/AUTO-blogger/configs
+2025-06-29 20:26:20,673 - blog_automation - DEBUG - 🔧 Debug logging is active
+2025-06-29 20:26:20,673 - blog_automation - INFO - 💻 System: Darwin 24.5.0
+2025-06-29 20:26:20,673 - blog_automation - INFO - 🐍 Python: 3.13.5
+2025-06-29 20:26:20,673 - blog_automation - INFO - ✅ Selenium WebDriver available
+2025-06-29 20:26:20,673 - blog_automation - INFO - 🔄 Application ready for use
+2025-06-29 20:26:20,673 - blog_automation - INFO - 📋 Check logs tab to view all application logs
+2025-06-29 20:27:18,457 - BlogAutomation - INFO - 🚀 Basic logging system initialized - capturing all logs
+2025-06-29 20:27:18,457 - BlogAutomation - INFO - 🚀 Basic logging system initialized - capturing all logs
+2025-06-29 20:27:18,507 - blog_automation - INFO - 🎯 AUTO Blogger GUI started successfully
+2025-06-29 20:27:18,507 - blog_automation - INFO - 📁 Configuration directory: /Users/vivek-w/Desktop/AUTO-blogger/configs
+2025-06-29 20:27:18,507 - blog_automation - DEBUG - 🔧 Debug logging is active
+2025-06-29 20:27:18,507 - blog_automation - INFO - 💻 System: Darwin 24.5.0
+2025-06-29 20:27:18,507 - blog_automation - INFO - 🐍 Python: 3.13.5
+2025-06-29 20:27:18,507 - blog_automation - INFO - ✅ Selenium WebDriver available
+2025-06-29 20:27:18,507 - blog_automation - INFO - 🔄 Application ready for use
+2025-06-29 20:27:18,507 - blog_automation - INFO - 📋 Check logs tab to view all application logs
