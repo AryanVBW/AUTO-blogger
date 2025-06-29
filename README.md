@@ -94,6 +94,19 @@ curl -sSL https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_a
 Invoke-WebRequest -Uri https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_autoblog.sh -OutFile install_autoblog.sh; bash install_autoblog.sh
 ```
 
+**For automated/non-interactive installation:**
+
+```bash
+# Automatic update of existing installation
+curl -sSL https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_autoblog.sh | AUTO_UPDATE=true bash
+
+# Completely non-interactive installation
+curl -sSL https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_autoblog.sh | NON_INTERACTIVE=true bash
+
+# For CI/CD environments
+curl -sSL https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_autoblog.sh | AUTO_UPDATE=true NON_INTERACTIVE=true bash
+```
+
 **What the installer does:**
 - ✅ Detects your operating system automatically
 - ✅ Installs Git, Python 3.8+, and Chrome/Chromium
@@ -102,6 +115,8 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/m
 - ✅ Sets up system-wide launcher (`autoblog` command)
 - ✅ Creates desktop shortcuts
 - ✅ Tests the installation
+- ✅ Handles existing installations with update/reinstall options
+- ✅ Supports non-interactive mode for automation and CI/CD
 
 ### Launch AUTO-blogger
 
