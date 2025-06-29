@@ -392,6 +392,7 @@ class BlogAutomationGUI:
             "max_articles": 2,
             "timeout": 10,
             "headless_mode": True,
+            "seo_plugin_version": "new",
             "internal_links": {},
             "external_links": {},
             "style_prompt": "",
@@ -1600,6 +1601,7 @@ Log Files:"""
         style.configure("Sidebar.TFrame", background="#f4f6fa", borderwidth=1, relief="solid")
 
         self.config_sections = [
+            ("SEO Plugin Settings", "seo_plugin_settings", "🔧"),
             ("Internal Links", "internal_links", "🔗"),
             ("External Links", "external_links", "🌐"),
             ("Style Prompt", "style_prompt", "📝"),
@@ -1625,15 +1627,15 @@ Log Files:"""
         self.editor_frame = editor_frame
 
         # Save/Cancel buttons
-        button_frame = ttk.Frame(editor_frame)
-        button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
-        save_btn = ttk.Button(button_frame, text="Save Section", command=self.save_current_section, style="Accent.TButton")
+        self.button_frame = ttk.Frame(editor_frame)
+        self.button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
+        save_btn = ttk.Button(self.button_frame, text="Save Section", command=self.save_current_section, style="Accent.TButton")
         save_btn.pack(side=tk.LEFT, padx=10)
-        cancel_btn = ttk.Button(button_frame, text="Cancel", command=self.refresh_config_tab)
+        cancel_btn = ttk.Button(self.button_frame, text="Cancel", command=self.refresh_config_tab)
         cancel_btn.pack(side=tk.LEFT, padx=10)
         
         # Add reset to default button for individual prompts
-        reset_btn = ttk.Button(button_frame, text="Reset to Default", command=self.reset_prompt_to_default)
+        reset_btn = ttk.Button(self.button_frame, text="Reset to Default", command=self.reset_prompt_to_default)
         reset_btn.pack(side=tk.LEFT, padx=10)
 
         # Show the first section by default
@@ -1691,18 +1693,36 @@ Log Files:"""
 
     def show_section_editor(self, idx):
         """Show section editor for domain-specific configuration"""
-        # Clear previous widgets
+        # Clear previous widgets properly
         for widget in self.editor_frame.winfo_children():
-            if isinstance(widget, ttk.Frame):
-                continue  # keep button_frame
+            # Only keep the button_frame at the bottom
+            if hasattr(self, 'button_frame') and widget == self.button_frame:
+                continue
             widget.destroy()
+        
+        # Clear any previous widget references
+        if hasattr(self, 'seo_plugin_var'):
+            delattr(self, 'seo_plugin_var')
+        if hasattr(self, 'section_text'):
+            delattr(self, 'section_text')
+        if hasattr(self, 'section_widget'):
+            delattr(self, 'section_widget')
         label, key, emoji = self.config_sections[idx]
         # Section label
         section_label = ttk.Label(self.editor_frame, text=f"{emoji}  {label}", font=("Arial", 12, "bold"))
         section_label.pack(anchor=tk.W, pady=(0, 6))
         
         # Add helpful descriptions and guidance for individual prompt sections
-        if key == "seo_title_meta_prompt":
+        if key == "seo_plugin_settings":
+            desc_text = ("🔧 SEO Plugin Configuration\n"
+                        "Configure which SEO plugin version your WordPress site uses.\n\n"
+                        "✏️ Plugin Versions:\n"
+                        "• New Version: All in One SEO Pro v4.7.3+ (premierleaguenewsnow.com, tottenhaminsight.com, unitedleeds.com)\n"
+                        "• Old Version: All in One SEO Pack Pro v2.7.1 (arsenalcore.com, mancitycore.com)\n\n"
+                        "💡 This setting determines how SEO metadata is formatted and sent to your WordPress site.")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
+            desc_label.pack(anchor=tk.W, pady=(0, 10))
+        elif key == "seo_title_meta_prompt":
             desc_text = ("📝 SEO Title & Meta Description Generator\n"
                         "This prompt creates SEO-optimized titles (50-59 chars) and meta descriptions (155-160 chars).\n\n"
                         "✏️ How to customize:\n"
@@ -1764,9 +1784,59 @@ Log Files:"""
                                    font=("Arial", 9, "italic"), foreground="orange")
             warning_info.pack(anchor=tk.W, pady=(0, 10))
         
-        # Editor
-        self.section_text = scrolledtext.ScrolledText(self.editor_frame, height=16)
-        self.section_text.pack(fill=tk.BOTH, expand=True)
+        # Editor - Special handling for SEO plugin settings
+        if key == "seo_plugin_settings":
+            # Create dropdown for SEO plugin version selection
+            plugin_frame = ttk.Frame(self.editor_frame)
+            plugin_frame.pack(fill=tk.X, pady=(0, 10))
+            
+            ttk.Label(plugin_frame, text="SEO Plugin Version:", font=("Arial", 10, "bold")).pack(anchor=tk.W)
+            
+            self.seo_plugin_var = tk.StringVar()
+            plugin_dropdown = ttk.Combobox(plugin_frame, textvariable=self.seo_plugin_var, 
+                                         values=["new", "old"], state="readonly", width=20)
+            plugin_dropdown.pack(anchor=tk.W, pady=(5, 0))
+            
+            # Load current value from domain-specific config
+            import json
+            config_dir = self.get_current_config_dir()
+            config_file = os.path.join(config_dir, "default.json")
+            current_value = "new"  # Default value
+            
+            # Try to load from domain-specific config first
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file) as f:
+                        domain_config = json.load(f)
+                        current_value = domain_config.get("seo_plugin_version", "new")
+                except Exception as e:
+                    self.logger.warning(f"Error loading SEO plugin version from domain config: {e}")
+            
+            # Fall back to main config if not found in domain config
+            if current_value == "new" and "seo_plugin_version" in self.config:
+                current_value = self.config.get("seo_plugin_version", "new")
+            
+            self.seo_plugin_var.set(current_value)
+            
+            # Add descriptions
+            desc_frame = ttk.Frame(self.editor_frame)
+            desc_frame.pack(fill=tk.X, pady=(10, 0))
+            
+            new_desc = ttk.Label(desc_frame, text="• New Version (v4.7.3+): For premierleaguenewsnow.com, tottenhaminsight.com, unitedleeds.com", 
+                               font=("Arial", 9), foreground="#27ae60")
+            new_desc.pack(anchor=tk.W)
+            
+            old_desc = ttk.Label(desc_frame, text="• Old Version (v2.7.1): For arsenalcore.com, mancitycore.com", 
+                               font=("Arial", 9), foreground="#e74c3c")
+            old_desc.pack(anchor=tk.W)
+            
+            # Store reference for saving
+            self.section_widget = plugin_dropdown
+        else:
+            # Regular text editor for other sections
+            self.section_text = scrolledtext.ScrolledText(self.editor_frame, height=16)
+            self.section_text.pack(fill=tk.BOTH, expand=True)
+            self.section_widget = self.section_text
         
         # Load configuration from domain-specific directory
         config_dir = self.get_current_config_dir()
@@ -1864,7 +1934,10 @@ Log Files:"""
                             value = {}
         
         import json
-        if key in ("style_prompt", "seo_title_meta_prompt", "tag_generation_prompt", "keyphrase_extraction_prompt"):
+        if key == "seo_plugin_settings":
+            # SEO plugin settings are handled by the dropdown widget
+            pass
+        elif key in ("style_prompt", "seo_title_meta_prompt", "tag_generation_prompt", "keyphrase_extraction_prompt"):
             self.section_text.insert(tk.END, value)
         else:
             self.section_text.insert(tk.END, json.dumps(value, indent=2))
@@ -1873,6 +1946,38 @@ Log Files:"""
     def save_current_section(self):
         """Save current section to domain-specific configuration"""
         key = self.current_section_key
+        
+        if key == "seo_plugin_settings":
+            # Get value from dropdown widget
+            plugin_version = self.seo_plugin_var.get()
+            self.config["seo_plugin_version"] = plugin_version
+            
+            # Save to domain-specific config file
+            import json
+            config_dir = self.get_current_config_dir()
+            config_file = os.path.join(config_dir, "default.json")
+            
+            # Load existing config or create new one
+            domain_config = {}
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file) as f:
+                        domain_config = json.load(f)
+                except Exception as e:
+                    self.logger.warning(f"Error loading domain config: {e}")
+            
+            # Update SEO plugin version
+            domain_config["seo_plugin_version"] = plugin_version
+            
+            # Save updated config
+            try:
+                with open(config_file, "w") as f:
+                    json.dump(domain_config, f, indent=2)
+                messagebox.showinfo("Success", f"SEO plugin version saved: {plugin_version}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save SEO plugin settings: {e}")
+            return
+        
         text = self.section_text.get("1.0", tk.END).strip()
         config_dir = self.get_current_config_dir()
         

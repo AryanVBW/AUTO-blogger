@@ -2,8 +2,8 @@
   "image_size": "1024x1024",
   "image_style": "photorealistic",
   "image_model": "dall-e-3",
-  "num_images": 1,
+  "num_images": 2,
   "prompt_prefix": "High-quality professional sports photography:",
   "prompt_suffix": "Make it look like a professional sports photograph with dramatic lighting and composition.",
-  "custom_prompt": ""
+  "custom_prompt": "A photorealistic image of a football stadium with dramatic lighting"
 }

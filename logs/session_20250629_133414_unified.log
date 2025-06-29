@@ -1,7 +1,0 @@
-2025-06-29 13:34:14 | INFO | [SYSTEM] | 🚀 Unified logging system initialized
-2025-06-29 13:34:14 | INFO | [SYSTEM] | 📁 Session: session_20250629_133414
-2025-06-29 13:34:14 | INFO | [SYSTEM] | 📄 Unified log file: logs/session_20250629_133414_unified.log
-2025-06-29 13:34:27 | INFO | [API] | 🌐 Testing WordPress connection
-2025-06-29 13:34:27 | INFO | [SECURITY] | 🔒 Connection test attempted for https://premierleaguenewsnow.com/wp-json/wp/v2 with user Vivek
-2025-06-29 13:34:27 | INFO | [API] | 🌐 WordPress connection successful - Status: 200
-2025-06-29 13:34:27 | INFO | [SECURITY] | 🔒 WordPress authentication successful

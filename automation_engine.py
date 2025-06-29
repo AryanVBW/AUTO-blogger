@@ -1503,32 +1503,19 @@ Article Content:
                     focus = line.strip()
                 if in_additional and line.strip():
                     additional.append(line.strip())
-            result = {"focus_keyphrase": focus_keyphrase, "additional_keyphrases": additional_keyphrases}
-            
             # Apply custom SEO keywords if enabled
             if self.CUSTOM_SEO_KEYWORDS.get("enabled", False):
                 enhanced_focus, enhanced_additional = self.apply_custom_seo_keywords(
                     focus, additional, title, content
                 )
-                result = {"focus_keyphrase": enhanced_focus, "additional_keyphrases": enhanced_additional}
+                return enhanced_focus, enhanced_additional
             
-            return result
+            return focus, additional
         except Exception as e:
             self.logger.error(f"Error extracting keyphrases with Gemini: {e}")
-            fallback_result = self.extract_keyphrases_fallback(content, title)
-            
-            # Apply custom SEO keywords to fallback result if enabled
-            if self.CUSTOM_SEO_KEYWORDS.get("enabled", False):
-                enhanced_focus, enhanced_additional = self.apply_custom_seo_keywords(
-                    fallback_result.get('focus_keyphrase', ''), 
-                    fallback_result.get('additional_keyphrases', []), 
-                    title, content
-                )
-                return {"focus_keyphrase": enhanced_focus, "additional_keyphrases": enhanced_additional}
-            
-            return fallback_result
+            return self.extract_keyphrases_fallback(content, title)
 
-    def extract_keyphrases_fallback(self, content: str, title: str = "") -> dict:
+    def extract_keyphrases_fallback(self, content: str, title: str = "") -> Tuple[str, List[str]]:
         """Fallback: extract keyphrases by picking most frequent meaningful words and phrases."""
         import re
         from collections import Counter
@@ -1613,16 +1600,14 @@ Article Content:
                     additional_keyphrases.append(default)
                 if len(additional_keyphrases) >= 5:
                     break
-        result = {"focus_keyphrase": focus_keyphrase, "additional_keyphrases": additional_keyphrases}
-        
         # Apply custom SEO keywords if enabled
         if self.CUSTOM_SEO_KEYWORDS.get("enabled", False):
             enhanced_focus, enhanced_additional = self.apply_custom_seo_keywords(
                 focus_keyphrase, additional_keyphrases, title, content
             )
-            result = {"focus_keyphrase": enhanced_focus, "additional_keyphrases": enhanced_additional}
+            return enhanced_focus, enhanced_additional
         
-        return result
+        return focus_keyphrase, additional_keyphrases
 
     def generate_seo_title_and_meta_jupyter(self, title: str, content: str) -> Tuple[str, str]:
         """Enhanced SEO title and meta generation using Jupyter notebook implementation"""
@@ -2229,10 +2214,10 @@ Your response (search terms only):
                 self.logger.warning("⚠️ OpenAI API key not available")
                 return None
             
-            import openai
-            openai.api_key = openai_api_key
+            from openai import OpenAI
+            client = OpenAI(api_key=openai_api_key)
             
-            response = openai.Image.create(
+            response = client.images.generate(
                 prompt=prompt,
                 n=config.get('num_images', 1),
                 size=config.get('image_size', '1024x1024'),
@@ -2468,30 +2453,68 @@ Your response (search terms only):
                 self.logger.error("❌ Post created but ID not returned")
                 return None, None
 
-            # Set SEO metadata (if AIOSEO plugin is available)
+            # Set SEO metadata based on plugin version
             try:
-                aioseo_data = {
-                    "aioseo_meta_data": {
-                        "title": seo_title,
-                        "description": meta_description
-                    }
-                }
-                if focus_keyphrase:
-                    aioseo_data["aioseo_meta_data"]["keyphrases"] = {
-                        "focus": {
-                            "keyphrase": focus_keyphrase
-                        },
-                        "additional": [
-                            {"keyphrase": kp} for kp in (additional_keyphrases or [])
-                        ]
-                    }
+                # Get SEO plugin version from config (default to 'new' for backward compatibility)
+                seo_plugin_version = self.config.get('seo_plugin_version', 'new')
                 
-                update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=aioseo_data, timeout=10)
-                update_resp.raise_for_status()
-                self.logger.info("✅ SEO metadata updated successfully")
+                if seo_plugin_version == 'old':
+                    # Old AIOSEO Pack Pro v2.7.1 format - uses WordPress meta fields
+                    seo_data = {
+                        "meta": {
+                            "_aioseop_title": seo_title,
+                            "_aioseop_description": meta_description
+                        }
+                    }
+                    # Add keywords (focus + additional keyphrases)
+                    if focus_keyphrase or additional_keyphrases:
+                        all_keyphrases = []
+                        if focus_keyphrase:
+                            all_keyphrases.append(focus_keyphrase)
+                        if additional_keyphrases:
+                            all_keyphrases.extend(additional_keyphrases)
+                        seo_data["meta"]["_aioseop_keywords"] = ", ".join(all_keyphrases)
+                    
+                    self.logger.info(f"🔧 Using old AIOSEO format (v2.7.1) for SEO metadata")
+                    
+                    # For old version, use PUT request to update the post with meta fields
+                    update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=seo_data, timeout=10)
+                    update_resp.raise_for_status()
+                    self.logger.info("✅ Old AIOSEO SEO metadata updated successfully")
+                    
+                else:
+                    # New AIOSEO Pro v4.7.3+ format - uses aioseo_meta_data field
+                    seo_data = {
+                        "aioseo_meta_data": {
+                            "title": seo_title,
+                            "description": meta_description
+                        }
+                    }
+                    # Add focus keyphrase tag and keyphrases structure
+                    if focus_keyphrase:
+                        seo_data["aioseo_meta_data"]["focus_keyphrase"] = focus_keyphrase
+                        seo_data["aioseo_meta_data"]["keyphrases"] = {
+                            "focus": {
+                                "keyphrase": focus_keyphrase
+                            },
+                            "additional": [
+                                {"keyphrase": kp} for kp in (additional_keyphrases or [])
+                            ]
+                        }
+                    
+                    self.logger.info(f"🔧 Using new AIOSEO format (v4.7.3+) for SEO metadata")
+                    
+                    # For new version, use the aioseo_meta_data field
+                    update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=seo_data, timeout=10)
+                    update_resp.raise_for_status()
+                    self.logger.info("✅ New AIOSEO SEO metadata updated successfully")
                 
             except Exception as e:
                 self.logger.warning(f"⚠️ Failed to update SEO metadata: {e}")
+                # Log the response for debugging
+                if 'update_resp' in locals():
+                    self.logger.warning(f"Response status: {update_resp.status_code}")
+                    self.logger.warning(f"Response text: {update_resp.text[:500]}")
 
             self.logger.info(f"✅ WordPress draft post created (ID: {post_id})")
             return post_id, title
