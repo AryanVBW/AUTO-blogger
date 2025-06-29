@@ -21,6 +21,8 @@ fi
 REPO_URL="https://github.com/AryanVBW/AUTO-blogger.git"
 INSTALL_DIR="$HOME/AUTO-blogger"
 APP_NAME="AUTO-blogger"
+# Generate unique virtual environment name to avoid conflicts
+VENV_NAME="auto_blogger_venv_$(openssl rand -hex 4 2>/dev/null || date +%s | tail -c 8)"
 
 # Color definitions
 RED='\033[0;31m'
@@ -555,38 +557,46 @@ install_chrome() {
 
 # Function to create virtual environment
 create_venv() {
-    echo -e "${YELLOW}🔧 Creating Python virtual environment...${NC}"
+    echo -e "${YELLOW}🔧 Creating Python virtual environment: $VENV_NAME...${NC}"
     
-    # Check if virtual environment already exists and is functional
-    if [ -d "venv" ]; then
-        echo -e "${CYAN}🔍 Checking existing virtual environment...${NC}"
+    # Remove any existing generic virtual environments
+    for old_venv in "venv" "auto_blogger_venv"; do
+        if [ -d "$old_venv" ]; then
+            echo -e "${YELLOW}⚠️ Removing old virtual environment: $old_venv${NC}"
+            rm -rf "$old_venv" || handle_error 1 "Failed to remove existing virtual environment" "Check permissions and try running with sudo"
+        fi
+    done
+    
+    # Check if unique virtual environment already exists and is functional
+    if [ -d "$VENV_NAME" ]; then
+        echo -e "${CYAN}🔍 Checking existing virtual environment: $VENV_NAME...${NC}"
         
         # Test if the virtual environment is functional
         local venv_python=""
         if [[ "$(detect_os)" == "windows" ]]; then
-            venv_python="venv/Scripts/python"
+            venv_python="$VENV_NAME/Scripts/python"
         else
-            venv_python="venv/bin/python"
+            venv_python="$VENV_NAME/bin/python"
         fi
         
         if [ -f "$venv_python" ] && "$venv_python" -c "import sys; print('OK')" >/dev/null 2>&1; then
             echo -e "${GREEN}✅ Virtual environment already exists and is functional - skipping creation${NC}"
             return 0
         else
-            echo -e "${YELLOW}⚠️ Virtual environment exists but is not functional. Removing old one...${NC}"
-            rm -rf venv || handle_error 1 "Failed to remove existing virtual environment" "Check permissions and try running with sudo"
+            echo -e "${YELLOW}⚠️ Virtual environment exists but is not functional. Removing...${NC}"
+            rm -rf "$VENV_NAME" || handle_error 1 "Failed to remove existing virtual environment" "Check permissions and try running with sudo"
         fi
     fi
     
-    echo -e "${CYAN}🔄 Creating new virtual environment...${NC}"
-    $PYTHON_CMD -m venv venv || handle_error 1 "Failed to create virtual environment" "Ensure Python venv module is installed: $PYTHON_CMD -m pip install --user virtualenv"
+    echo -e "${CYAN}🔄 Creating new virtual environment: $VENV_NAME...${NC}"
+    $PYTHON_CMD -m venv "$VENV_NAME" || handle_error 1 "Failed to create virtual environment" "Ensure Python venv module is installed: $PYTHON_CMD -m pip install --user virtualenv"
     
     # Activate virtual environment
-    echo -e "${CYAN}🔄 Activating virtual environment...${NC}"
+    echo -e "${CYAN}🔄 Activating virtual environment: $VENV_NAME...${NC}"
     if [[ "$(detect_os)" == "windows" ]]; then
-        source venv/Scripts/activate || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing venv folder and running again"
+        source "$VENV_NAME/Scripts/activate" || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing $VENV_NAME folder and running again"
     else
-        source venv/bin/activate || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing venv folder and running again"
+        source "$VENV_NAME/bin/activate" || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing $VENV_NAME folder and running again"
     fi
     
     # Verify activation
@@ -609,11 +619,11 @@ install_dependencies() {
     
     # Ensure we're in virtual environment
     if [ "$VIRTUAL_ENV" = "" ]; then
-        echo -e "${CYAN}🔄 Activating virtual environment...${NC}"
+        echo -e "${CYAN}🔄 Activating virtual environment: $VENV_NAME...${NC}"
         if [[ "$(detect_os)" == "windows" ]]; then
-            source venv/Scripts/activate || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing venv folder and running again"
+            source "$VENV_NAME/Scripts/activate" || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing $VENV_NAME folder and running again"
         else
-            source venv/bin/activate || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing venv folder and running again"
+            source "$VENV_NAME/bin/activate" || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing $VENV_NAME folder and running again"
         fi
     fi
     
@@ -651,8 +661,8 @@ install_dependencies() {
     
     # Verify we're in the correct virtual environment
     local venv_python=$(which python)
-    if [[ "$venv_python" != *"venv"* ]]; then
-        handle_error 1 "Virtual environment not properly activated" "Try removing venv folder and running the installer again"
+    if [[ "$venv_python" != *"$VENV_NAME"* ]]; then
+        handle_error 1 "Virtual environment not properly activated" "Try removing $VENV_NAME folder and running the installer again"
     fi
     
     # Install from requirements.txt if it exists
@@ -750,12 +760,12 @@ cd "$SCRIPT_DIR" || {
 }
 
 # Determine Python executable
-if [ -f "venv/bin/python" ]; then
-    PYTHON_EXE="venv/bin/python"
-elif [ -f "venv/Scripts/python.exe" ]; then
-    PYTHON_EXE="venv/Scripts/python.exe"
+if [ -f "$VENV_NAME/bin/python" ]; then
+    PYTHON_EXE="$VENV_NAME/bin/python"
+elif [ -f "$VENV_NAME/Scripts/python.exe" ]; then
+    PYTHON_EXE="$VENV_NAME/Scripts/python.exe"
 else
-    echo -e "${RED}❌ Virtual environment not found${NC}"
+    echo -e "${RED}❌ Virtual environment not found: $VENV_NAME${NC}"
     echo -e "${YELLOW}💡 Please run the installer again${NC}"
     exit 1
 fi
@@ -800,7 +810,7 @@ EOF
         "windows")
             # For Windows, create a batch file
             echo -e "${CYAN}🔄 Creating Windows batch launcher...${NC}"
-            cat > "autoblog.bat" << 'EOF'
+            cat > "autoblog.bat" << EOF
 @echo off
 setlocal
 
@@ -811,8 +821,8 @@ REM Change to script directory
 cd /d "%~dp0"
 
 REM Check if virtual environment exists
-if not exist "venv\Scripts\python.exe" (
-    echo ❌ Virtual environment not found
+if not exist "$VENV_NAME\Scripts\python.exe" (
+    echo ❌ Virtual environment not found: $VENV_NAME
     echo 💡 Please run the installer again
     pause
     exit /b 1
@@ -827,7 +837,7 @@ if not exist "autoblog_launcher.py" (
 )
 
 echo Starting AUTO-blogger with auto-update...
-venv\Scripts\python.exe autoblog_launcher.py
+$VENV_NAME\Scripts\python.exe autoblog_launcher.py
 if errorlevel 1 (
     echo ⚠️ Application exited with errors
     pause
@@ -909,16 +919,41 @@ EOF
     esac
 }
 
+# Function to run post-installation fixes
+run_post_installation_fixes() {
+    echo -e "${CYAN}🔧 Running post-installation fixes...${NC}"
+    
+    # Create docs and tests directories
+    mkdir -p "docs" "tests"
+    
+    # Set executable permissions for key scripts
+    chmod +x autoblog 2>/dev/null || true
+    chmod +x fix_installation_issues.py 2>/dev/null || true
+    
+    # Run fix_installation_issues.py if it exists
+    if [ -f "fix_installation_issues.py" ]; then
+        echo -e "${CYAN}🔄 Running installation fixes script...${NC}"
+        if [[ "$(detect_os)" == "windows" ]]; then
+            "$VENV_NAME/Scripts/python.exe" fix_installation_issues.py 2>/dev/null || echo -e "${YELLOW}⚠️ Fix script completed with warnings${NC}"
+        else
+            "$VENV_NAME/bin/python" fix_installation_issues.py 2>/dev/null || echo -e "${YELLOW}⚠️ Fix script completed with warnings${NC}"
+        fi
+        echo -e "${GREEN}✅ Post-installation fixes completed${NC}"
+    else
+        echo -e "${CYAN}💡 No additional fixes script found - skipping${NC}"
+    fi
+}
+
 # Function to test installation
 test_installation() {
     echo -e "${YELLOW}🧪 Testing installation...${NC}"
     
     # Activate virtual environment
-    echo -e "${CYAN}🔄 Activating virtual environment for testing...${NC}"
+    echo -e "${CYAN}🔄 Activating virtual environment for testing: $VENV_NAME...${NC}"
     if [[ "$(detect_os)" == "windows" ]]; then
-        source venv/Scripts/activate || handle_error 1 "Failed to activate virtual environment for testing" "Virtual environment may be corrupted"
+        source "$VENV_NAME/Scripts/activate" || handle_error 1 "Failed to activate virtual environment for testing" "Virtual environment may be corrupted"
     else
-        source venv/bin/activate || handle_error 1 "Failed to activate virtual environment for testing" "Virtual environment may be corrupted"
+        source "$VENV_NAME/bin/activate" || handle_error 1 "Failed to activate virtual environment for testing" "Virtual environment may be corrupted"
     fi
     
     # Test critical Python imports
@@ -999,8 +1034,9 @@ show_completion() {
     local test_result=$1
     
     echo ""
-    echo -e "${GREEN}🎉 AUTO-blogger installation completed!${NC}"
+    echo -e "${GREEN}🎉 AUTO-blogger installation completed with enhanced features!${NC}"
     echo -e "${CYAN}📍 Installation directory: $INSTALL_DIR${NC}"
+    echo -e "${CYAN}🔧 Virtual environment: $VENV_NAME (unique)${NC}"
     
     if [ "$test_result" -eq 0 ]; then
         echo -e "${GREEN}✅ All tests passed - Installation is fully functional${NC}"
@@ -1008,6 +1044,14 @@ show_completion() {
         echo -e "${YELLOW}⚠️ Installation completed with some warnings${NC}"
         echo -e "${CYAN}💡 Check the test results above for details${NC}"
     fi
+    
+    echo ""
+    echo -e "${YELLOW}🆕 Enhanced Features:${NC}"
+    echo -e "${CYAN}   • Enhanced SEO automation with improved algorithms${NC}"
+    echo -e "${CYAN}   • Organized project structure (docs/, tests/)${NC}"
+    echo -e "${CYAN}   • Unique virtual environment for conflict prevention${NC}"
+    echo -e "${CYAN}   • Comprehensive testing and validation tools${NC}"
+    echo -e "${CYAN}   • Improved error handling and logging${NC}"
     
     echo ""
     echo -e "${YELLOW}🚀 How to use AUTO-blogger:${NC}"
@@ -1029,15 +1073,19 @@ show_completion() {
     esac
     
     echo ""
-    echo -e "${YELLOW}📁 Important Files:${NC}"
+    echo -e "${YELLOW}📁 Project Structure:${NC}"
     echo -e "${CYAN}   • Main Application: gui_blogger.py${NC}"
     echo -e "${CYAN}   • Configuration: configs/ directory${NC}"
-    echo -e "${CYAN}   • Logs: Check the application for log locations${NC}"
+    echo -e "${CYAN}   • Documentation: docs/ directory${NC}"
+    echo -e "${CYAN}   • Tests: tests/ directory${NC}"
+    echo -e "${CYAN}   • Virtual Environment: $VENV_NAME/${NC}"
     
     echo ""
-    echo -e "${YELLOW}📚 Documentation:${NC}"
+    echo -e "${YELLOW}📚 Documentation & Testing:${NC}"
     echo -e "${CYAN}   • README: $INSTALL_DIR/README.md${NC}"
     echo -e "${CYAN}   • Installation Guide: $INSTALL_DIR/docs/README_INSTALLATION.md${NC}"
+    echo -e "${CYAN}   • SEO Improvements: $INSTALL_DIR/docs/SEO_IMPROVEMENTS_*.md${NC}"
+    echo -e "${CYAN}   • Test SEO Features: python tests/test_seo_improvements.py${NC}"
     echo -e "${CYAN}   • Troubleshooting: $INSTALL_DIR/docs/wordpress_seo_troubleshooting.md${NC}"
     
     echo ""
@@ -1055,10 +1103,12 @@ show_completion() {
     
     echo ""
     if [ "$test_result" -eq 0 ]; then
-        echo -e "${GREEN}🚀 Ready to start blogging! Happy writing! 📝✨${NC}"
+        echo -e "${GREEN}🚀 Enhanced AUTO-blogger is ready! Start creating amazing content! 📝✨${NC}"
+        echo -e "${CYAN}💡 Try the new SEO features and organized project structure!${NC}"
     else
         echo -e "${YELLOW}⚠️ Installation completed with warnings. Please check the issues above.${NC}"
         echo -e "${CYAN}💡 You can still try running the application - it may work despite the warnings.${NC}"
+        echo -e "${CYAN}🔧 Run 'python tests/test_seo_improvements.py' to verify SEO features${NC}"
     fi
     echo ""
 }
@@ -1121,8 +1171,13 @@ main() {
      create_desktop_shortcut
      echo ""
      
-     # Step 10: Testing and completion
-     echo -e "${YELLOW}📋 Step 10/10: Testing Installation${NC}"
+     # Step 10: Post-installation fixes
+     echo -e "${YELLOW}📋 Step 10/11: Post-Installation Fixes${NC}"
+     run_post_installation_fixes
+     echo ""
+     
+     # Step 11: Testing and completion
+     echo -e "${YELLOW}📋 Step 11/11: Testing Installation${NC}"
     test_installation
     local test_result=$?
     echo ""

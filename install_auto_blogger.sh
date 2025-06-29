@@ -39,7 +39,8 @@ echo -e "\033[93m|                            Welcome to AUTO Blogger!          
 
 # Define installation directory
 INSTALL_DIR="$HOME/AUTO-blogger"
-VENV_NAME="auto_blogger_venv"
+# Generate unique virtual environment name to avoid conflicts
+VENV_NAME="auto_blogger_venv_$(openssl rand -hex 4 2>/dev/null || date +%s | tail -c 8)"
 REPO_URL="https://github.com/AryanVBW/AUTO-blogger.git"
 
 # Detect operating system
@@ -218,7 +219,8 @@ setup_virtualenv() {
   
   cd "$INSTALL_DIR"
   
-  # Create virtual environment
+  # Create virtual environment with unique name
+  echo -e "${BLUE}Creating virtual environment: $VENV_NAME${NC}"
   python3 -m venv "$VENV_NAME"
   
   # Activate virtual environment and install requirements
@@ -343,14 +345,55 @@ EOF
   fi
 }
 
-# Set file permissions
+# Set file permissions and organize project structure
 set_permissions() {
-  echo -e "${YELLOW}Setting file permissions...${NC}"
+  echo -e "${YELLOW}Setting file permissions and organizing project structure...${NC}"
   
   chmod +x "$INSTALL_DIR/launch_blogger.py"
   chmod +x "$INSTALL_DIR/start_blogger.sh"
   
-  echo -e "${GREEN}Permissions set.${NC}"
+  # Ensure docs and tests directories exist
+  mkdir -p "$INSTALL_DIR/docs"
+  mkdir -p "$INSTALL_DIR/tests"
+  
+  # Set permissions for scripts
+  if [ -f "$INSTALL_DIR/autoblog" ]; then
+    chmod +x "$INSTALL_DIR/autoblog"
+  fi
+  
+  if [ -f "$INSTALL_DIR/fix_installation_issues.py" ]; then
+    chmod +x "$INSTALL_DIR/fix_installation_issues.py"
+  fi
+  
+  echo -e "${GREEN}Permissions set and project structure organized.${NC}"
+}
+
+# Post-installation fixes and optimizations
+run_post_installation_fixes() {
+  echo -e "${YELLOW}Running post-installation optimizations...${NC}"
+  
+  cd "$INSTALL_DIR"
+  
+  # Run the fix script if it exists
+  if [ -f "fix_installation_issues.py" ]; then
+    echo -e "${BLUE}Applying installation fixes and optimizations...${NC}"
+    
+    # Activate virtual environment
+    if [[ "$OS" == "windows" ]]; then
+      source "$VENV_NAME/Scripts/activate"
+    else
+      source "$VENV_NAME/bin/activate"
+    fi
+    
+    python3 fix_installation_issues.py
+    
+    # Deactivate virtual environment
+    deactivate
+    
+    echo -e "${GREEN}Post-installation fixes applied successfully.${NC}"
+  else
+    echo -e "${YELLOW}No post-installation fixes found. Skipping...${NC}"
+  fi
 }
 
 # Run all installation steps
@@ -368,10 +411,16 @@ run_installation() {
   setup_virtualenv
   create_command_alias
   set_permissions
+  run_post_installation_fixes
   
   echo -e "${GREEN}Installation complete!${NC}"
   echo -e "${BLUE}=================================${NC}"
-  echo -e "${GREEN}AUTO-blogger has been installed successfully.${NC}"
+  echo -e "${GREEN}AUTO-blogger has been installed successfully with enhanced features!${NC}"
+  echo -e "${BLUE}✨ Features included:${NC}"
+  echo -e "${GREEN}  • Enhanced SEO automation with improved error handling${NC}"
+  echo -e "${GREEN}  • Organized project structure (docs/, tests/ directories)${NC}"
+  echo -e "${GREEN}  • Unique virtual environment to avoid conflicts${NC}"
+  echo -e "${GREEN}  • Comprehensive testing and validation tools${NC}"
   echo -e "${YELLOW}To start AUTO-blogger, type 'autoV' in your terminal.${NC}"
   
   # Provide immediate execution instructions
@@ -393,8 +442,15 @@ run_installation() {
     echo -e "${YELLOW}For Windows users, run '$INSTALL_DIR/autoV.bat'${NC}"
   fi
   
+  echo -e "${BLUE}📁 Project Structure:${NC}"
+  echo -e "${GREEN}  • docs/ - Documentation and guides${NC}"
+  echo -e "${GREEN}  • tests/ - Testing and validation scripts${NC}"
+  echo -e "${GREEN}  • $VENV_NAME/ - Isolated virtual environment${NC}"
+  echo -e "${BLUE}🔧 Additional Tools:${NC}"
+  echo -e "${GREEN}  • Run tests: python3 tests/test_seo_improvements.py${NC}"
+  echo -e "${GREEN}  • Check documentation: ls docs/${NC}"
   echo -e "${BLUE}=================================${NC}"
 }
 
 # Execute the installation
-run_installation 
+run_installation

@@ -53,6 +53,9 @@ class BlogAutomationEngine:
         # Initialize configurations
         self.setup_configurations()
         
+        # Cache for SEO field mappings to improve performance
+        self._seo_field_cache = {}
+        
     def setup_configurations(self):
         """Setup all configuration dictionaries"""
         
@@ -181,6 +184,161 @@ class BlogAutomationEngine:
         else:
             self.logger.warning(f"Config file not found: {filename}, using defaults")
         return default
+
+    def validate_seo_configuration(self) -> bool:
+        """Validate SEO plugin configuration and log warnings for potential issues.
+        
+        Returns:
+            bool: True if configuration is valid, False otherwise
+        """
+        seo_version = self.config.get('seo_plugin_version', 'new')
+        
+        if seo_version not in ['old', 'new']:
+            self.logger.error(f"❌ Invalid seo_plugin_version: {seo_version}. Must be 'old' or 'new'")
+            return False
+            
+        # Check WordPress credentials
+        required_fields = ['wp_base_url', 'wp_username', 'wp_password']
+        missing_fields = [field for field in required_fields if not self.config.get(field)]
+        
+        if missing_fields:
+            self.logger.error(f"❌ Missing WordPress credentials: {', '.join(missing_fields)}")
+            return False
+            
+        self.logger.info(f"✅ SEO configuration validated - using {seo_version} AIOSEO format")
+        return True
+
+    def prepare_seo_data(self, seo_title: str, meta_description: str, 
+                        focus_keyphrase: str = None, additional_keyphrases: list = None) -> Dict:
+        """Prepare SEO data structure based on configured plugin version.
+        
+        Args:
+            seo_title: SEO optimized title
+            meta_description: Meta description
+            focus_keyphrase: Primary focus keyphrase
+            additional_keyphrases: List of additional keyphrases
+            
+        Returns:
+            Dict: Formatted SEO data for WordPress API
+        """
+        seo_plugin_version = self.config.get('seo_plugin_version', 'new')
+        
+        # Log SEO data being prepared for debugging
+        self.logger.debug(f"🔧 Preparing SEO data - Version: {seo_plugin_version}")
+        self.logger.debug(f"   Title: {seo_title[:50]}..." if len(seo_title) > 50 else f"   Title: {seo_title}")
+        self.logger.debug(f"   Description: {meta_description[:50]}..." if len(meta_description) > 50 else f"   Description: {meta_description}")
+        self.logger.debug(f"   Focus keyphrase: {focus_keyphrase}")
+        self.logger.debug(f"   Additional keyphrases: {additional_keyphrases}")
+        
+        if seo_plugin_version == 'old':
+            return self._prepare_old_aioseo_data(seo_title, meta_description, focus_keyphrase, additional_keyphrases)
+        else:
+            return self._prepare_new_aioseo_data(seo_title, meta_description, focus_keyphrase, additional_keyphrases)
+    
+    def _prepare_old_aioseo_data(self, seo_title: str, meta_description: str, 
+                                focus_keyphrase: str = None, additional_keyphrases: list = None) -> Dict:
+        """Prepare SEO data for old AIOSEO Pack Pro v2.7.1 format.
+        
+        Returns:
+            Dict: SEO data with meta wrapper and _aioseop_ prefixed fields
+        """
+        seo_data = {
+            "meta": {
+                "_aioseop_title": seo_title,
+                "_aioseop_description": meta_description
+            }
+        }
+        
+        # Combine focus and additional keyphrases for old format (comma-separated)
+        if focus_keyphrase or additional_keyphrases:
+            all_keyphrases = []
+            if focus_keyphrase:
+                all_keyphrases.append(focus_keyphrase)
+            if additional_keyphrases:
+                all_keyphrases.extend(additional_keyphrases)
+            
+            if all_keyphrases:
+                keywords_string = ", ".join(all_keyphrases)
+                seo_data["meta"]["_aioseop_keywords"] = keywords_string
+                self.logger.debug(f"   Combined keywords: {keywords_string}")
+        
+        return seo_data
+    
+    def _prepare_new_aioseo_data(self, seo_title: str, meta_description: str, 
+                                focus_keyphrase: str = None, additional_keyphrases: list = None) -> Dict:
+        """Prepare SEO data for new AIOSEO Pro v4.7.3+ format.
+        
+        Returns:
+            Dict: SEO data with aioseo_meta_data field and structured keyphrases
+        """
+        seo_data = {
+            "aioseo_meta_data": {
+                "title": seo_title,
+                "description": meta_description
+            }
+        }
+        
+        # Add structured keyphrases for new format
+        if focus_keyphrase:
+            seo_data["aioseo_meta_data"]["focus_keyphrase"] = focus_keyphrase
+            seo_data["aioseo_meta_data"]["keyphrases"] = {
+                "focus": {
+                    "keyphrase": focus_keyphrase
+                },
+                "additional": [
+                    {"keyphrase": kp} for kp in (additional_keyphrases or [])
+                ]
+            }
+            self.logger.debug(f"   Structured keyphrases prepared")
+        
+        return seo_data
+    
+    def update_seo_metadata_with_retry(self, posts_url: str, post_id: str, seo_data: Dict, 
+                                      auth, max_retries: int = 3) -> bool:
+        """Update SEO metadata with retry logic and enhanced error handling.
+        
+        Args:
+            posts_url: WordPress posts API URL
+            post_id: WordPress post ID
+            seo_data: Prepared SEO data
+            auth: Authentication object
+            max_retries: Maximum number of retry attempts
+            
+        Returns:
+            bool: True if update successful, False otherwise
+        """
+        seo_version = self.config.get('seo_plugin_version', 'new')
+        
+        for attempt in range(max_retries):
+            try:
+                self.logger.info(f"🔧 Using {seo_version} AIOSEO format (v{'2.7.1' if seo_version == 'old' else '4.7.3+'}) for SEO metadata (attempt {attempt + 1}/{max_retries})")
+                
+                update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=seo_data, timeout=10)
+                update_resp.raise_for_status()
+                
+                self.logger.info(f"✅ {seo_version.title()} AIOSEO SEO metadata updated successfully")
+                return True
+                
+            except requests.exceptions.Timeout:
+                self.logger.warning(f"⚠️ SEO update timeout (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                    
+            except requests.exceptions.HTTPError as e:
+                self.logger.warning(f"⚠️ HTTP error updating SEO metadata (attempt {attempt + 1}/{max_retries}): {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                    self.logger.warning(f"Response status: {e.response.status_code}")
+                    self.logger.warning(f"Response text: {e.response.text[:500]}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    
+            except Exception as e:
+                self.logger.warning(f"⚠️ Unexpected error updating SEO metadata (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+        
+        self.logger.error(f"❌ Failed to update SEO metadata after {max_retries} attempts")
+        return False
 
     def load_posted_links(self) -> Set[str]:
         """Load previously posted article links from file"""
@@ -2352,19 +2510,36 @@ Your response (search terms only):
             self.logger.error(f"❌ Error uploading featured image: {e}")
             return None
 
-    def post_to_wordpress_with_seo(self, title: str, content: str, categories: list, tags: list, 
+    def post_to_wordpress_with_seo(self, title: str, content: str, categories: list, tags: list,
                                    seo_title: str, meta_description: str, focus_keyphrase: str = None, 
                                    additional_keyphrases: list = None) -> tuple:
-        """Post to WordPress with SEO optimization"""
+        """Post to WordPress with SEO optimization.
+        
+        This method creates a WordPress post with comprehensive SEO metadata support
+        for both old (v2.7.1) and new (v4.7.3+) AIOSEO plugin versions.
+        
+        Args:
+            title: Post title
+            content: Post content (HTML)
+            categories: List of category names
+            tags: List of tag names
+            seo_title: SEO optimized title
+            meta_description: Meta description for SEO
+            focus_keyphrase: Primary focus keyphrase
+            additional_keyphrases: List of additional keyphrases
+            
+        Returns:
+            tuple: (post_id, title) if successful, (None, None) if failed
+        """
         try:
+            # Validate SEO configuration before proceeding
+            if not self.validate_seo_configuration():
+                return None, None
+                
             # WordPress API setup
             wp_base_url = self.config.get('wp_base_url', '')
             username = self.config.get('wp_username', '')
             password = self.config.get('wp_password', '')
-            
-            if not all([wp_base_url, username, password]):
-                self.logger.error("❌ WordPress credentials not properly configured")
-                return None, None
 
             auth = HTTPBasicAuth(username, password)
             
@@ -2453,68 +2628,20 @@ Your response (search terms only):
                 self.logger.error("❌ Post created but ID not returned")
                 return None, None
 
-            # Set SEO metadata based on plugin version
+            # Set SEO metadata using improved methods
             try:
-                # Get SEO plugin version from config (default to 'new' for backward compatibility)
-                seo_plugin_version = self.config.get('seo_plugin_version', 'new')
+                # Prepare SEO data using the new method
+                seo_data = self.prepare_seo_data(seo_title, meta_description, focus_keyphrase, additional_keyphrases)
                 
-                if seo_plugin_version == 'old':
-                    # Old AIOSEO Pack Pro v2.7.1 format - uses WordPress meta fields
-                    seo_data = {
-                        "meta": {
-                            "_aioseop_title": seo_title,
-                            "_aioseop_description": meta_description
-                        }
-                    }
-                    # Add keywords (focus + additional keyphrases)
-                    if focus_keyphrase or additional_keyphrases:
-                        all_keyphrases = []
-                        if focus_keyphrase:
-                            all_keyphrases.append(focus_keyphrase)
-                        if additional_keyphrases:
-                            all_keyphrases.extend(additional_keyphrases)
-                        seo_data["meta"]["_aioseop_keywords"] = ", ".join(all_keyphrases)
-                    
-                    self.logger.info(f"🔧 Using old AIOSEO format (v2.7.1) for SEO metadata")
-                    
-                    # For old version, use PUT request to update the post with meta fields
-                    update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=seo_data, timeout=10)
-                    update_resp.raise_for_status()
-                    self.logger.info("✅ Old AIOSEO SEO metadata updated successfully")
-                    
-                else:
-                    # New AIOSEO Pro v4.7.3+ format - uses aioseo_meta_data field
-                    seo_data = {
-                        "aioseo_meta_data": {
-                            "title": seo_title,
-                            "description": meta_description
-                        }
-                    }
-                    # Add focus keyphrase tag and keyphrases structure
-                    if focus_keyphrase:
-                        seo_data["aioseo_meta_data"]["focus_keyphrase"] = focus_keyphrase
-                        seo_data["aioseo_meta_data"]["keyphrases"] = {
-                            "focus": {
-                                "keyphrase": focus_keyphrase
-                            },
-                            "additional": [
-                                {"keyphrase": kp} for kp in (additional_keyphrases or [])
-                            ]
-                        }
-                    
-                    self.logger.info(f"🔧 Using new AIOSEO format (v4.7.3+) for SEO metadata")
-                    
-                    # For new version, use the aioseo_meta_data field
-                    update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=seo_data, timeout=10)
-                    update_resp.raise_for_status()
-                    self.logger.info("✅ New AIOSEO SEO metadata updated successfully")
+                # Update SEO metadata with retry logic
+                seo_success = self.update_seo_metadata_with_retry(posts_url, post_id, seo_data, auth)
+                
+                if not seo_success:
+                    self.logger.warning("⚠️ SEO metadata update failed, but post was created successfully")
                 
             except Exception as e:
-                self.logger.warning(f"⚠️ Failed to update SEO metadata: {e}")
-                # Log the response for debugging
-                if 'update_resp' in locals():
-                    self.logger.warning(f"Response status: {update_resp.status_code}")
-                    self.logger.warning(f"Response text: {update_resp.text[:500]}")
+                self.logger.error(f"❌ Unexpected error in SEO metadata handling: {e}")
+                self.logger.debug(f"SEO data that failed: {seo_data if 'seo_data' in locals() else 'Not prepared'}")
 
             self.logger.info(f"✅ WordPress draft post created (ID: {post_id})")
             return post_id, title

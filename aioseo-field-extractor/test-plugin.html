@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Old AIOSEO Plugin (v2.7.1) Field Structure Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f1f1f1;
+        }
+        .plugin-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .field-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .field-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .field-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .field-textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 14px;
+            min-height: 80px;
+            resize: vertical;
+        }
+        .plugin-title {
+            color: #0073aa;
+            border-bottom: 2px solid #0073aa;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .field-description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .comparison {
+            display: flex;
+            gap: 20px;
+        }
+        .old-plugin, .new-plugin {
+            flex: 1;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>AIOSEO Plugin Field Structure Comparison</h1>
+    
+    <div class="comparison">
+        <!-- Old Plugin Structure (v2.7.1) -->
+        <div class="old-plugin">
+            <div class="plugin-container">
+                <h2 class="plugin-title">Old AIOSEO Plugin (v2.7.1)</h2>
+                
+                <div class="field-group">
+                    <div class="field-label">SEO Title</div>
+                    <input type="text" class="field-input" name="_aioseop_title" id="aioseop_title" 
+                           placeholder="Enter SEO title..." value="Sample SEO Title for Old Plugin">
+                    <div class="field-description">Field name: _aioseop_title</div>
+                </div>
+                
+                <div class="field-group">
+                    <div class="field-label">Meta Description</div>
+                    <textarea class="field-textarea" name="_aioseop_description" id="aioseop_description" 
+                              placeholder="Enter meta description...">Sample meta description for the old AIOSEO plugin version 2.7.1</textarea>
+                    <div class="field-description">Field name: _aioseop_description</div>
+                </div>
+                
+                <div class="field-group">
+                    <div class="field-label">Keywords</div>
+                    <input type="text" class="field-input" name="_aioseop_keywords" id="aioseop_keywords" 
+                           placeholder="Enter keywords separated by commas..." value="old plugin, seo, wordpress, meta tags">
+                    <div class="field-description">Field name: _aioseop_keywords (comma-separated)</div>
+                </div>
+                
+                <div class="field-group">
+                    <div class="field-label">Canonical URL</div>
+                    <input type="text" class="field-input" name="_aioseop_canonical_url" id="aioseop_canonical_url" 
+                           placeholder="Enter canonical URL...">
+                    <div class="field-description">Field name: _aioseop_canonical_url</div>
+                </div>
+                
+                <div class="field-group">
+                    <div class="field-label">Custom Robots Meta</div>
+                    <select class="field-input" name="_aioseop_robots_meta" id="aioseop_robots_meta">
+                        <option value="">Default</option>
+                        <option value="noindex">noindex</option>
+                        <option value="nofollow">nofollow</option>
+                        <option value="noindex,nofollow">noindex,nofollow</option>
+                    </select>
+                    <div class="field-description">Field name: _aioseop_robots_meta</div>
+                </div>
+                
+                <div class="highlight">
+                    <strong>Old Plugin Data Structure:</strong><br>
+                    <code>
+                    {
+                      "meta": {
+                        "_aioseop_title": "SEO Title",
+                        "_aioseop_description": "Meta Description",
+                        "_aioseop_keywords": "keyword1, keyword2, keyword3",
+                        "_aioseop_canonical_url": "https://example.com/canonical",
+                        "_aioseop_robots_meta": "index,follow"
+                      }
+                    }
+                    </code>
+                </div>
+            </div>
+        </div>
+        
+        <!-- New Plugin Structure (v4.7.3+) -->
+        <div class="new-plugin">
+            <div class="plugin-container">
+                <h2 class="plugin-title">New AIOSEO Plugin (v4.7.3+)</h2>
+                
+                <div class="field-group">
+                    <div class="field-label">SEO Title</div>
+                    <input type="text" class="field-input" name="aioseo_title" id="aioseo_title" 
+                           placeholder="Enter SEO title..." value="Sample SEO Title for New Plugin">
+                    <div class="field-description">Field path: aioseo_meta_data.title</div>
+                </div>
+                
+                <div class="field-group">
+                    <div class="field-label">Meta Description</div>
+                    <textarea class="field-textarea" name="aioseo_description" id="aioseo_description" 
+                              placeholder="Enter meta description...">Sample meta description for the new AIOSEO plugin version 4.7.3+</textarea>
+                    <div class="field-description">Field path: aioseo_meta_data.description</div>
+                </div>
+                
+                <div class="field-group">
+                    <div class="field-label">Focus Keyphrase</div>
+                    <input type="text" class="field-input" name="aioseo_focus_keyphrase" id="aioseo_focus_keyphrase" 
+                           placeholder="Enter focus keyphrase..." value="new plugin">
+                    <div class="field-description">Field path: aioseo_meta_data.focus_keyphrase</div>
+                </div>
+                
+                <div class="field-group">
+                    <div class="field-label">Additional Keyphrases</div>
+                    <input type="text" class="field-input" name="aioseo_additional_keyphrases" id="aioseo_additional_keyphrases" 
+                           placeholder="Enter additional keyphrases..." value="seo, wordpress, meta tags">
+                    <div class="field-description">Field path: aioseo_meta_data.keyphrases.additional</div>
+                </div>
+                
+                <div class="field-group">
+                    <div class="field-label">Canonical URL</div>
+                    <input type="text" class="field-input" name="aioseo_canonical_url" id="aioseo_canonical_url" 
+                           placeholder="Enter canonical URL...">
+                    <div class="field-description">Field path: aioseo_meta_data.canonical_url</div>
+                </div>
+                
+                <div class="highlight">
+                    <strong>New Plugin Data Structure:</strong><br>
+                    <code>
+                    {
+                      "aioseo_meta_data": {
+                        "title": "SEO Title",
+                        "description": "Meta Description",
+                        "focus_keyphrase": "main keyword",
+                        "keyphrases": {
+                          "focus": {
+                            "keyphrase": "main keyword"
+                          },
+                          "additional": [
+                            {"keyphrase": "keyword1"},
+                            {"keyphrase": "keyword2"}
+                          ]
+                        },
+                        "canonical_url": "https://example.com/canonical"
+                      }
+                    }
+                    </code>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="plugin-container">
+        <h2 class="plugin-title">Key Differences</h2>
+        <ul>
+            <li><strong>Field Structure:</strong> Old plugin uses flat meta fields with "_aioseop_" prefix, new plugin uses nested "aioseo_meta_data" structure</li>
+            <li><strong>Keywords:</strong> Old plugin combines all keywords in single "_aioseop_keywords" field, new plugin separates focus and additional keyphrases</li>
+            <li><strong>API Endpoint:</strong> Both use WordPress REST API but with different field structures</li>
+            <li><strong>Configuration:</strong> Set "seo_plugin_version": "old" or "new" in config to switch between formats</li>
+        </ul>
+    </div>
+    
+    <script>
+        // Simulate form interaction
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('AIOSEO Plugin Field Structure Test Page Loaded');
+            console.log('Old Plugin Fields:', {
+                title: document.getElementById('aioseop_title').name,
+                description: document.getElementById('aioseop_description').name,
+                keywords: document.getElementById('aioseop_keywords').name
+            });
+            console.log('New Plugin Fields:', {
+                title: document.getElementById('aioseo_title').name,
+                description: document.getElementById('aioseo_description').name,
+                focus_keyphrase: document.getElementById('aioseo_focus_keyphrase').name
+            });
+        });
+    </script>
+</body>
+</html>

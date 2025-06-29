@@ -23,7 +23,7 @@ import threading
 REPO_URL = "https://github.com/AryanVBW/AUTO-blogger.git"
 API_URL = "https://api.github.com/repos/AryanVBW/AUTO-blogger"
 APP_DIR = Path(__file__).parent.absolute()
-VENV_DIR = APP_DIR / "venv"
+VENV_DIR = APP_DIR / "auto_blogger_venv_2344a2a5"
 
 class UpdateChecker:
     def __init__(self):
