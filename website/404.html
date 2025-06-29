@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - AUTO-blogger</title>
+    <meta name="description" content="The page you're looking for doesn't exist. Return to AUTO-blogger documentation.">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <style>
+        .error-container {
+            min-height: calc(100vh - 160px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .error-content {
+            text-align: center;
+            max-width: 600px;
+            background: var(--card-bg);
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        
+        .error-code {
+            font-size: 8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 0;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .error-title {
+            font-size: 2rem;
+            color: var(--text-color);
+            margin: 1rem 0;
+        }
+        
+        .error-description {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .error-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--hover-bg);
+            transform: translateY(-2px);
+        }
+        
+        .helpful-links {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .helpful-links h3 {
+            color: var(--text-color);
+            margin-bottom: 1rem;
+        }
+        
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .link-item {
+            background: var(--bg-color);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        
+        .link-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+        
+        .link-item a {
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        .link-item p {
+            margin: 0.5rem 0 0 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .error-code {
+                font-size: 6rem;
+            }
+            
+            .error-title {
+                font-size: 1.5rem;
+            }
+            
+            .error-content {
+                padding: 2rem;
+            }
+            
+            .error-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .error-btn {
+                width: 100%;
+                max-width: 250px;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="index.html"><h1>🤖 AUTO-blogger</h1></a>
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.html#features" class="nav-link">Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="installation.html" class="nav-link">Installation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="documentation.html" class="nav-link">Documentation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.html#support" class="nav-link">Support</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="https://github.com/AryanVBW/AUTO-blogger" class="nav-link" target="_blank">GitHub</a>
+                    </li>
+                </ul>
+                <div class="hamburger">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="error-container">
+        <div class="error-content">
+            <h1 class="error-code">404</h1>
+            <h2 class="error-title">Page Not Found</h2>
+            <p class="error-description">
+                Oops! The page you're looking for doesn't exist. It might have been moved, deleted, or you entered the wrong URL.
+            </p>
+            
+            <div class="error-actions">
+                <a href="index.html" class="error-btn btn-primary">
+                    🏠 Go Home
+                </a>
+                <a href="javascript:history.back()" class="error-btn btn-secondary">
+                    ← Go Back
+                </a>
+            </div>
+            
+            <div class="helpful-links">
+                <h3>Popular Pages</h3>
+                <div class="links-grid">
+                    <div class="link-item">
+                        <a href="installation.html">🚀 Installation Guide</a>
+                        <p>Get AUTO-blogger up and running quickly</p>
+                    </div>
+                    
+                    <div class="link-item">
+                        <a href="documentation.html">📚 Documentation</a>
+                        <p>Complete usage guide and API reference</p>
+                    </div>
+                    
+                    <div class="link-item">
+                        <a href="documentation.html#troubleshooting">🔧 Troubleshooting</a>
+                        <p>Common issues and solutions</p>
+                    </div>
+                    
+                    <div class="link-item">
+                        <a href="https://github.com/AryanVBW/AUTO-blogger" target="_blank">💻 GitHub Repository</a>
+                        <p>Source code and issue tracking</p>
+                    </div>
+                    
+                    <div class="link-item">
+                        <a href="documentation.html#getting-started">🎯 Getting Started</a>
+                        <p>Quick start guide for beginners</p>
+                    </div>
+                    
+                    <div class="link-item">
+                        <a href="mailto:AryanVBW@gmail.com">📧 Contact Support</a>
+                        <p>Get help from our team</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>AUTO-blogger</h3>
+                    <p>Professional WordPress automation tool with AI integration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="installation.html">Installation</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="https://github.com/AryanVBW/AUTO-blogger" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="mailto:AryanVBW@gmail.com">Email Support</a></li>
+                        <li><a href="https://github.com/AryanVBW/AUTO-blogger/issues" target="_blank">Report Issues</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 AryanVBW. All rights reserved. Licensed under MIT License.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script>
+        // Track 404 errors (optional analytics)
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'page_view', {
+                page_title: '404 - Page Not Found',
+                page_location: window.location.href
+            });
+        }
+        
+        // Log 404 for debugging
+        console.warn('404 Error: Page not found -', window.location.href);
+        
+        // Auto-redirect common typos (optional)
+        const currentPath = window.location.pathname;
+        const redirects = {
+            '/docs': '/documentation.html',
+            '/install': '/installation.html',
+            '/setup': '/installation.html',
+            '/guide': '/documentation.html',
+            '/help': '/documentation.html#troubleshooting'
+        };
+        
+        Object.keys(redirects).forEach(path => {
+            if (currentPath.includes(path)) {
+                setTimeout(() => {
+                    window.location.href = redirects[path];
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>

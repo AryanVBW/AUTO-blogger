@@ -1,0 +1,95 @@
+# GitHub Pages Configuration for AUTO-blogger Documentation
+
+# Site settings
+title: AUTO-blogger Documentation
+description: Professional WordPress automation tool with AI integration
+url: "https://aryanvbw.github.io"
+baseurl: "/AUTO-blogger/website"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: null
+plugins: []
+
+# Exclude files from processing
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .sass-cache
+  - .jekyll-cache
+  - .jekyll-metadata
+  - .git
+  - .gitignore
+
+# Include files
+include:
+  - _pages
+  - assets
+
+# Collections (if needed in future)
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:name/
+
+# Default layouts (if using Jekyll)
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+
+# SEO settings
+author: AryanVBW
+lang: en_US
+timezone: UTC
+
+# Social links
+github_username: AryanVBW
+email: AryanVBW@gmail.com
+
+# Analytics (optional)
+# google_analytics: UA-XXXXXXXX-X
+
+# Compression
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  startings: [html, head, body]
+  blanklines: false
+  profile: false
+
+# Sass configuration
+sass:
+  style: compressed
+  sass_dir: css
+
+# Kramdown settings
+kramdown:
+  input: GFM
+  hard_wrap: false
+  auto_ids: true
+  footnote_nr: 1
+  entity_output: as_char
+  toc_levels: 1..6
+  smart_quotes: lsquo,rsquo,ldquo,rdquo
+  enable_coderay: false
+
+# Repository information
+repository: AryanVBW/AUTO-blogger
+branch: main
+
+# Custom variables
+custom:
+  version: "2.1.0"
+  last_updated: "2025-01-27"
+  documentation_url: "/AUTO-blogger/website/documentation.html"
+  installation_url: "/AUTO-blogger/website/installation.html"
+  github_url: "https://github.com/AryanVBW/AUTO-blogger"
+  support_email: "AryanVBW@gmail.com"

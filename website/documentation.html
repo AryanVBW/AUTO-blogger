@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - AUTO-blogger</title>
+    <meta name="description" content="Complete documentation for AUTO-blogger including usage guides, API references, and troubleshooting.">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/docs.css">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="index.html" class="logo-link">
+                        <img src="assets/icon.png" alt="AUTO-blogger" class="logo-icon">
+                        <h1>AUTO-blogger</h1>
+                    </a>
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.html#features" class="nav-link">Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="installation.html" class="nav-link">Installation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="documentation.html" class="nav-link active">Documentation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.html#support" class="nav-link">Support</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="https://github.com/AryanVBW/AUTO-blogger" class="nav-link" target="_blank">GitHub</a>
+                    </li>
+                </ul>
+                <div class="nav-actions">
+                    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+                        <span class="theme-icon light-icon">🌙</span>
+                        <span class="theme-icon dark-icon">☀️</span>
+                    </button>
+                </div>
+                <div class="hamburger">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="docs-main">
+        <div class="docs-container">
+            <aside class="docs-sidebar">
+                <nav class="docs-nav">
+                    <h3>Documentation</h3>
+                    <ul>
+                        <li><a href="#getting-started">Getting Started</a></li>
+                        <li><a href="#authentication">Authentication</a></li>
+                        <li><a href="#configuration">Configuration</a></li>
+                        <li><a href="#usage">Usage Guide</a></li>
+                        <li><a href="#features-guide">Features Guide</a></li>
+                        <li><a href="#api-reference">API Reference</a></li>
+                        <li><a href="#troubleshooting">Troubleshooting</a></li>
+                        <li><a href="#contributing">Contributing</a></li>
+                        <li><a href="#changelog">Changelog</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <div class="docs-content">
+                <div class="docs-header">
+                    <h1>📚 Documentation</h1>
+                    <p class="docs-subtitle">Complete guide to using AUTO-blogger for WordPress automation and content management.</p>
+                </div>
+
+                <section id="getting-started" class="docs-section">
+                    <h2>🚀 Getting Started</h2>
+                    <p>AUTO-blogger is a powerful WordPress automation tool that combines web scraping, AI content rewriting, and automated posting capabilities.</p>
+
+                    <h3>Quick Start</h3>
+                    <ol>
+                        <li><strong>Install AUTO-blogger</strong> - Follow our <a href="installation.html">installation guide</a></li>
+                        <li><strong>Configure credentials</strong> - Set up WordPress and API keys</li>
+                        <li><strong>Launch the application</strong> - Run <code>autoblog</code> or <code>python3 gui_blogger.py</code></li>
+                        <li><strong>Start automating</strong> - Use the GUI to configure and run automation tasks</li>
+                    </ol>
+
+                    <div class="alert alert-info">
+                        <strong>💡 First Time Setup:</strong>
+                        <p>Make sure you have your WordPress site credentials and OpenAI API key ready before starting.</p>
+                    </div>
+                </section>
+
+                <section id="authentication" class="docs-section">
+                    <h2>🔐 Authentication</h2>
+                    <p>AUTO-blogger requires several API keys and credentials to function properly:</p>
+
+                    <h3>WordPress Credentials</h3>
+                    <div class="credential-item">
+                        <h4>Site URL</h4>
+                        <p>Your WordPress site URL (e.g., <code>https://yourblog.com</code>)</p>
+                    </div>
+                    
+                    <div class="credential-item">
+                        <h4>Username & Password</h4>
+                        <p>WordPress admin username and password, or application password for enhanced security</p>
+                    </div>
+
+                    <h3>OpenAI API Key</h3>
+                    <div class="credential-item">
+                        <h4>API Key</h4>
+                        <p>Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></p>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-title">Environment Variable</span>
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            </div>
+                            <pre><code>export OPENAI_API_KEY="your-api-key-here"</code></pre>
+                        </div>
+                    </div>
+
+                    <h3>Getty Images API (Optional)</h3>
+                    <div class="credential-item">
+                        <h4>API Key</h4>
+                        <p>For enhanced image search and embedding capabilities</p>
+                        <p>Register at <a href="https://developers.gettyimages.com/" target="_blank">Getty Images Developer Portal</a></p>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Security Note:</strong>
+                        <p>Never commit API keys to version control. Use environment variables or secure configuration files.</p>
+                    </div>
+                </section>
+
+                <section id="configuration" class="docs-section">
+                    <h2>⚙️ Configuration</h2>
+                    <p>Configure AUTO-blogger through the GUI or configuration files:</p>
+
+                    <h3>GUI Configuration</h3>
+                    <p>The main interface provides tabs for different configuration areas:</p>
+                    
+                    <div class="config-tabs">
+                        <div class="config-tab">
+                            <h4>🌐 WordPress Settings</h4>
+                            <ul>
+                                <li>Site URL and credentials</li>
+                                <li>Post categories and tags</li>
+                                <li>Publishing preferences</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="config-tab">
+                            <h4>🤖 AI Settings</h4>
+                            <ul>
+                                <li>OpenAI model selection</li>
+                                <li>Content rewriting parameters</li>
+                                <li>SEO optimization settings</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="config-tab">
+                            <h4>🔍 Scraping Settings</h4>
+                            <ul>
+                                <li>Target websites and URLs</li>
+                                <li>Content extraction rules</li>
+                                <li>Rate limiting and delays</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3>Configuration Files</h3>
+                    <p>Advanced users can edit configuration files directly:</p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">config.json</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code>{
+  "wordpress": {
+    "site_url": "https://yourblog.com",
+    "username": "admin",
+    "password": "your-password"
+  },
+  "openai": {
+    "api_key": "your-openai-key",
+    "model": "gpt-3.5-turbo",
+    "max_tokens": 2000
+  },
+  "scraping": {
+    "delay_between_requests": 2,
+    "max_retries": 3,
+    "timeout": 30
+  }
+}</code></pre>
+                    </div>
+                </section>
+
+                <section id="usage" class="docs-section">
+                    <h2>📖 Usage Guide</h2>
+                    <p>Learn how to use AUTO-blogger's main features:</p>
+
+                    <h3>Basic Workflow</h3>
+                    <div class="workflow-steps">
+                        <div class="workflow-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Content Discovery</h4>
+                                <p>Enter target URLs or use automated discovery to find content</p>
+                            </div>
+                        </div>
+                        
+                        <div class="workflow-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Content Extraction</h4>
+                                <p>Extract article content, images, and metadata</p>
+                            </div>
+                        </div>
+                        
+                        <div class="workflow-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>AI Rewriting</h4>
+                                <p>Rewrite content using OpenAI with SEO optimization</p>
+                            </div>
+                        </div>
+                        
+                        <div class="workflow-step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Image Processing</h4>
+                                <p>Download, optimize, and embed relevant images</p>
+                            </div>
+                        </div>
+                        
+                        <div class="workflow-step">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h4>WordPress Publishing</h4>
+                                <p>Automatically publish to your WordPress site</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Command Line Usage</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">CLI Commands</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code># Launch GUI
+autoblog
+
+# Run with specific config
+autoblog --config /path/to/config.json
+
+# Test installation
+autoblog --test
+
+# Batch processing
+autoblog --batch --input urls.txt
+
+# Debug mode
+autoblog --debug</code></pre>
+                    </div>
+                </section>
+
+                <section id="features-guide" class="docs-section">
+                    <h2>🎯 Features Guide</h2>
+                    
+                    <h3>Content Scraping</h3>
+                    <div class="feature-detail">
+                        <h4>Supported Sources</h4>
+                        <ul>
+                            <li>News websites and blogs</li>
+                            <li>RSS feeds</li>
+                            <li>Social media posts</li>
+                            <li>Custom URL lists</li>
+                        </ul>
+                        
+                        <h4>Extraction Capabilities</h4>
+                        <ul>
+                            <li>Article text and formatting</li>
+                            <li>Images and media</li>
+                            <li>Metadata and SEO tags</li>
+                            <li>Author and publication info</li>
+                        </ul>
+                    </div>
+
+                    <h3>AI Content Rewriting</h3>
+                    <div class="feature-detail">
+                        <h4>Rewriting Options</h4>
+                        <ul>
+                            <li>Paraphrasing and restructuring</li>
+                            <li>SEO keyword optimization</li>
+                            <li>Tone and style adjustment</li>
+                            <li>Length modification</li>
+                        </ul>
+                        
+                        <h4>Quality Controls</h4>
+                        <ul>
+                            <li>Plagiarism detection</li>
+                            <li>Readability scoring</li>
+                            <li>Fact-checking prompts</li>
+                            <li>Manual review options</li>
+                        </ul>
+                    </div>
+
+                    <h3>WordPress Integration</h3>
+                    <div class="feature-detail">
+                        <h4>Publishing Features</h4>
+                        <ul>
+                            <li>Automatic post creation</li>
+                            <li>Category and tag assignment</li>
+                            <li>Featured image setting</li>
+                            <li>SEO metadata optimization</li>
+                        </ul>
+                        
+                        <h4>Scheduling Options</h4>
+                        <ul>
+                            <li>Immediate publishing</li>
+                            <li>Scheduled posting</li>
+                            <li>Draft creation</li>
+                            <li>Bulk operations</li>
+                        </ul>
+                    </div>
+
+                    <h3>Getty Images Integration</h3>
+                    <div class="feature-detail">
+                        <h4>Image Search</h4>
+                        <ul>
+                            <li>Keyword-based search</li>
+                            <li>Category filtering</li>
+                            <li>License type selection</li>
+                            <li>Quality and size options</li>
+                        </ul>
+                        
+                        <h4>Embedding Features</h4>
+                        <ul>
+                            <li>Automatic image embedding</li>
+                            <li>Caption generation</li>
+                            <li>Alt text optimization</li>
+                            <li>Responsive sizing</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section id="api-reference" class="docs-section">
+                    <h2>🔧 API Reference</h2>
+                    <p>For developers who want to integrate or extend AUTO-blogger:</p>
+
+                    <h3>Core Classes</h3>
+                    
+                    <div class="api-class">
+                        <h4>ContentScraper</h4>
+                        <p>Handles web scraping and content extraction</p>
+                        <div class="code-block">
+                            <pre><code>from scraper import ContentScraper
+
+scraper = ContentScraper()
+content = scraper.extract_content(url)
+print(content.title, content.text, content.images)</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="api-class">
+                        <h4>AIRewriter</h4>
+                        <p>AI-powered content rewriting and optimization</p>
+                        <div class="code-block">
+                            <pre><code>from ai_rewriter import AIRewriter
+
+rewriter = AIRewriter(api_key="your-key")
+rewritten = rewriter.rewrite_content(
+    content=original_text,
+    style="professional",
+    seo_keywords=["automation", "wordpress"]
+)</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="api-class">
+                        <h4>WordPressPublisher</h4>
+                        <p>WordPress API integration for automated publishing</p>
+                        <div class="code-block">
+                            <pre><code>from wordpress_publisher import WordPressPublisher
+
+publisher = WordPressPublisher(
+    site_url="https://yourblog.com",
+    username="admin",
+    password="password"
+)
+
+post_id = publisher.create_post(
+    title="Your Post Title",
+    content="Post content here",
+    categories=["Technology"],
+    tags=["automation", "ai"]
+)</code></pre>
+                        </div>
+                    </div>
+
+                    <h3>Configuration API</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Configuration Management</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code>from config_manager import ConfigManager
+
+# Load configuration
+config = ConfigManager.load_config("config.json")
+
+# Update settings
+config.set("wordpress.site_url", "https://newsite.com")
+config.save()
+
+# Environment variables
+config.load_from_env()</code></pre>
+                    </div>
+                </section>
+
+                <section id="troubleshooting" class="docs-section">
+                    <h2>🔧 Troubleshooting</h2>
+                    
+                    <h3>Common Issues</h3>
+                    
+                    <div class="troubleshooting-item">
+                        <h4>❌ WordPress Connection Failed</h4>
+                        <p><strong>Symptoms:</strong> Cannot connect to WordPress site</p>
+                        <p><strong>Solutions:</strong></p>
+                        <ul>
+                            <li>Verify site URL format (include https://)</li>
+                            <li>Check username and password</li>
+                            <li>Ensure WordPress REST API is enabled</li>
+                            <li>Check for security plugins blocking API access</li>
+                        </ul>
+                    </div>
+
+                    <div class="troubleshooting-item">
+                        <h4>❌ OpenAI API Errors</h4>
+                        <p><strong>Symptoms:</strong> AI rewriting fails or returns errors</p>
+                        <p><strong>Solutions:</strong></p>
+                        <ul>
+                            <li>Verify API key is correct and active</li>
+                            <li>Check API usage limits and billing</li>
+                            <li>Reduce content length if hitting token limits</li>
+                            <li>Try different model (gpt-3.5-turbo vs gpt-4)</li>
+                        </ul>
+                    </div>
+
+                    <div class="troubleshooting-item">
+                        <h4>❌ Scraping Blocked</h4>
+                        <p><strong>Symptoms:</strong> Cannot extract content from websites</p>
+                        <p><strong>Solutions:</strong></p>
+                        <ul>
+                            <li>Increase delay between requests</li>
+                            <li>Use different user agents</li>
+                            <li>Check for CAPTCHA or anti-bot measures</li>
+                            <li>Respect robots.txt and rate limits</li>
+                        </ul>
+                    </div>
+
+                    <div class="troubleshooting-item">
+                        <h4>❌ Chrome/Selenium Issues</h4>
+                        <p><strong>Symptoms:</strong> Browser automation fails</p>
+                        <p><strong>Solutions:</strong></p>
+                        <ul>
+                            <li>Update Chrome to latest version</li>
+                            <li>Check ChromeDriver compatibility</li>
+                            <li>Run in headless mode for server environments</li>
+                            <li>Increase timeout values</li>
+                        </ul>
+                    </div>
+
+                    <h3>Debug Mode</h3>
+                    <p>Enable debug mode for detailed logging:</p>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Debug Commands</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code># Enable debug logging
+export DEBUG=true
+autoblog --debug
+
+# Check log files
+tail -f logs/autoblog.log
+
+# Test individual components
+python3 -m pytest tests/ -v</code></pre>
+                    </div>
+
+                    <h3>Getting Help</h3>
+                    <div class="help-options">
+                        <div class="help-option">
+                            <h4>📧 Email Support</h4>
+                            <p>Contact: <a href="mailto:AryanVBW@gmail.com">AryanVBW@gmail.com</a></p>
+                        </div>
+                        
+                        <div class="help-option">
+                            <h4>🐛 GitHub Issues</h4>
+                            <p>Report bugs: <a href="https://github.com/AryanVBW/AUTO-blogger/issues" target="_blank">GitHub Issues</a></p>
+                        </div>
+                        
+                        <div class="help-option">
+                            <h4>💬 Community</h4>
+                            <p>Join discussions and get community support</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="contributing" class="docs-section">
+                    <h2>🤝 Contributing</h2>
+                    <p>We welcome contributions to AUTO-blogger! Here's how to get started:</p>
+
+                    <h3>Development Setup</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Development Environment</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code># Fork and clone the repository
+git clone https://github.com/yourusername/AUTO-blogger.git
+cd AUTO-blogger
+
+# Create development environment
+python3 -m venv dev-env
+source dev-env/bin/activate
+
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Install pre-commit hooks
+pre-commit install</code></pre>
+                    </div>
+
+                    <h3>Contribution Guidelines</h3>
+                    <ul>
+                        <li>Follow PEP 8 style guidelines</li>
+                        <li>Write tests for new features</li>
+                        <li>Update documentation</li>
+                        <li>Create detailed pull request descriptions</li>
+                    </ul>
+
+                    <h3>Testing</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Running Tests</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><code># Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=autoblogger
+
+# Run specific test file
+pytest tests/test_scraper.py
+
+# Run integration tests
+pytest tests/integration/</code></pre>
+                    </div>
+                </section>
+
+                <section id="changelog" class="docs-section">
+                    <h2>📝 Changelog</h2>
+                    
+                    <div class="changelog-item">
+                        <h3>v2.1.0 - Latest</h3>
+                        <p class="changelog-date">Released: January 2025</p>
+                        <h4>✨ New Features</h4>
+                        <ul>
+                            <li>Getty Images API integration</li>
+                            <li>Enhanced UI with radio buttons and tooltips</li>
+                            <li>Non-interactive installation mode</li>
+                            <li>Auto-update functionality</li>
+                        </ul>
+                        <h4>🐛 Bug Fixes</h4>
+                        <ul>
+                            <li>Fixed installation script hanging issues</li>
+                            <li>Resolved create_launchers function error</li>
+                            <li>Improved error handling in scraping module</li>
+                        </ul>
+                        <h4>🔧 Improvements</h4>
+                        <ul>
+                            <li>Optimized installation process</li>
+                            <li>Better dependency management</li>
+                            <li>Enhanced documentation</li>
+                        </ul>
+                    </div>
+
+                    <div class="changelog-item">
+                        <h3>v2.0.0</h3>
+                        <p class="changelog-date">Released: December 2024</p>
+                        <h4>✨ New Features</h4>
+                        <ul>
+                            <li>Complete GUI redesign</li>
+                            <li>OpenAI GPT-4 integration</li>
+                            <li>Advanced SEO optimization</li>
+                            <li>Batch processing capabilities</li>
+                        </ul>
+                    </div>
+
+                    <div class="changelog-item">
+                        <h3>v1.5.0</h3>
+                        <p class="changelog-date">Released: November 2024</p>
+                        <h4>✨ New Features</h4>
+                        <ul>
+                            <li>WordPress REST API integration</li>
+                            <li>Automated image processing</li>
+                            <li>Content scheduling</li>
+                        </ul>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section footer-brand">
+                    <div class="footer-logo">
+                        <img src="assets/icon.png" alt="AUTO-blogger" class="footer-icon">
+                        <h3>AUTO-blogger</h3>
+                    </div>
+                    <p>Professional WordPress automation tool with AI integration, Getty Images, and comprehensive SEO optimization.</p>
+                    <div class="footer-social">
+                        <a href="https://github.com/AryanVBW/AUTO-blogger" target="_blank" class="social-link">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M9 19C4 20.5 4 16.5 2 16M22 16V22C22 22 18 20 15 22V16C15.13 15.5 15.13 14.5 15 14C18 13.5 22 12 22 6C22 5 21.5 4 21 3.5C21.5 2.5 21.5 1.5 21 1C21 1 20 1 18 2.5C16.5 2 13.5 2 12 2.5C10 1 9 1 9 1C8.5 1.5 8.5 2.5 9 3.5C8.5 4 8 5 8 6C8 12 12 13.5 15 14C14.87 14.5 14.87 15.5 15 16V22C12 20 8 22 8 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="installation.html">Installation</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="https://github.com/AryanVBW/AUTO-blogger" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="mailto:AryanVBW@gmail.com">Email Support</a></li>
+                        <li><a href="https://github.com/AryanVBW/AUTO-blogger/issues" target="_blank">Report Issues</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 AryanVBW. All rights reserved. Licensed under MIT License.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/docs.js"></script>
+</body>
+</html>

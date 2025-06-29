@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="url(#grad1)" stroke="#fff" stroke-width="2"/>
+  
+  <!-- Robot head -->
+  <rect x="20" y="18" width="24" height="20" rx="4" fill="#fff" opacity="0.9"/>
+  
+  <!-- Eyes -->
+  <circle cx="26" cy="26" r="3" fill="#667eea"/>
+  <circle cx="38" cy="26" r="3" fill="#667eea"/>
+  
+  <!-- Eye highlights -->
+  <circle cx="27" cy="25" r="1" fill="#fff"/>
+  <circle cx="39" cy="25" r="1" fill="#fff"/>
+  
+  <!-- Mouth/speaker -->
+  <rect x="28" y="30" width="8" height="4" rx="2" fill="#667eea"/>
+  
+  <!-- Antenna -->
+  <line x1="32" y1="18" x2="32" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="32" cy="10" r="2" fill="#fff"/>
+  
+  <!-- Blog/document icon -->
+  <rect x="16" y="42" width="32" height="16" rx="2" fill="#fff" opacity="0.8"/>
+  <line x1="20" y1="46" x2="44" y2="46" stroke="#667eea" stroke-width="1.5"/>
+  <line x1="20" y1="50" x2="40" y2="50" stroke="#667eea" stroke-width="1.5"/>
+  <line x1="20" y1="54" x2="36" y2="54" stroke="#667eea" stroke-width="1.5"/>
+</svg>

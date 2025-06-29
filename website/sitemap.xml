@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+    <!-- Homepage -->
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/index.html</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Installation Guide -->
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/installation.html</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Documentation -->
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- 404 Page (for completeness) -->
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/404.html</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.1</priority>
+    </url>
+
+    <!-- Documentation Sections (anchor links for better SEO) -->
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#getting-started</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#authentication</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#configuration</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#usage</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#features</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#api-reference</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#troubleshooting</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#contributing</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/documentation.html#changelog</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <!-- Installation Sections -->
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/installation.html#quick-install</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/installation.html#requirements</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/installation.html#automated-installation</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/installation.html#manual-installation</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/installation.html#verification</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://aryanvbw.github.io/AUTO-blogger/website/installation.html#troubleshooting</loc>
+        <lastmod>2025-01-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+</urlset>

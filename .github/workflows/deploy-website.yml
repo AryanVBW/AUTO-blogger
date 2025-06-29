@@ -1,0 +1,163 @@
+name: Deploy Documentation Website to GitHub Pages
+
+# Trigger the workflow on push to main branch or manual dispatch
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'website/**'
+      - 'docs/**'
+      - '.github/workflows/deploy-website.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'website/**'
+      - 'docs/**'
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js (for any future build tools)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+        continue-on-error: true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Validate HTML files
+        run: |
+          echo "Validating HTML files..."
+          # Check if HTML files are valid
+          for file in website/*.html; do
+            if [ -f "$file" ]; then
+              echo "Checking $file"
+              # Basic HTML validation (check for basic structure)
+              if ! grep -q "<!DOCTYPE html>" "$file"; then
+                echo "Warning: $file missing DOCTYPE declaration"
+              fi
+              if ! grep -q "</html>" "$file"; then
+                echo "Error: $file missing closing html tag"
+                exit 1
+              fi
+            fi
+          done
+          echo "HTML validation completed"
+
+      - name: Optimize assets
+        run: |
+          echo "Optimizing website assets..."
+          
+          # Create optimized directory
+          mkdir -p _site
+          
+          # Copy website files
+          cp -r website/* _site/
+          
+          # Update sitemap with current date
+          if [ -f "_site/sitemap.xml" ]; then
+            sed -i "s/2025-01-27/$(date +%Y-%m-%d)/g" _site/sitemap.xml
+          fi
+          
+          # Update last modified dates in config
+          if [ -f "_site/_config.yml" ]; then
+            sed -i "s/last_updated: .*/last_updated: \"$(date +%Y-%m-%d)\"/g" _site/_config.yml
+          fi
+          
+          # Minify CSS (basic minification)
+          if command -v npx &> /dev/null; then
+            echo "Attempting CSS minification..."
+            for css_file in _site/css/*.css; do
+              if [ -f "$css_file" ]; then
+                # Basic CSS minification (remove comments and extra whitespace)
+                sed -i 's/\/\*.*\*\///g; s/[[:space:]]\+/ /g; s/; /;/g; s/{ /{/g; s/ }/}/g' "$css_file"
+              fi
+            done
+          fi
+          
+          # Generate build info
+          echo "{
+  \"build_date\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+  \"commit_sha\": \"$GITHUB_SHA\",
+  \"ref\": \"$GITHUB_REF\",
+  \"repository\": \"$GITHUB_REPOSITORY\"
+}" > _site/build-info.json
+          
+          echo "Asset optimization completed"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Post-deployment verification
+        run: |
+          echo "Deployment completed successfully!"
+          echo "Website URL: ${{ steps.deployment.outputs.page_url }}"
+          
+          # Wait a moment for deployment to propagate
+          sleep 30
+          
+          # Basic health check
+          if command -v curl &> /dev/null; then
+            echo "Performing health check..."
+            response=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.deployment.outputs.page_url }}" || echo "000")
+            if [ "$response" = "200" ]; then
+              echo "✅ Website is accessible and responding correctly"
+            else
+              echo "⚠️ Website returned HTTP $response - may need time to propagate"
+            fi
+          fi
+
+  # Notification job (optional)
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build, deploy]
+    if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    steps:
+      - name: Notify deployment status
+        run: |
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            echo "🎉 Documentation website deployed successfully!"
+            echo "📖 Visit: https://aryanvbw.github.io/AUTO-blogger/website/"
+            echo "📋 Installation Guide: https://aryanvbw.github.io/AUTO-blogger/website/installation.html"
+            echo "📚 Documentation: https://aryanvbw.github.io/AUTO-blogger/website/documentation.html"
+          else
+            echo "❌ Deployment failed. Check the logs above for details."
+            exit 1
+          fi

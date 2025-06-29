@@ -1,0 +1,40 @@
+# Robots.txt for AUTO-blogger Documentation
+# This file tells search engine crawlers which pages they can or cannot request from your site.
+
+User-agent: *
+Allow: /
+
+# Allow all major search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# Disallow crawling of certain file types and directories
+Disallow: /css/
+Disallow: /js/
+Disallow: /*.css$
+Disallow: /*.js$
+Disallow: /*.json$
+
+# Allow crawling of main content
+Allow: /index.html
+Allow: /installation.html
+Allow: /documentation.html
+Allow: /404.html
+
+# Sitemap location
+Sitemap: https://aryanvbw.github.io/AUTO-blogger/website/sitemap.xml
+
+# Crawl delay (optional - be respectful to servers)
+Crawl-delay: 1
+
+# Cache directive
+# Cache: public, max-age=3600

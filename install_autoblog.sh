@@ -485,6 +485,13 @@ check_python() {
 # Function to install Chrome/Chromium for Selenium
 install_chrome() {
     local os=$(detect_os)
+    
+    # Check if Chrome/Chromium is already installed
+    if command_exists google-chrome || command_exists google-chrome-stable || command_exists chromium || command_exists chromium-browser || [ -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+        echo -e "${GREEN}✅ Chrome/Chromium already installed - skipping installation${NC}"
+        return 0
+    fi
+    
     echo -e "${YELLOW}🌐 Installing Chrome/Chromium for web automation...${NC}"
     
     case $os in
@@ -550,9 +557,25 @@ install_chrome() {
 create_venv() {
     echo -e "${YELLOW}🔧 Creating Python virtual environment...${NC}"
     
+    # Check if virtual environment already exists and is functional
     if [ -d "venv" ]; then
-        echo -e "${YELLOW}⚠️ Virtual environment already exists. Removing old one...${NC}"
-        rm -rf venv || handle_error 1 "Failed to remove existing virtual environment" "Check permissions and try running with sudo"
+        echo -e "${CYAN}🔍 Checking existing virtual environment...${NC}"
+        
+        # Test if the virtual environment is functional
+        local venv_python=""
+        if [[ "$(detect_os)" == "windows" ]]; then
+            venv_python="venv/Scripts/python"
+        else
+            venv_python="venv/bin/python"
+        fi
+        
+        if [ -f "$venv_python" ] && "$venv_python" -c "import sys; print('OK')" >/dev/null 2>&1; then
+            echo -e "${GREEN}✅ Virtual environment already exists and is functional - skipping creation${NC}"
+            return 0
+        else
+            echo -e "${YELLOW}⚠️ Virtual environment exists but is not functional. Removing old one...${NC}"
+            rm -rf venv || handle_error 1 "Failed to remove existing virtual environment" "Check permissions and try running with sudo"
+        fi
     fi
     
     echo -e "${CYAN}🔄 Creating new virtual environment...${NC}"
@@ -591,6 +614,38 @@ install_dependencies() {
             source venv/Scripts/activate || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing venv folder and running again"
         else
             source venv/bin/activate || handle_error 1 "Failed to activate virtual environment" "Virtual environment may be corrupted. Try removing venv folder and running again"
+        fi
+    fi
+    
+    # Check if dependencies are already installed
+    echo -e "${CYAN}🔍 Checking existing dependencies...${NC}"
+    local critical_packages=("requests" "bs4" "selenium" "openai")
+    local all_installed=true
+    
+    for package in "${critical_packages[@]}"; do
+        if ! python -c "import $package" >/dev/null 2>&1; then
+            all_installed=false
+            break
+        fi
+    done
+    
+    if [ "$all_installed" = true ] && [ -f "requirements.txt" ]; then
+        # Check if all requirements.txt packages are installed
+        local missing_packages=0
+        while IFS= read -r package; do
+            if [[ "$package" =~ ^#.*$ ]] || [[ -z "$package" ]]; then
+                continue
+            fi
+            local pkg_name=$(echo "$package" | sed 's/[>=<].*//' | sed 's/\[.*\]//')
+            if ! pip show "$pkg_name" >/dev/null 2>&1; then
+                missing_packages=$((missing_packages + 1))
+                break
+            fi
+        done < requirements.txt
+        
+        if [ "$missing_packages" -eq 0 ]; then
+            echo -e "${GREEN}✅ All dependencies already installed - skipping installation${NC}"
+            return 0
         fi
     fi
     
@@ -1062,7 +1117,7 @@ main() {
     
     # Step 9: Launcher creation
      echo -e "${YELLOW}📋 Step 9/10: Launcher Creation${NC}"
-     create_launchers
+     create_launcher
      create_desktop_shortcut
      echo ""
      
