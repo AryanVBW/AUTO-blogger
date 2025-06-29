@@ -142,6 +142,29 @@ class BlogAutomationEngine:
             }
         )
         
+        # Custom SEO Keywords configuration
+        self.CUSTOM_SEO_KEYWORDS = self.load_json_config(
+            "custom_seo_keywords.json",
+            {
+                "enabled": False,
+                "custom_keywords": {
+                    "focus_keywords": [],
+                    "additional_keywords": [],
+                    "team_specific_keywords": {},
+                    "competition_keywords": [],
+                    "seasonal_keywords": []
+                },
+                "keyword_settings": {
+                    "max_focus_keywords_per_article": 2,
+                    "max_additional_keywords_per_article": 8,
+                    "combine_with_auto_keywords": True,
+                    "prioritize_custom_keywords": False,
+                    "auto_select_team_keywords": True,
+                    "auto_select_competition_keywords": True
+                }
+            }
+        )
+        
     def load_json_config(self, filename, default):
         """Load JSON configuration file with proper error handling"""
         path = os.path.join(self.config_dir, filename)
@@ -629,7 +652,25 @@ class BlogAutomationEngine:
         return ' '.join(processed_words)
 
     def post_process_text(self, text: str) -> str:
-        """Apply targeted capitalization rules from Jupyter notebook implementation"""
+        """Apply targeted capitalization rules and clean markdown artifacts"""
+        if not text:
+            return text
+        
+        # Remove markdown code blocks that might be accidentally included
+        # Remove ````html (4 backticks) patterns
+        text = re.sub(r'````html\s*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\s*````\s*', '', text, flags=re.IGNORECASE)
+        # Remove ```html (3 backticks) patterns
+        text = re.sub(r'```html\s*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\s*```\s*', '', text, flags=re.IGNORECASE)
+        # Remove any remaining backtick patterns
+        text = re.sub(r'`{3,4}[a-zA-Z]*\s*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\s*`{3,4}\s*', '', text, flags=re.IGNORECASE)
+        
+        # Clean up any extra whitespace that might result from removing code blocks
+        text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)  # Replace multiple newlines with double newlines
+        text = text.strip()  # Remove leading/trailing whitespace
+        
         # Load replacements from configuration or use default
         replacements = self.GEMINI_PROMPTS.get("post_processing_replacements", {
             r'\bpremier league\b': 'Premier League',
@@ -1462,22 +1503,126 @@ Article Content:
                     focus = line.strip()
                 if in_additional and line.strip():
                     additional.append(line.strip())
-            return {"focus_keyphrase": focus, "additional_keyphrases": additional}
+            result = {"focus_keyphrase": focus_keyphrase, "additional_keyphrases": additional_keyphrases}
+            
+            # Apply custom SEO keywords if enabled
+            if self.CUSTOM_SEO_KEYWORDS.get("enabled", False):
+                enhanced_focus, enhanced_additional = self.apply_custom_seo_keywords(
+                    focus, additional, title, content
+                )
+                result = {"focus_keyphrase": enhanced_focus, "additional_keyphrases": enhanced_additional}
+            
+            return result
         except Exception as e:
             self.logger.error(f"Error extracting keyphrases with Gemini: {e}")
-            return self.extract_keyphrases_fallback(content, title)
+            fallback_result = self.extract_keyphrases_fallback(content, title)
+            
+            # Apply custom SEO keywords to fallback result if enabled
+            if self.CUSTOM_SEO_KEYWORDS.get("enabled", False):
+                enhanced_focus, enhanced_additional = self.apply_custom_seo_keywords(
+                    fallback_result.get('focus_keyphrase', ''), 
+                    fallback_result.get('additional_keyphrases', []), 
+                    title, content
+                )
+                return {"focus_keyphrase": enhanced_focus, "additional_keyphrases": enhanced_additional}
+            
+            return fallback_result
 
     def extract_keyphrases_fallback(self, content: str, title: str = "") -> dict:
-        """Fallback: extract keyphrases by picking most frequent capitalized words."""
+        """Fallback: extract keyphrases by picking most frequent meaningful words and phrases."""
         import re
-        words = re.findall(r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\b', content)
-        freq = {}
-        for w in words:
-            freq[w] = freq.get(w, 0) + 1
-        sorted_words = sorted(freq, key=freq.get, reverse=True)
-        focus = sorted_words[0] if sorted_words else ''
-        additional = sorted_words[1:6] if len(sorted_words) > 1 else []
-        return {"focus_keyphrase": focus, "additional_keyphrases": additional}
+        from collections import Counter
+        
+        # Combine title and content for better keyword extraction
+        combined_text = f"{title} {content}"
+        
+        # Clean the text and extract meaningful phrases and words
+        # Remove HTML tags and normalize whitespace
+        clean_text = re.sub(r'<[^>]+>', ' ', combined_text)
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        
+        # Extract multi-word phrases (2-4 words) with proper capitalization
+        phrases = re.findall(r'\b[A-Z][a-zA-Z]{2,}(?:\s+[A-Z][a-zA-Z]{2,}){1,3}\b', clean_text)
+        
+        # Extract single meaningful words (capitalized, at least 3 chars)
+        single_words = re.findall(r'\b[A-Z][a-zA-Z]{2,}\b', clean_text)
+        
+        # Enhanced stop words list
+        stop_words = {
+            'The', 'This', 'That', 'With', 'From', 'They', 'Were', 'Been', 'Have', 'Will', 
+            'Would', 'Could', 'Should', 'When', 'Where', 'What', 'Which', 'While', 'After',
+            'Before', 'During', 'Since', 'Until', 'About', 'Above', 'Below', 'Between',
+            'Through', 'Under', 'Over', 'Into', 'Onto', 'Upon', 'Within', 'Without'
+        }
+        
+        # Filter and clean keywords
+        filtered_phrases = []
+        filtered_words = []
+        
+        for phrase in phrases:
+            words_in_phrase = phrase.split()
+            if not any(word in stop_words for word in words_in_phrase) and len(phrase) > 4:
+                filtered_phrases.append(phrase)
+        
+        for word in single_words:
+            if word not in stop_words and len(word) > 2:
+                filtered_words.append(word)
+        
+        # Count frequencies
+        phrase_freq = Counter(filtered_phrases)
+        word_freq = Counter(filtered_words)
+        
+        # Get top phrases and words
+        top_phrases = [phrase for phrase, count in phrase_freq.most_common(10)]
+        top_words = [word for word, count in word_freq.most_common(15)]
+        
+        # Prioritize phrases for focus keyphrase
+        focus_keyphrase = 'football news'  # default
+        if top_phrases:
+            focus_keyphrase = top_phrases[0]
+        elif top_words:
+            # Try to create a meaningful phrase from top words
+            if len(top_words) >= 2:
+                focus_keyphrase = f"{top_words[0]} {top_words[1]}"
+            else:
+                focus_keyphrase = top_words[0]
+        
+        # Build additional keyphrases list
+        additional_keyphrases = []
+        
+        # Add remaining phrases
+        for phrase in top_phrases[1:6]:  # Skip the focus phrase
+            if phrase != focus_keyphrase:
+                additional_keyphrases.append(phrase)
+        
+        # Add meaningful single words if we need more
+        for word in top_words:
+            if len(additional_keyphrases) >= 5:
+                break
+            if word not in focus_keyphrase and word not in ' '.join(additional_keyphrases):
+                additional_keyphrases.append(word)
+        
+        # Add football-specific defaults if we still don't have enough
+        if len(additional_keyphrases) < 3:
+            football_defaults = [
+                'Premier League', 'transfer news', 'match report', 'football analysis', 
+                'team news', 'player performance', 'match preview', 'football updates'
+            ]
+            for default in football_defaults:
+                if default not in additional_keyphrases and default != focus_keyphrase:
+                    additional_keyphrases.append(default)
+                if len(additional_keyphrases) >= 5:
+                    break
+        result = {"focus_keyphrase": focus_keyphrase, "additional_keyphrases": additional_keyphrases}
+        
+        # Apply custom SEO keywords if enabled
+        if self.CUSTOM_SEO_KEYWORDS.get("enabled", False):
+            enhanced_focus, enhanced_additional = self.apply_custom_seo_keywords(
+                focus_keyphrase, additional_keyphrases, title, content
+            )
+            result = {"focus_keyphrase": enhanced_focus, "additional_keyphrases": enhanced_additional}
+        
+        return result
 
     def generate_seo_title_and_meta_jupyter(self, title: str, content: str) -> Tuple[str, str]:
         """Enhanced SEO title and meta generation using Jupyter notebook implementation"""
@@ -1488,7 +1633,101 @@ Article Content:
         result = self.extract_keyphrases_with_gemini(content, title)
         focus = result.get('focus_keyphrase', '')
         additional = result.get('additional_keyphrases', [])
+        
+        # Apply custom SEO keywords if enabled
+        focus, additional = self.apply_custom_seo_keywords(focus, additional, title, content)
+        
         return focus, additional
+        
+    def apply_custom_seo_keywords(self, auto_focus: str, auto_additional: List[str], 
+                                 title: str, content: str) -> Tuple[str, List[str]]:
+        """Apply custom SEO keywords from configuration to auto-generated keyphrases"""
+        # Skip if custom keywords are not enabled
+        if not self.CUSTOM_SEO_KEYWORDS.get("enabled", False):
+            return auto_focus, auto_additional
+            
+        self.logger.info("Applying custom SEO keywords from configuration")
+        
+        # Get settings
+        settings = self.CUSTOM_SEO_KEYWORDS.get("keyword_settings", {})
+        custom_keywords = self.CUSTOM_SEO_KEYWORDS.get("custom_keywords", {})
+        
+        max_focus = settings.get("max_focus_keywords_per_article", 2)
+        max_additional = settings.get("max_additional_keywords_per_article", 8)
+        combine_with_auto = settings.get("combine_with_auto_keywords", True)
+        prioritize_custom = settings.get("prioritize_custom_keywords", False)
+        
+        # Get custom keywords
+        custom_focus = custom_keywords.get("focus_keywords", [])
+        custom_additional = custom_keywords.get("additional_keywords", [])
+        
+        # Add team-specific keywords if enabled
+        if settings.get("auto_select_team_keywords", True):
+            combined_text = f"{title} {content}".lower()
+            team_keywords = custom_keywords.get("team_specific_keywords", {})
+            
+            for team, keywords in team_keywords.items():
+                if team.lower() in combined_text:
+                    self.logger.info(f"Adding team-specific keywords for {team}")
+                    custom_additional.extend(keywords)
+        
+        # Add competition keywords if enabled
+        if settings.get("auto_select_competition_keywords", True):
+            combined_text = f"{title} {content}".lower()
+            competition_keywords = custom_keywords.get("competition_keywords", [])
+            
+            for keyword in competition_keywords:
+                if keyword.lower() in combined_text:
+                    custom_additional.append(keyword)
+        
+        # Add seasonal keywords
+        custom_additional.extend(custom_keywords.get("seasonal_keywords", []))
+        
+        # Remove duplicates
+        custom_additional = list(set(custom_additional))
+        
+        # Combine or replace auto-generated keywords
+        if combine_with_auto:
+            # For focus keyphrase
+            focus_keyphrases = []
+            if prioritize_custom:
+                focus_keyphrases.extend(custom_focus[:max_focus])
+                if len(focus_keyphrases) < max_focus and auto_focus:
+                    focus_keyphrases.append(auto_focus)
+            else:
+                if auto_focus:
+                    focus_keyphrases.append(auto_focus)
+                focus_keyphrases.extend(custom_focus[:max_focus - len(focus_keyphrases)])
+            
+            # For additional keyphrases
+            additional_keyphrases = []
+            if prioritize_custom:
+                additional_keyphrases.extend(custom_additional[:max_additional])
+                remaining = max_additional - len(additional_keyphrases)
+                additional_keyphrases.extend(auto_additional[:remaining])
+            else:
+                additional_keyphrases.extend(auto_additional)
+                remaining = max_additional - len(additional_keyphrases)
+                additional_keyphrases.extend(custom_additional[:remaining])
+        else:
+            # Use only custom keywords
+            focus_keyphrases = custom_focus[:max_focus]
+            additional_keyphrases = custom_additional[:max_additional]
+        
+        # Ensure we have at least one focus keyphrase
+        if not focus_keyphrases and auto_focus:
+            focus_keyphrases.append(auto_focus)
+        
+        # Remove duplicates and limit to max counts
+        focus_keyphrases = list(dict.fromkeys(focus_keyphrases))[:max_focus]
+        additional_keyphrases = list(dict.fromkeys(additional_keyphrases))[:max_additional]
+        
+        # Log the results
+        self.logger.info(f"Final focus keyphrases: {focus_keyphrases}")
+        self.logger.info(f"Final additional keyphrases: {additional_keyphrases}")
+        
+        # Return the first focus keyphrase and all additional keyphrases
+        return focus_keyphrases[0] if focus_keyphrases else "", additional_keyphrases
 
     def search_getty_images(self, query: str, num_results: int = 5) -> List[Dict[str, str]]:
         """Search for editorial images - now uses reliable sports image sources"""
@@ -1831,64 +2070,237 @@ Your response (search terms only):
             self.logger.error(f"❌ Failed to create minimal placeholder: {e}")
             return None
 
-    def generate_and_upload_getty_featured_image(self, title: str, content: str, post_id: int) -> bool:
-        """Generate and upload a Getty Images featured image for a WordPress post"""
+    def add_openai_image_to_content(self, content: str, title: str, custom_prompt: str = None) -> str:
+        """Add OpenAI generated image to content"""
         try:
-            self.logger.info(f"🖼️ Starting Getty featured image generation for post {post_id}")
+            self.logger.info("🎨 Adding OpenAI generated image to content...")
             
-            # Step 1: Generate optimized search terms using Gemini AI
+            # Load OpenAI image configuration
+            openai_config = self.load_openai_image_config()
+            
+            # Generate image prompt
+            image_prompt = self.create_openai_image_prompt(title, content, openai_config, custom_prompt=custom_prompt)
+            
+            # Generate image using OpenAI DALL-E
+            image_url = self.generate_openai_image(image_prompt, openai_config)
+            
+            if image_url:
+                # Create image HTML block
+                image_html = f'''
+<div class="wp-block-image">
+    <figure class="aligncenter size-large">
+        <img src="{image_url}" alt="{title}" class="wp-image-generated"/>
+        <figcaption>{title}</figcaption>
+    </figure>
+</div>
+'''
+                
+                # Insert after first or second paragraph
+                paragraphs = content.split('</p>')
+                if len(paragraphs) >= 3:
+                    # Insert after second paragraph
+                    insert_point = 2
+                else:
+                    # Insert after first paragraph
+                    insert_point = 1
+                
+                if len(paragraphs) > insert_point:
+                    paragraphs[insert_point-1] += '</p>' + image_html
+                    content = '</p>'.join(paragraphs)
+                else:
+                    # Fallback: add at the beginning
+                    content = image_html + content
+                
+                self.logger.info("✅ OpenAI image added to content successfully")
+                return content
+            else:
+                self.logger.warning("⚠️ Failed to generate OpenAI image")
+                return content
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error adding OpenAI image to content: {e}")
+            return content
+    
+    def add_getty_image_to_content(self, content: str, title: str, topic_keywords: List[str] = None) -> str:
+        """Add Getty Images to content"""
+        try:
+            self.logger.info("📷 Adding Getty Images to content...")
+            
+            # Generate search terms using Gemini AI
             search_terms = self.generate_getty_search_terms_with_gemini(title, content)
-            self.logger.info(f"🔍 Using search terms: {search_terms}")
             
-            # Step 2: Search for sports images using our reliable image sources
-            images = self.search_getty_images(search_terms)
+            # Search for Getty images
+            images = self.search_getty_images(search_terms, num_results=3)
             
-            if not images:
-                self.logger.warning("⚠️ No images found, using fallback")
-                images = self.get_fallback_getty_images()
-            
-            # Step 3: Try to download and upload the best image
-            for i, image in enumerate(images[:3]):  # Try top 3 images
-                try:
-                    self.logger.info(f"🔄 Attempting image {i+1}/3: {image['url']}")
+            if images:
+                # Use the first (best) image
+                image = images[0]
+                
+                # Get embed code
+                embed_code = self.get_getty_embed_code(image['id'], image['title'])
+                
+                if embed_code:
+                    # Create image HTML block
+                    image_html = f'''
+<div style="padding: 16px;">
+    <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; width: 100%; background-color: #F4F4F4; border-radius: 4px;">
+        {embed_code}
+        <p style="margin: 0; color: #000; font-family: Arial,sans-serif; font-size: 14px;">{image['title']}</p>
+    </div>
+</div>
+'''
                     
-                    # Download the image
-                    image_data = self.download_getty_image(image['url'], f"featured_image_{post_id}")
-                    
-                    if image_data:
-                        # Upload to WordPress as featured image
-                        success = self.upload_featured_image_to_wordpress(image_data, post_id, image.get('title', 'Sports Image'))
-                        
-                        if success:
-                            self.logger.info(f"✅ Successfully set featured image for post {post_id}")
-                            return True
-                        else:
-                            self.logger.warning(f"⚠️ Failed to upload image {i+1}, trying next...")
+                    # Insert after first or second paragraph
+                    paragraphs = content.split('</p>')
+                    if len(paragraphs) >= 3:
+                        # Insert after second paragraph
+                        insert_point = 2
                     else:
-                        self.logger.warning(f"⚠️ Failed to download image {i+1}, trying next...")
-                        
-                except Exception as e:
-                    self.logger.error(f"❌ Error processing image {i+1}: {e}")
-                    continue
+                        # Insert after first paragraph
+                        insert_point = 1
+                    
+                    if len(paragraphs) > insert_point:
+                        paragraphs[insert_point-1] += '</p>' + image_html
+                        content = '</p>'.join(paragraphs)
+                    else:
+                        # Fallback: add at the beginning
+                        content = image_html + content
+                    
+                    self.logger.info("✅ Getty image added to content successfully")
+                    return content
+                else:
+                    self.logger.warning("⚠️ Failed to get Getty embed code")
+                    return content
+            else:
+                self.logger.warning("⚠️ No Getty images found")
+                return content
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error adding Getty image to content: {e}")
+            return content
+    
+    def load_openai_image_config(self) -> Dict:
+        """Load OpenAI image configuration"""
+        try:
+            config_path = os.path.join(self.config_dir, "openai_image_config.json")
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    return json.load(f)
+            else:
+                # Return default configuration
+                return {
+                    "image_size": "1024x1024",
+                    "image_style": "photorealistic",
+                    "image_model": "dall-e-3",
+                    "num_images": 1,
+                    "prompt_prefix": "High-quality professional sports photography:",
+                    "prompt_suffix": "Make it look like a professional sports photograph with dramatic lighting and composition."
+                }
+        except Exception as e:
+            self.logger.error(f"❌ Error loading OpenAI config: {e}")
+            return {}
+    
+    def create_openai_image_prompt(self, title: str, content: str, config: Dict, custom_prompt: str = None) -> str:
+        """Create OpenAI image prompt"""
+        try:
+            if custom_prompt:
+                return custom_prompt
             
-            # If all images failed, try one final fallback
-            self.logger.warning("⚠️ All primary images failed, trying emergency fallback")
-            fallback_data = self.download_fallback_placeholder_image()
+            # Extract key themes from content
+            clean_content = re.sub(r'<[^>]+>', '', content[:500])  # First 500 chars, no HTML
             
-            if fallback_data:
-                success = self.upload_featured_image_to_wordpress(fallback_data, post_id, "Sports Placeholder")
-                if success:
-                    self.logger.info(f"✅ Successfully set fallback featured image for post {post_id}")
-                    return True
+            # Build prompt
+            prompt_prefix = config.get('prompt_prefix', '')
+            prompt_suffix = config.get('prompt_suffix', '')
             
-            self.logger.error(f"❌ Failed to set any featured image for post {post_id}")
-            return False
+            prompt = f"{prompt_prefix} {title}. {prompt_suffix}"
+            
+            return prompt.strip()
             
         except Exception as e:
-            self.logger.error(f"❌ Error in generate_and_upload_getty_featured_image: {e}")
-            return False
+            self.logger.error(f"❌ Error creating OpenAI prompt: {e}")
+            return title
+    
+    def generate_openai_image(self, prompt: str, config: Dict) -> Optional[str]:
+        """Generate image using OpenAI DALL-E"""
+        try:
+            openai_api_key = self.config.get('openai_api_key', '')
+            if not openai_api_key:
+                self.logger.warning("⚠️ OpenAI API key not available")
+                return None
+            
+            import openai
+            openai.api_key = openai_api_key
+            
+            response = openai.Image.create(
+                prompt=prompt,
+                n=config.get('num_images', 1),
+                size=config.get('image_size', '1024x1024'),
+                model=config.get('image_model', 'dall-e-3')
+            )
+            
+            if response.data:
+                image_url = response.data[0].url
+                self.logger.info(f"✅ OpenAI image generated: {image_url}")
+                return image_url
+            else:
+                self.logger.warning("⚠️ No image data received from OpenAI")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error generating OpenAI image: {e}")
+            return None
+    
+    def get_getty_embed_code(self, image_id: str, title: str) -> str:
+        """Generate Getty Images embed code"""
+        try:
+            # Create standard Getty embed iframe
+            embed_code = f'<iframe src="https://embed.gettyimages.com/embed/{image_id}" width="594" height="396" frameborder="0" scrolling="no"></iframe>'
+            return embed_code
+        except Exception as e:
+            self.logger.error(f"❌ Error creating Getty embed code: {e}")
+            return ""
 
-    def upload_featured_image_to_wordpress(self, image_data: bytes, post_id: int, title: str = "Featured Image") -> bool:
+    def generate_and_upload_featured_image(self, title: str, content: str, post_id: int) -> Optional[int]:
+        """Generate OpenAI featured image and upload to WordPress"""
+        try:
+            self.logger.info(f"🎨 Generating OpenAI featured image for post {post_id}")
+            
+            # Load OpenAI image configuration
+            openai_config = self.load_openai_image_config()
+            
+            # Create featured image prompt
+            image_prompt = self.create_openai_image_prompt(title, content, openai_config, custom_prompt=None)
+            
+            # Generate image using OpenAI DALL-E
+            image_url = self.generate_openai_image(image_prompt, openai_config)
+            
+            if not image_url:
+                self.logger.error("❌ Failed to generate OpenAI image")
+                return None
+            
+            # Download the generated image
+            import requests
+            response = requests.get(image_url, timeout=30)
+            response.raise_for_status()
+            image_data = response.content
+            
+            # Upload to WordPress and set as featured image
+            success = self.upload_featured_image_to_wordpress(image_data, post_id, f"AI Generated: {title}")
+            
+            if success:
+                self.logger.info(f"✅ OpenAI featured image uploaded and set for post {post_id}")
+                # Return a media ID (we'll need to modify upload_featured_image_to_wordpress to return it)
+                return post_id  # Temporary return value
+            else:
+                self.logger.error("❌ Failed to upload OpenAI featured image")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error in generate_and_upload_featured_image: {e}")
+            return None
+
+    def upload_featured_image_to_wordpress(self, image_data: bytes, post_id: int, title: str = "Featured Image") -> Optional[int]:
         """Upload image data to WordPress and set as featured image"""
         try:
             self.logger.info(f"📤 Uploading featured image to WordPress for post {post_id}")
@@ -1899,15 +2311,23 @@ Your response (search terms only):
             }
             
             # WordPress media upload endpoint
-            media_url = f"{self.config['wordpress_url']}/wp-json/wp/v2/media"
+            wp_base_url = self.config.get('wp_base_url', '')
+            username = self.config.get('wp_username', '')
+            password = self.config.get('wp_password', '')
+            
+            if not all([wp_base_url, username, password]):
+                self.logger.error("❌ WordPress credentials not properly configured")
+                return None
+
+            from requests.auth import HTTPBasicAuth
+            auth = HTTPBasicAuth(username, password)
+            media_url = f"{wp_base_url}/media"
             
             # Upload the image
             response = requests.post(
                 media_url,
                 files=files,
-                headers={
-                    'Authorization': f"Bearer {self.config['wordpress_token']}"
-                },
+                auth=auth,
                 data={
                     'title': title,
                     'alt_text': title,
@@ -1923,31 +2343,159 @@ Your response (search terms only):
                 self.logger.info(f"✅ Image uploaded successfully, media ID: {media_id}")
                 
                 # Set as featured image for the post
-                post_url = f"{self.config['wordpress_url']}/wp-json/wp/v2/posts/{post_id}"
+                post_url = f"{wp_base_url}/posts/{post_id}"
                 
                 update_response = requests.post(
                     post_url,
-                    headers={
-                        'Authorization': f"Bearer {self.config['wordpress_token']}",
-                        'Content-Type': 'application/json'
-                    },
-                    json={
-                        'featured_media': media_id
-                    },
+                    auth=auth,
+                    headers={'Content-Type': 'application/json'},
+                    json={'featured_media': media_id},
                     timeout=30
                 )
                 
                 if update_response.status_code == 200:
                     self.logger.info(f"✅ Featured image set successfully for post {post_id}")
-                    return True
+                    return media_id
                 else:
                     self.logger.error(f"❌ Failed to set featured image: {update_response.status_code}")
-                    return False
-                    
+                    return None
             else:
                 self.logger.error(f"❌ Failed to upload image: {response.status_code} - {response.text}")
-                return False
+                return None
                 
         except Exception as e:
             self.logger.error(f"❌ Error uploading featured image: {e}")
-            return False
+            return None
+
+    def post_to_wordpress_with_seo(self, title: str, content: str, categories: list, tags: list, 
+                                   seo_title: str, meta_description: str, focus_keyphrase: str = None, 
+                                   additional_keyphrases: list = None) -> tuple:
+        """Post to WordPress with SEO optimization"""
+        try:
+            # WordPress API setup
+            wp_base_url = self.config.get('wp_base_url', '')
+            username = self.config.get('wp_username', '')
+            password = self.config.get('wp_password', '')
+            
+            if not all([wp_base_url, username, password]):
+                self.logger.error("❌ WordPress credentials not properly configured")
+                return None, None
+
+            auth = HTTPBasicAuth(username, password)
+            
+            # Create excerpt from content
+            clean_content = re.sub(r'<[^>]+>', '', content).strip()
+            excerpt = clean_content[:297] + "..." if len(clean_content) > 300 else clean_content
+            
+            # Generate slug from title
+            slug = re.sub(r'[^a-zA-Z0-9\s-]', '', title.lower())
+            slug = re.sub(r'\s+', '-', slug).strip('-')
+
+            # Build payload
+            payload = {
+                "title": title,
+                "content": content,
+                "slug": slug,
+                "excerpt": excerpt,
+                "status": "draft",
+                "categories": [],
+                "tags": []
+            }
+
+            # Process categories
+            categories_url = f"{wp_base_url}/categories"
+            cat_ids = []
+            
+            for cat in categories:
+                try:
+                    resp = requests.get(categories_url, auth=auth, params={"search": cat}, timeout=10)
+                    resp.raise_for_status()
+                    found = resp.json()
+                    
+                    cid = next((c["id"] for c in found if c["name"].lower() == cat.lower()), None)
+                    if not cid and found:
+                        cid = found[0]["id"]
+                    
+                    if not cid:
+                        # Create new category
+                        create_resp = requests.post(categories_url, auth=auth, json={"name": cat}, timeout=10)
+                        create_resp.raise_for_status()
+                        cid = create_resp.json().get("id")
+                    
+                    if cid and cid not in cat_ids:
+                        cat_ids.append(cid)
+                        
+                except Exception as e:
+                    self.logger.warning(f"Error processing category '{cat}': {e}")
+                    
+            payload["categories"] = cat_ids
+
+            # Process tags
+            tags_url = f"{wp_base_url}/tags"
+            tag_ids = []
+            
+            for tag in tags:
+                try:
+                    resp = requests.get(tags_url, auth=auth, params={"search": tag}, timeout=10)
+                    resp.raise_for_status()
+                    found = resp.json()
+                    
+                    tid = next((t["id"] for t in found if t["name"].lower() == tag.lower()), None)
+                    if not tid and found:
+                        tid = found[0]["id"]
+                    
+                    if not tid:
+                        # Create new tag
+                        create_resp = requests.post(tags_url, auth=auth, json={"name": tag}, timeout=10)
+                        create_resp.raise_for_status()
+                        tid = create_resp.json().get("id")
+                    
+                    if tid and tid not in tag_ids:
+                        tag_ids.append(tid)
+                        
+                except Exception as e:
+                    self.logger.warning(f"Error processing tag '{tag}': {e}")
+                    
+            payload["tags"] = tag_ids
+
+            # Create the post
+            posts_url = f"{wp_base_url}/posts"
+            post_resp = requests.post(posts_url, auth=auth, json=payload, timeout=30)
+            post_resp.raise_for_status()
+            
+            post_id = post_resp.json().get("id")
+            if not post_id:
+                self.logger.error("❌ Post created but ID not returned")
+                return None, None
+
+            # Set SEO metadata (if AIOSEO plugin is available)
+            try:
+                aioseo_data = {
+                    "aioseo_meta_data": {
+                        "title": seo_title,
+                        "description": meta_description
+                    }
+                }
+                if focus_keyphrase:
+                    aioseo_data["aioseo_meta_data"]["keyphrases"] = {
+                        "focus": {
+                            "keyphrase": focus_keyphrase
+                        },
+                        "additional": [
+                            {"keyphrase": kp} for kp in (additional_keyphrases or [])
+                        ]
+                    }
+                
+                update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=aioseo_data, timeout=10)
+                update_resp.raise_for_status()
+                self.logger.info("✅ SEO metadata updated successfully")
+                
+            except Exception as e:
+                self.logger.warning(f"⚠️ Failed to update SEO metadata: {e}")
+
+            self.logger.info(f"✅ WordPress draft post created (ID: {post_id})")
+            return post_id, title
+
+        except Exception as e:
+            self.logger.error(f"❌ Error posting to WordPress: {e}")
+            return None, None

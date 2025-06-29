@@ -6,8 +6,8 @@
   "wp_password": "qVs7 efHp lAto M9Ah o8gr SEgf",
   "gemini_api_key": "AIzaSyDdBb2gxpu-SvXhElGPi8IqCndbds-f-h8",
   "openai_api_key": "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",
-  "max_articles": 2,
-  "timeout": 10,
+  "max_articles": 1,
+  "timeout": 15,
   "headless_mode": true,
   "internal_links": {
     "Latest News": "https://premierleaguenewsnow.com/category/premier-league-football-news-now/",

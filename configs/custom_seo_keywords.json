@@ -1,0 +1,86 @@
+{
+  "description": "Custom SEO keywords configuration - manually add keywords that will be combined with auto-generated keywords",
+  "enabled": true,
+  "custom_keywords": {
+    "focus_keywords": [
+      "Arsenal news",
+      "Premier League updates",
+      "football transfer news",
+      "match preview",
+      "player analysis"
+    ],
+    "additional_keywords": [
+      "Emirates Stadium",
+      "Gunners latest",
+      "North London Derby",
+      "Champions League",
+      "Europa League",
+      "FA Cup",
+      "Mikel Arteta",
+      "squad rotation",
+      "injury update",
+      "tactical analysis"
+    ],
+    "team_specific_keywords": {
+      "Arsenal": [
+        "Gunners news",
+        "Emirates Stadium",
+        "North London Derby",
+        "AFC update",
+        "Mikel Arteta"
+      ],
+      "Chelsea": [
+        "Blues news",
+        "Stamford Bridge",
+        "West London Derby",
+        "CFC update",
+        "Frank Lampard"
+      ],
+      "Manchester United": [
+        "Red Devils news",
+        "Old Trafford",
+        "Manchester Derby",
+        "MUFC update",
+        "Erik ten Hag"
+      ],
+      "Manchester City": [
+        "Citizens news",
+        "Etihad Stadium",
+        "Man City update",
+        "Pep Guardiola"
+      ],
+      "Tottenham": [
+        "Spurs news",
+        "Tottenham Hotspur",
+        "North London Derby",
+        "THFC update"
+      ]
+    },
+    "competition_keywords": [
+      "Premier League table",
+      "Champions League draw",
+      "Europa League fixtures",
+      "FA Cup results",
+      "League Cup semi-final",
+      "World Cup qualifiers",
+      "Nations League"
+    ],
+    "seasonal_keywords": [
+      "summer transfer window",
+      "January transfers",
+      "pre-season friendly",
+      "winter break",
+      "title race",
+      "relegation battle",
+      "top four race"
+    ]
+  },
+  "keyword_settings": {
+    "max_focus_keywords_per_article": 2,
+    "max_additional_keywords_per_article": 8,
+    "combine_with_auto_keywords": true,
+    "prioritize_custom_keywords": false,
+    "auto_select_team_keywords": true,
+    "auto_select_competition_keywords": true
+  }
+}

@@ -121,7 +121,7 @@ class BlogAutomationGUI:
         self.logger = logging.getLogger('blog_automation')
         
         # Domain-based configuration system
-        self.base_config_dir = "configs"
+        self.base_config_dir = os.path.abspath("configs")
         self.current_domain = None
         self.domain_config_dir = None
         
@@ -1640,6 +1640,25 @@ Log Files:"""
         sidebar.selection_set("0")
         self.show_section_editor(0)
         
+        # Add comprehensive help section at the bottom
+        help_frame = ttk.LabelFrame(self.config_frame, text="📚 Configuration Guide", padding=10)
+        help_frame.pack(fill=tk.X, pady=5, padx=10)
+        
+        help_text = (
+            "🎯 Quick Start Guide:\n"
+            "1. Select a configuration section from the sidebar (SEO Title & Meta, Tag Generation, etc.)\n"
+            "2. Edit the prompt text in the editor area - default examples are provided\n"
+            "3. Click 'Save Section' to apply your changes\n\n"
+            "💡 Pro Tips:\n"
+            "• Each section contains example prompts that you can customize\n"
+            "• Use 'Reset to Default' to restore original settings\n"
+            "• Test your changes with the automation tools to see results\n"
+            "• JSON sections require proper syntax - validate before saving"
+        )
+        
+        help_label = ttk.Label(help_frame, text=help_text, font=("Arial", 9), foreground="#34495e", justify=tk.LEFT)
+        help_label.pack(anchor=tk.W)
+        
     def reset_prompt_to_default(self):
         """Reset current prompt section to default value"""
         if not hasattr(self, 'current_section_key'):
@@ -1682,21 +1701,57 @@ Log Files:"""
         section_label = ttk.Label(self.editor_frame, text=f"{emoji}  {label}", font=("Arial", 12, "bold"))
         section_label.pack(anchor=tk.W, pady=(0, 6))
         
-        # Add helpful descriptions for individual prompt sections
+        # Add helpful descriptions and guidance for individual prompt sections
         if key == "seo_title_meta_prompt":
-            desc_text = ("This prompt generates SEO-optimized titles and meta descriptions for articles.\n"
-                        "It should include instructions for character limits and keyword optimization.")
-            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="gray")
+            desc_text = ("📝 SEO Title & Meta Description Generator\n"
+                        "This prompt creates SEO-optimized titles (50-59 chars) and meta descriptions (155-160 chars).\n\n"
+                        "✏️ How to customize:\n"
+                        "• Modify character limits and formatting rules\n"
+                        "• Add specific keyword requirements\n"
+                        "• Adjust tone and style preferences\n\n"
+                        "💡 Writing style: Use clear instructions with specific character limits and examples")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         elif key == "tag_generation_prompt":
-            desc_text = ("This prompt extracts relevant tags from article content.\n"
-                        "It should focus on football players, clubs, and relevant keywords.")
-            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="gray")
+            desc_text = ("🏷️ Tag Extraction System\n"
+                        "This prompt extracts relevant tags from article content (players, clubs, competitions).\n\n"
+                        "✏️ How to customize:\n"
+                        "• Add specific tag categories to focus on\n"
+                        "• Modify output format (comma-separated, JSON, etc.)\n"
+                        "• Include/exclude certain types of entities\n\n"
+                        "💡 Writing style: Be specific about what to extract and how to format the output")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         elif key == "keyphrase_extraction_prompt":
-            desc_text = ("This prompt extracts focus keyphrases and additional SEO keyphrases.\n"
-                        "It helps optimize content for search engines.")
-            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="gray")
+            desc_text = ("🔑 SEO Keyphrase Extraction\n"
+                        "This prompt identifies focus keyphrases and additional SEO terms for search optimization.\n\n"
+                        "✏️ How to customize:\n"
+                        "• Adjust the number of keyphrases to extract\n"
+                        "• Modify keyphrase length requirements (2-4 words)\n"
+                        "• Add industry-specific terminology guidelines\n\n"
+                        "💡 Writing style: Provide clear rules for keyphrase selection and formatting")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
+            desc_label.pack(anchor=tk.W, pady=(0, 10))
+        elif key == "style_prompt":
+            desc_text = ("📖 Article Rewriting Style Guide\n"
+                        "This prompt controls how articles are rewritten and formatted for your blog.\n\n"
+                        "✏️ How to customize:\n"
+                        "• Adjust tone and voice (professional, casual, enthusiastic)\n"
+                        "• Modify structural requirements (headings, paragraphs, word count)\n"
+                        "• Add specific formatting rules and HTML requirements\n\n"
+                        "💡 Writing style: Include detailed formatting rules and examples")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
+            desc_label.pack(anchor=tk.W, pady=(0, 10))
+        else:
+            # General guidance for JSON configuration files
+            desc_text = ("⚙️ Configuration Settings\n"
+                        "This section contains JSON configuration data for the system.\n\n"
+                        "✏️ How to edit:\n"
+                        "• Add new entries: Insert new key-value pairs following the existing format\n"
+                        "• Edit existing entries: Modify values while keeping the JSON structure\n"
+                        "• Use proper JSON syntax: strings in quotes, arrays with [], objects with {}\n\n"
+                        "💡 Always validate JSON syntax before saving to avoid errors")
+            desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         
         # Show current domain info
@@ -1717,13 +1772,15 @@ Log Files:"""
         config_dir = self.get_current_config_dir()
         value = self.config.get(key, "" if key in ("style_prompt", "seo_title_meta_prompt", "tag_generation_prompt", "keyphrase_extraction_prompt") else {} if key.endswith("links") or key.endswith("keywords") or key.endswith("synonyms") or key == "gemini_prompts" else [] if key in ("static_clubs", "stop_words", "do_follow_urls") else "")
         
+        # Import json at the beginning to avoid scope issues
+        import json
+        
         # Try to load from specific config files in domain directory
         if key in ("seo_title_meta_prompt", "tag_generation_prompt", "keyphrase_extraction_prompt"):
             # Load individual prompts from gemini_prompts.json
             config_file = os.path.join(config_dir, "gemini_prompts.json")
             if os.path.exists(config_file):
                 try:
-                    import json
                     with open(config_file) as f:
                         data = json.load(f)
                         value = data.get(key, "")
@@ -1747,16 +1804,31 @@ Log Files:"""
                         with open(main_config_file) as f:
                             data = json.load(f)
                             value = data.get(key, "")
+                            if not value:
+                                self.logger.warning(f"Empty value for {key} in main gemini_prompts.json, using hardcoded default")
+                                # Provide hardcoded defaults
+                                defaults = {
+                                    "seo_title_meta_prompt": "You are a passionate Premier League football blogger.\n\n1. Read the article content below and identify its one primary subject (player, event, or transfer saga). Then rewrite the original title into a single, sharp, SEO-friendly headline.\n\n- Preserve the correct capitalization of all proper nouns exactly as in the original.\n- Use sentence case—capitalize only the first word and proper nouns. All other words should be lowercase. **Example: Tottenham: Should Spurs chase Kudus over Crystal Palace's target?**\n- The headline must be **strictly** between 50 and 59 characters in length (counting spaces and punctuation).\n- **Crucially, your final output must be precisely within this character range. Do NOT go under 50 characters or over 59 characters.**\n- Ensure the headline is a grammatically complete and coherent sentence within the character limits.\n- Always use British English spelling for 'rumours' (with a 'u').\n\n2. Write an SEO meta description for the article:\n\n- Include 2–3 relevant keywords from the article.\n- No hashtags or special formatting.\n- Must be between 155 and 160 characters (inclusive).\n- Return plain text only, with no quotes or extra spaces.\n- Always use British English spelling for 'rumours' (with a 'u').\n\nReturn format:\n\nSEO_TITLE:\n<title here>\n\nMETA:\n<meta description here>",
+                                    "tag_generation_prompt": "Extract only the full names of football players and the full names of the clubs mentioned in this article.\nReturn them as a comma-separated list with no extra punctuation.\n\nArticle Content:\n\\\"\\\"\\\"\n{content}\n\\\"\\\"\\\"",
+                                    "keyphrase_extraction_prompt": "You are an SEO expert specializing in football content. Analyze the following article and extract:\n\n1. **Focus Keyphrase**: The single most important 2-4 word keyphrase that represents the core topic of this article. This should be what people would search for to find this specific article.\n\n2. **Additional Keyphrases**: 3-5 additional relevant keyphrases (2-4 words each) that are naturally mentioned in the content and would help with SEO ranking.\n\nRules:\n- Focus on keyphrases that football fans would actually search for\n- Include player names, club names, and football-specific terms\n- Avoid generic words like 'football', 'player', 'team' unless they're part of a specific phrase\n- Keyphrases should feel natural and be present in the content\n- Use British English spelling (e.g., 'rumours' not 'rumors')\n\nReturn format:\nFOCUS_KEYPHRASE:\n<main keyphrase here>\n\nADDITIONAL_KEYPHRASES:\n<keyphrase 1>\n<keyphrase 2>\n<keyphrase 3>\n<keyphrase 4>\n<keyphrase 5>\n\nArticle Title: {title}\n\nArticle Content:\n{content}"
+                                }
+                                value = defaults.get(key, "")
                     except Exception as e:
                         self.logger.warning(f"Could not load {key} from main gemini_prompts.json: {e}")
                         value = ""
                 else:
-                    value = ""
+                    self.logger.warning(f"Main gemini_prompts.json not found at {main_config_file}")
+                    # Provide hardcoded defaults as last resort
+                    defaults = {
+                        "seo_title_meta_prompt": "You are a passionate Premier League football blogger.\n\n1. Read the article content below and identify its one primary subject (player, event, or transfer saga). Then rewrite the original title into a single, sharp, SEO-friendly headline.\n\n- Preserve the correct capitalization of all proper nouns exactly as in the original.\n- Use sentence case—capitalize only the first word and proper nouns. All other words should be lowercase. **Example: Tottenham: Should Spurs chase Kudus over Crystal Palace's target?**\n- The headline must be **strictly** between 50 and 59 characters in length (counting spaces and punctuation).\n- **Crucially, your final output must be precisely within this character range. Do NOT go under 50 characters or over 59 characters.**\n- Ensure the headline is a grammatically complete and coherent sentence within the character limits.\n- Always use British English spelling for 'rumours' (with a 'u').\n\n2. Write an SEO meta description for the article:\n\n- Include 2–3 relevant keywords from the article.\n- No hashtags or special formatting.\n- Must be between 155 and 160 characters (inclusive).\n- Return plain text only, with no quotes or extra spaces.\n- Always use British English spelling for 'rumours' (with a 'u').\n\nReturn format:\n\nSEO_TITLE:\n<title here>\n\nMETA:\n<meta description here>",
+                        "tag_generation_prompt": "Extract only the full names of football players and the full names of the clubs mentioned in this article.\nReturn them as a comma-separated list with no extra punctuation.\n\nArticle Content:\n\\\"\\\"\\\"\n{content}\n\\\"\\\"\\\"",
+                        "keyphrase_extraction_prompt": "You are an SEO expert specializing in football content. Analyze the following article and extract:\n\n1. **Focus Keyphrase**: The single most important 2-4 word keyphrase that represents the core topic of this article. This should be what people would search for to find this specific article.\n\n2. **Additional Keyphrases**: 3-5 additional relevant keyphrases (2-4 words each) that are naturally mentioned in the content and would help with SEO ranking.\n\nRules:\n- Focus on keyphrases that football fans would actually search for\n- Include player names, club names, and football-specific terms\n- Avoid generic words like 'football', 'player', 'team' unless they're part of a specific phrase\n- Keyphrases should feel natural and be present in the content\n- Use British English spelling (e.g., 'rumours' not 'rumors')\n\nReturn format:\nFOCUS_KEYPHRASE:\n<main keyphrase here>\n\nADDITIONAL_KEYPHRASES:\n<keyphrase 1>\n<keyphrase 2>\n<keyphrase 3>\n<keyphrase 4>\n<keyphrase 5>\n\nArticle Title: {title}\n\nArticle Content:\n{content}"
+                    }
+                    value = defaults.get(key, "")
         elif key not in ("style_prompt", "gemini_prompts"):
             config_file = os.path.join(config_dir, f"{key}.json")
             if os.path.exists(config_file):
                 try:
-                    import json
                     with open(config_file) as f:
                         value = json.load(f)
                 except Exception as e:
@@ -1766,7 +1838,6 @@ Log Files:"""
             config_file = os.path.join(config_dir, "style_prompt.json")
             if os.path.exists(config_file):
                 try:
-                    import json
                     with open(config_file) as f:
                         data = json.load(f)
                         value = data.get("style_prompt", "")
@@ -2421,6 +2492,7 @@ Log Files:"""
         self.task_progress.stop()
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
+        self.is_running = False
         self.logger.info("Automation stopped by user")
         
     def run_automation(self):
