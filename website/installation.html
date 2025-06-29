@@ -81,12 +81,12 @@
                     <h2>⚡ Quick Installation</h2>
                     <p>The fastest way to get started with AUTO-blogger is using our one-command installation script:</p>
                     
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span class="code-title">Terminal / Command Prompt</span>
-                            <button class="copy-btn" onclick="copyInstallCode()">Copy</button>
+                    <div class="terminal-block">
+                        <div class="terminal-header">
+                            <span class="terminal-title">Terminal / Command Prompt</span>
+                            <button class="copy-btn">Copy</button>
                         </div>
-                        <pre><code id="quick-install-code">curl -fsSL https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_autoblog.sh | bash</code></pre>
+                        <pre><code id="quick-install-code" class="language-bash">$ curl -fsSL https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install_autoblog.sh | bash</code></pre>
                     </div>
 
                     <div class="alert alert-info">
@@ -364,14 +364,14 @@ autoblog --test</code></pre>
                             <span class="code-title">Launch</span>
                             <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                         </div>
-                        <pre><code># System-wide launcher (if installed)
-autoblog
+                        <pre><code class="language-bash"># System-wide launcher (if installed)
+$ autoblog
 
 # Local launcher
-./autoblog
+$ ./autoblog
 
 # Direct Python execution
-python3 gui_blogger.py</code></pre>
+$ python3 gui_blogger.py</code></pre>
                     </div>
 
                     <div class="alert alert-success">
@@ -519,5 +519,6 @@ python3 -m venv venv</code></pre>
 
     <script src="js/script.js"></script>
     <script src="js/docs.js"></script>
+    <script src="js/terminal.js"></script>
 </body>
 </html>

@@ -116,12 +116,12 @@
                     <div class="credential-item">
                         <h4>API Key</h4>
                         <p>Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></p>
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span class="code-title">Environment Variable</span>
-                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="terminal-block">
+                            <div class="terminal-header">
+                                <span class="terminal-title">Environment Variable</span>
+                                <button class="copy-btn">Copy</button>
                             </div>
-                            <pre><code>export OPENAI_API_KEY="your-api-key-here"</code></pre>
+                            <pre><code class="language-bash">$ export OPENAI_API_KEY="your-api-key-here"</code></pre>
                         </div>
                     </div>
 
@@ -250,25 +250,25 @@
                     </div>
 
                     <h3>Command Line Usage</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span class="code-title">CLI Commands</span>
-                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <div class="terminal-block">
+                        <div class="terminal-header">
+                            <span class="terminal-title">CLI Commands</span>
+                            <button class="copy-btn">Copy</button>
                         </div>
-                        <pre><code># Launch GUI
-autoblog
+                        <pre><code class="language-bash"># Launch GUI
+$ autoblog
 
 # Run with specific config
-autoblog --config /path/to/config.json
+$ autoblog --config /path/to/config.json
 
 # Test installation
-autoblog --test
+$ autoblog --test
 
 # Batch processing
-autoblog --batch --input urls.txt
+$ autoblog --batch --input urls.txt
 
 # Debug mode
-autoblog --debug</code></pre>
+$ autoblog --debug</code></pre>
                     </div>
                 </section>
 
@@ -481,21 +481,21 @@ config.load_from_env()</code></pre>
 
                     <h3>Debug Mode</h3>
                     <p>Enable debug mode for detailed logging:</p>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span class="code-title">Debug Commands</span>
-                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        </div>
-                        <pre><code># Enable debug logging
-export DEBUG=true
-autoblog --debug
+                    <div class="terminal-block">
+                            <div class="terminal-header">
+                                <span class="terminal-title">Debug Commands</span>
+                                <button class="copy-btn">Copy</button>
+                            </div>
+                            <pre><code class="language-bash"># Enable debug logging
+$ export DEBUG=true
+$ autoblog --debug
 
 # Check log files
-tail -f logs/autoblog.log
+$ tail -f logs/autoblog.log
 
 # Test individual components
-python3 -m pytest tests/ -v</code></pre>
-                    </div>
+$ python3 -m pytest tests/ -v</code></pre>
+                        </div>
 
                     <h3>Getting Help</h3>
                     <div class="help-options">
@@ -521,25 +521,25 @@ python3 -m pytest tests/ -v</code></pre>
                     <p>We welcome contributions to AUTO-blogger! Here's how to get started:</p>
 
                     <h3>Development Setup</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span class="code-title">Development Environment</span>
-                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        </div>
-                        <pre><code># Fork and clone the repository
-git clone https://github.com/yourusername/AUTO-blogger.git
-cd AUTO-blogger
+                    <div class="terminal-block">
+                            <div class="terminal-header">
+                                <span class="terminal-title">Development Environment</span>
+                                <button class="copy-btn">Copy</button>
+                            </div>
+                            <pre><code class="language-bash"># Fork and clone the repository
+$ git clone https://github.com/yourusername/AUTO-blogger.git
+$ cd AUTO-blogger
 
 # Create development environment
-python3 -m venv dev-env
-source dev-env/bin/activate
+$ python3 -m venv dev-env
+$ source dev-env/bin/activate
 
 # Install development dependencies
-pip install -r requirements-dev.txt
+$ pip install -r requirements-dev.txt
 
 # Install pre-commit hooks
-pre-commit install</code></pre>
-                    </div>
+$ pre-commit install</code></pre>
+                        </div>
 
                     <h3>Contribution Guidelines</h3>
                     <ul>
@@ -550,23 +550,23 @@ pre-commit install</code></pre>
                     </ul>
 
                     <h3>Testing</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span class="code-title">Running Tests</span>
-                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                        </div>
-                        <pre><code># Run all tests
-pytest
+                    <div class="terminal-block">
+                            <div class="terminal-header">
+                                <span class="terminal-title">Running Tests</span>
+                                <button class="copy-btn">Copy</button>
+                            </div>
+                            <pre><code class="language-bash"># Run all tests
+$ pytest
 
 # Run with coverage
-pytest --cov=autoblogger
+$ pytest --cov=autoblogger
 
 # Run specific test file
-pytest tests/test_scraper.py
+$ pytest tests/test_scraper.py
 
 # Run integration tests
-pytest tests/integration/</code></pre>
-                    </div>
+$ pytest tests/integration/</code></pre>
+                        </div>
                 </section>
 
                 <section id="changelog" class="docs-section">
@@ -665,5 +665,6 @@ pytest tests/integration/</code></pre>
 
     <script src="js/script.js"></script>
     <script src="js/docs.js"></script>
+    <script src="js/terminal.js"></script>
 </body>
 </html>
