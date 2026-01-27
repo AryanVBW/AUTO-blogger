@@ -1,31 +1,17 @@
-# Core dependencies
-# Core web scraping and automation
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-lxml>=4.9.0
-selenium>=4.15.0
-webdriver-manager>=3.8.0
+# AUTO-blogger Requirements
+# =========================
+# This file includes all base dependencies for the project.
+#
+# For specific requirements:
+#   - Production: pip install -r requirements/base.txt
+#   - Development: pip install -r requirements/dev.txt
+#   - Testing: pip install -r requirements/test.txt
+#
+# Or install with pip:
+#   pip install auto-blogger          # Base installation
+#   pip install auto-blogger[dev]     # Development installation
+#   pip install auto-blogger[test]    # Test installation
+#   pip install auto-blogger[all]     # All dependencies
 
-# AI/ML dependencies
-openai>=1.3.0
-google-generativeai>=0.3.0
-
-# GUI framework (tkinter is built-in, but we need Pillow for images)
-Pillow>=10.0.0
-
-# Utility libraries
-python-dotenv>=1.0.0
-colorama>=0.4.6
-tqdm>=4.66.0
-validators>=0.22.0
-
-# WordPress API
-requests-toolbelt>=0.10.1
-
-# Development dependencies (optional)
-pytest>=7.4.0
-pytest-cov>=4.1.0
-black>=23.9.0
-flake8>=6.1.0
-mypy>=1.6.0
-pre-commit>=3.5.0
+# Include base requirements
+-r requirements/base.txt

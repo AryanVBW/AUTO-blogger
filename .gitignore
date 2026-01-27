@@ -1,45 +1,21 @@
-# Logs and temporary files
-*.log
-logs/
-blog_automation.log
+# ==============================================================================
+# AUTO-blogger .gitignore
+# Comprehensive ignore rules for Python projects
+# ==============================================================================
 
-# Configuration files with sensitive data
-blog_config.json
-configs/*_com/
-configs/*/default.json
-configs/*/personal.json
-!configs/example/
+# ==============================================================================
+# Python
+# ==============================================================================
 
-# Login credentials and API keys
-*.env
-.env
-.env.local
-.env.development
-.env.production
-.env.staging
-api_keys.json
-credentials.json
-secrets.json
-auth.json
-login.json
-*_api_key.json
-*_credentials.json
-*_auth.json
-*_config.json
-*_secrets.json
-.netrc
-
-# Virtual environment
-auto_blogger_venv_*/
-venv/
-env/
-.venv/
-
-# Python cache and compiled files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -53,97 +29,52 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
+# PyInstaller
+*.manifest
+*.spec
 
-# Backup files
-backup_*/
-*.backup
-*.bak
-temp_fixes/
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Posted links and session data
-posted_links.json
-session_data.json
-cookies.json
-
-# WordPress and site-specific data
-wp-config.php
-.htaccess
-wp-login.json
-wp-credentials.json
-wp_*.json
-wordpress_*.json
-site_credentials.json
-site_*.json
-
-# Browser automation data
-selenium_logs/
-webdriver_logs/
-chromedriver.log
-geckodriver.log
-*.cookies
-cookies.json
-*_cookies.json
-session_data/
-session_*.json
-.selenium/
-.webdriver/
-browser_profiles/
-user_data_dir/
-
-# Image uploads and media
-uploads/
-media/
-images/temp/
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
-temp/
-tmp/
-
-# Node modules (if any)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Coverage reports
+# Unit test / coverage reports
 htmlcov/
+.tox/
+.nox/
 .coverage
 .coverage.*
+.cache
+nosetests.xml
 coverage.xml
 *.cover
+*.py,cover
 .hypothesis/
 .pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
 
 # pyenv
 .python-version
@@ -154,24 +85,243 @@ Pipfile.lock
 # PEP 582
 __pypackages__/
 
-# Celery stuff
+# Celery
 celerybeat-schedule
 celerybeat.pid
 
-# SageMath parsed files
+# SageMath
 *.sage.py
 
-# Spyder project settings
+# Environments
+.env
+.env.*
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+auto_blogger_venv_*/
+
+# Spyder
 .spyderproject
 .spyproject
 
-# Rope project settings
+# Rope
 .ropeproject
 
-# mkdocs documentation
+# mkdocs
 /site
 
 # mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ==============================================================================
+# IDE and Editors
+# ==============================================================================
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs (PyCharm, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ==============================================================================
+# OS Generated Files
+# ==============================================================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ==============================================================================
+# Application Specific - AUTO-blogger
+# ==============================================================================
+
+# Logs
+*.log
+logs/
+blog_automation.log
+selenium_logs/
+webdriver_logs/
+chromedriver.log
+geckodriver.log
+
+# Configuration with sensitive data
+blog_config.json
+configs/*_com/
+configs/*/default.json
+configs/*/personal.json
+!configs/example/
+
+# API keys and credentials
+api_keys.json
+credentials.json
+secrets.json
+auth.json
+login.json
+*_api_key.json
+*_credentials.json
+*_auth.json
+*_secrets.json
+.netrc
+.secrets.baseline
+
+# Session data
+posted_links.json
+session_data.json
+cookies.json
+*_cookies.json
+session_data/
+session_*.json
+
+# WordPress data
+wp-config.php
+.htaccess
+wp-login.json
+wp-credentials.json
+wp_*.json
+wordpress_*.json
+site_credentials.json
+site_*.json
+
+# Browser automation
+.selenium/
+.webdriver/
+browser_profiles/
+user_data_dir/
+
+# Media and uploads
+uploads/
+media/
+images/temp/
+generated_images/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+*.backup
+*.bak
+backup_*/
+temp_fixes/
+
+# OpenAI image config (may contain API key)
+openai_image_config.json
+
+# ==============================================================================
+# Build and Distribution
+# ==============================================================================
+
+# PyPI
+.pypirc
+
+# Node (if using any JS tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# ==============================================================================
+# Testing
+# ==============================================================================
+
+# pytest
+.pytest_cache/
+.cache/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# tox
+.tox/
+
+# ==============================================================================
+# Exceptions (files to NOT ignore)
+# ==============================================================================
+
+# Keep example/template files
+!.env.example
+!configs/example/*.json
+
+# Keep documentation
+!docs/**/*.md
+
+# Keep the configs directory structure
+!auto_blogger/configs/
+!auto_blogger/configs/*.json

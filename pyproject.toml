@@ -5,34 +5,62 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "auto-blogger"
 version = "1.0.0"
+description = "AI-Powered WordPress Automation Tool with Content Generation and SEO Optimization"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
 authors = [
     {name = "AryanVBW", email = "AryanVBW@gmail.com"},
 ]
-description = "Automated WordPress Blog Posting Tool with AI Integration"
-readme = "README.md"
-requires-python = ">=3.8"
+maintainers = [
+    {name = "AryanVBW", email = "AryanVBW@gmail.com"},
+]
+keywords = [
+    "wordpress",
+    "blog",
+    "automation",
+    "ai",
+    "content-generation",
+    "seo",
+    "openai",
+    "gemini",
+    "dall-e",
+    "web-scraping",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: X11 Applications :: GTK",
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Information Technology",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content :: Content Management System",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup :: HTML",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
     "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Typing :: Typed",
 ]
-keywords = ["wordpress", "blog", "automation", "ai", "content", "posting", "seo"]
+
+# Core dependencies
 dependencies = [
     "requests>=2.31.0",
     "beautifulsoup4>=4.12.0",
     "lxml>=4.9.0",
     "selenium>=4.15.0",
-    "webdriver-manager>=3.8.0",
+    "webdriver-manager>=4.0.0",
     "openai>=1.3.0",
     "google-generativeai>=0.3.0",
     "Pillow>=10.0.0",
@@ -45,50 +73,97 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    # Code formatting
+    "black>=23.9.0",
+    "isort>=5.12.0",
+    # Linting
+    "flake8>=6.1.0",
+    "flake8-docstrings>=1.7.0",
+    "pylint>=3.0.0",
+    # Type checking
+    "mypy>=1.6.0",
+    "types-requests>=2.31.0",
+    # Pre-commit
+    "pre-commit>=3.5.0",
+    # Testing
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
-    "black>=23.9.0",
-    "flake8>=6.1.0",
-    "mypy>=1.6.0",
-    "pre-commit>=3.5.0",
+    "pytest-mock>=3.12.0",
+    # Build tools
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    "wheel>=0.41.0",
+]
+
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-timeout>=2.2.0",
+    "coverage>=7.3.0",
+    "responses>=0.24.0",
+    "faker>=20.0.0",
+]
+
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=1.3.0",
+    "sphinx-autodoc-typehints>=1.24.0",
+    "myst-parser>=2.0.0",
+]
+
+all = [
+    "auto-blogger[dev,test,docs]",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/AryanVBW/AUTO-blogger"
-"Bug Reports" = "https://github.com/AryanVBW/AUTO-blogger/issues"
-"Source" = "https://github.com/AryanVBW/AUTO-blogger"
 "Documentation" = "https://aryanvbw.github.io/AUTO-blogger/website/"
-"Website" = "https://aryanvbw.github.io/AUTO-blogger/website/"
+"Repository" = "https://github.com/AryanVBW/AUTO-blogger"
+"Bug Tracker" = "https://github.com/AryanVBW/AUTO-blogger/issues"
+"Changelog" = "https://github.com/AryanVBW/AUTO-blogger/blob/main/CHANGELOG.md"
 
 [project.scripts]
-autoblog = "auto_blogger.gui_blogger:main"
-auto-blogger = "auto_blogger.gui_blogger:main"
+autoblog = "auto_blogger:cli_main"
+auto-blogger = "auto_blogger:cli_main"
+
+[project.gui-scripts]
+autoblog-gui = "auto_blogger.gui_blogger:main"
+
+# ==============================================================================
+# Setuptools Configuration
+# ==============================================================================
 
 [tool.setuptools]
 include-package-data = true
+zip-safe = false
 
 [tool.setuptools.packages.find]
-where = ["."] 
+where = ["."]
 include = ["auto_blogger*"]
-exclude = ["tests*", "docs*", "scripts*"]
+exclude = ["tests*", "docs*", "scripts*", "website*"]
 
 [tool.setuptools.package-data]
 "auto_blogger" = [
+    "py.typed",
     "*.json",
-    "*.md", 
+    "*.md",
     "*.txt",
     "*.png",
     "*.ico",
     "*.svg",
     "configs/*.json",
-    "website/**/*",
-    "scripts/**/*",
-    "docs/**/*",
+    "configs/*.txt",
 ]
 
+# ==============================================================================
+# Black Configuration
+# ==============================================================================
+
 [tool.black]
-line-length = 88
-target-version = ['py38']
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 extend-exclude = '''
 (
@@ -99,21 +174,159 @@ extend-exclude = '''
     | \.mypy_cache
     | \.tox
     | \.venv
+    | venv
     | _build
     | buck-out
     | build
     | dist
+    | website
   )/
 )
 '''
 
+# ==============================================================================
+# isort Configuration
+# ==============================================================================
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = ["venv/*", ".venv/*", "website/*"]
+known_first_party = ["auto_blogger"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+# ==============================================================================
+# Pytest Configuration
+# ==============================================================================
+
 [tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "-ra -q --strict-markers"
-testpaths = [
+minversion = "7.0"
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--strict-config",
+    "-v",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "gui: marks tests that require GUI",
+    "network: marks tests that require network access",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+# ==============================================================================
+# Coverage Configuration
+# ==============================================================================
+
+[tool.coverage.run]
+source = ["auto_blogger"]
+branch = true
+parallel = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# ==============================================================================
+# MyPy Configuration
+# ==============================================================================
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+strict_equality = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+exclude = [
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+    "website",
     "tests",
 ]
-python_files = [
-    "test_*.py",
-    "*_test.py",
+
+[[tool.mypy.overrides]]
+module = [
+    "selenium.*",
+    "webdriver_manager.*",
+    "google.generativeai.*",
+    "PIL.*",
 ]
+ignore_missing_imports = true
+
+# ==============================================================================
+# Pylint Configuration
+# ==============================================================================
+
+[tool.pylint.main]
+ignore = ["tests", "venv", ".venv", "website"]
+jobs = 0
+py-version = "3.8"
+
+[tool.pylint.messages_control]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0903",  # too-few-public-methods
+    "R0913",  # too-many-arguments
+    "R0914",  # too-many-locals
+    "W0511",  # fixme
+]
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.pylint.design]
+max-args = 10
+max-locals = 25
+max-statements = 100
+
+# ==============================================================================
+# Flake8 Configuration (in setup.cfg, flake8 doesn't support pyproject.toml fully)
+# ==============================================================================
+
+# Note: flake8 configuration is in setup.cfg or .flake8 file

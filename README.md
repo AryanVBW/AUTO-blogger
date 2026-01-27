@@ -1,21 +1,27 @@
-# 🚀 AUTO-blogger - AI-Powered WordPress Automation Tool
+# AUTO-blogger - AI-Powered WordPress Automation Tool
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/auto-blogger.svg)](https://badge.fury.io/py/auto-blogger)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/AryanVBW/AUTO-blogger)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![GitHub stars](https://img.shields.io/github/stars/AryanVBW/AUTO-blogger?style=social)](https://github.com/AryanVBW/AUTO-blogger/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/AryanVBW/AUTO-blogger?style=social)](https://github.com/AryanVBW/AUTO-blogger/network)
 
-**Copyright © 2025 AryanVBW**  
-**🌐 Website: [https://aryanvbw.github.io/AUTO-blogger/website/](https://aryanvbw.github.io/AUTO-blogger/website/)**  
-**📧 Contact: AryanVBW@gmail.com**
+**Copyright (c) 2025 AryanVBW**
 
-> **Transform your WordPress content strategy with intelligent automation!** 
-> 
-> AUTO-blogger is a professional-grade WordPress automation tool that combines the power of AI content generation, Getty Images integration, and comprehensive SEO optimization to revolutionize your blogging workflow.
+| Website | Documentation | Issues |
+|---------|---------------|--------|
+| [aryanvbw.github.io/AUTO-blogger](https://aryanvbw.github.io/AUTO-blogger/website/) | [Documentation](https://aryanvbw.github.io/AUTO-blogger/website/documentation.html) | [GitHub Issues](https://github.com/AryanVBW/AUTO-blogger/issues) |
 
-## 🚀 Quick Start
+> **Transform your WordPress content strategy with intelligent automation!**
+>
+> AUTO-blogger is a professional-grade WordPress automation tool that combines the power of AI content generation, Getty Images integration, and comprehensive SEO optimization.
+
+---
+
+## Quick Start
+
+### Installation
 
 ```bash
 # Install from PyPI (Recommended)
@@ -25,408 +31,397 @@ pip install auto-blogger
 autoblog
 ```
 
-**That's it!** 🎉 Ready to automate your WordPress content creation.
+### Development Setup
 
-## 🎯 What Makes AUTO-blogger Special?
+```bash
+# Clone the repository
+git clone https://github.com/AryanVBW/AUTO-blogger.git
+cd AUTO-blogger
 
-- **🤖 Dual AI Integration**: Harness both OpenAI GPT and Google Gemini for superior content quality
-- **📸 Professional Imagery**: Getty Images editorial collection with proper licensing
-- **🔍 SEO Mastery**: Advanced optimization with Yoast and AIOSEO plugin compatibility
-- **🔄 Zero-Maintenance Updates**: Self-updating system ensures you're always current
-- **🌐 Multi-Domain Management**: Handle multiple WordPress sites from one interface
-- **📊 Real-Time Monitoring**: Comprehensive progress tracking and detailed logging
+# Run the setup script
+./setup.sh          # macOS/Linux
+setup.bat           # Windows CMD
+.\setup.ps1         # Windows PowerShell
 
-A comprehensive GUI application for automating WordPress blog posting with AI-powered content generation, SEO optimization, and automatic updates.
+# Or for development
+./setup.sh --dev
+```
 
-## ✨ Key Features
+### Using Make (Development)
 
-🤖 **AI-Powered Content Generation**
+```bash
+make help           # Show all available commands
+make dev-setup      # Set up development environment
+make run            # Run the application
+make test           # Run tests
+make lint           # Run linters
+make format         # Format code
+```
+
+---
+
+## Features
+
+### AI-Powered Content Generation
 - Automatic article scraping from source websites
 - Gemini AI integration for content rewriting and paraphrasing
 - SEO-optimized title and meta description generation
-- **Focus Keyphrase and Additional Keyphrases extraction for SEO**
+- Focus keyphrase and additional keyphrases extraction
 - Smart internal and external link injection
-- **Enhanced WordPress SEO compatibility with Yoast and AIOSEO plugins**
+- WordPress SEO compatibility (Yoast, AIOSEO)
 
-🖼️ **Advanced Image Generation**
-- **OpenAI DALL-E integration for AI-generated images**
-- **Featured image generation** with customizable prompts
-- **Content image insertion** for enhanced article visuals
-- **Custom prompt support** for personalized image styles
-- **Configurable image settings** (size, style, model)
+### Advanced Image Generation
+- OpenAI DALL-E integration for AI-generated images
+- Featured image generation with customizable prompts
+- Content image insertion for enhanced visuals
 - Getty Images editorial content integration
 - Professional sports photography enhancement
 
-🔄 **Auto-Update System**
-- **Automatic repository cloning and updates**
-- **Self-updating launcher** that checks for new versions
-- **One-command installation** with dependency management
-- **Cross-platform compatibility** (Windows, macOS, Linux)
-- **Zero-maintenance updates** - always runs the latest version
+### Auto-Update System
+- Automatic repository updates on launch
+- Self-updating launcher with progress dialog
+- Cross-platform compatibility (Windows, macOS, Linux)
+- Git-based version control with rollback safety
 
-📊 **Real-Time Progress Tracking**
+### Real-Time Monitoring
 - Step-by-step progress visualization
 - Detailed logging with color-coded messages
 - Performance metrics and timing information
-- Task completion status tracking
-
-🔐 **Secure Authentication**
-- WordPress REST API integration
-- Secure credential storage
-- Connection testing and validation
-- Multi-site support with domain-specific configurations
-
-⚙️ **Advanced Configuration**
-- Customizable source URLs and selectors
-- Configurable link injection rules
-- Category and tag management
-- Processing timeout settings
-- Domain-specific configuration profiles
-
-📋 **Comprehensive Logging**
-- Real-time log display with filtering
 - Export logs to file
-- Error tracking and debugging
-- Performance monitoring
-- Session-based log management
 
-## 📁 Project Structure
+### Multi-Domain Support
+- Domain-specific configuration profiles
+- Multi-site management from one interface
+- Secure credential storage per domain
+
+---
+
+## Project Structure
 
 ```
 AUTO-blogger/
-├── 📁 configs/                 # Configuration files for different domains
-├── 📁 docs/                    # Documentation and implementation guides
-│   ├── fixes/                  # Fix documentation
-│   └── installation/           # Installation guides
-├── 📁 logs/                    # Session-based log files
-├── 📁 scripts/                 # Utility and maintenance scripts
-│   ├── installation/           # Installation scripts
-│   ├── launchers/              # Launch scripts
-│   └── fixes/                  # Fix and maintenance scripts
-├── 📁 tests/                   # Test files and debugging scripts
-│   ├── unit/                   # Unit tests
-│   └── integration/            # Integration tests
-├── 🐍 autoblog_launcher.py     # Auto-update launcher with progress dialog
-├── 🐍 automation_engine.py     # Core automation logic
-├── 🐍 gui_blogger.py          # Main GUI application
-├── 🐍 launch_blogger.py       # Application launcher
-├── 🐍 log_manager.py          # Advanced logging system
-├── 🔧 install.sh              # Main installation script
-├── 🚀 autoblog                # System launcher script
-├── 📄 requirements.txt        # Python dependencies
-├── 📄 blog_config.json        # Main configuration file (auto-created)
-├── 📄 posted_links.json       # Duplicate prevention (auto-created)
-└── 📄 README.md               # This file
+├── auto_blogger/           # Main Python package
+│   ├── __init__.py         # Package initialization
+│   ├── __main__.py         # Module entry point
+│   ├── automation_engine.py # Core automation logic
+│   ├── gui_blogger.py      # GUI application
+│   ├── cli.py              # CLI interface
+│   ├── log_manager.py      # Logging utilities
+│   ├── css_selector_extractor.py
+│   └── configs/            # Configuration files
+│       ├── default.json
+│       ├── gemini_prompts.json
+│       ├── category_keywords.json
+│       └── ...
+│
+├── tests/                  # Test suite
+│   ├── conftest.py         # Pytest fixtures
+│   ├── unit/               # Unit tests
+│   └── integration/        # Integration tests
+│
+├── requirements/           # Dependency files
+│   ├── base.txt            # Core dependencies
+│   ├── dev.txt             # Development dependencies
+│   └── test.txt            # Test dependencies
+│
+├── docs/                   # Documentation
+├── scripts/                # Utility scripts
+├── website/                # GitHub Pages site
+│
+├── setup.sh                # Unix setup script
+├── setup.bat               # Windows CMD setup script
+├── setup.ps1               # Windows PowerShell setup script
+├── run.sh                  # Unix run script
+├── run.bat                 # Windows run script
+├── Makefile                # Development automation
+│
+├── pyproject.toml          # Modern Python packaging config
+├── setup.py                # Legacy setup (for compatibility)
+├── setup.cfg               # Additional configuration
+├── requirements.txt        # Dependencies (points to requirements/)
+│
+├── .env.example            # Environment template
+├── .pre-commit-config.yaml # Pre-commit hooks
+├── .gitignore              # Git ignore rules
+│
+├── README.md               # This file
+├── CHANGELOG.md            # Version history
+├── CONTRIBUTING.md         # Contribution guidelines
+└── LICENSE                 # MIT License
 ```
 
-## 🚀 Installation
+---
 
-### 📦 PyPI Installation (Recommended - Easiest)
+## Installation Methods
 
-**Install directly from PyPI:**
+### 1. PyPI Installation (Recommended)
+
 ```bash
 pip install auto-blogger
-```
-
-**Launch the application:**
-```bash
 autoblog
-# OR
-auto-blogger
 ```
 
-**That's it!** 🎉 The package includes all dependencies and is ready to use.
+### 2. One-Command Installation
 
-### 🔧 One-Command Installation (Development Version)
-
-**For macOS and Linux:**
+**macOS/Linux:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install.sh | bash
 ```
 
-**For Windows (PowerShell as Administrator):**
+**Windows PowerShell:**
 ```powershell
 Invoke-WebRequest -Uri https://raw.githubusercontent.com/AryanVBW/AUTO-blogger/main/install.sh -OutFile install.sh; bash install.sh
 ```
 
-**Local Installation (if you have the repository):**
+### 3. Development Installation
 
 ```bash
-# Clone and install
+# Clone
 git clone https://github.com/AryanVBW/AUTO-blogger.git
 cd AUTO-blogger
-bash install.sh
+
+# Setup with dev dependencies
+./setup.sh --dev
+
+# Activate environment
+source venv/bin/activate  # Unix
+venv\Scripts\activate     # Windows
+
+# Install pre-commit hooks
+pre-commit install
 ```
 
-**What the installer does:**
-- ✅ Detects your operating system automatically
-- ✅ Installs Git, Python 3.8+, and Chrome/Chromium
-- ✅ Clones the repository with auto-update capability
-- ✅ Creates a virtual environment with all dependencies
-- ✅ Sets up system-wide launcher (`autoblog` command)
-- ✅ Creates desktop shortcuts
-- ✅ Tests the installation
-- ✅ Handles existing installations with update/reinstall options
-- ✅ Supports non-interactive mode for automation and CI/CD
+### Prerequisites
 
-### Launch AUTO-blogger
-
-After installation, start AUTO-blogger using any of these methods:
-
-**If installed via pip:**
-```bash
-# Available globally after pip installation
-autoblog
-# OR
-auto-blogger
-```
-
-**If installed via script:**
-```bash
-# System-wide command (if available)
-autoblog
-
-# From installation directory
-./autoblog
-
-# Desktop shortcut (double-click)
-# AUTO-blogger icon on desktop
-```
-
-### Prerequisites (Auto-installed)
 - Python 3.8 or higher
-- Git (for auto-updates)
 - Chrome/Chromium browser (for web scraping)
 - WordPress site with REST API enabled
 - Gemini API key
 - OpenAI API key (optional, for image generation)
 
-### Manual Installation (Advanced Users)
+---
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/AryanVBW/AUTO-blogger.git
-   cd AUTO-blogger
-   ```
+## Usage
 
-2. **Create virtual environment**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+### Command Line Interface
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Launch the application**
-   ```bash
-   python autoblog_launcher.py
-   ```
-
-## 📖 Usage
-
-### 1. Launch the Application
-
-**If installed via pip:**
 ```bash
-autoblog  # Available globally
-# OR
-auto-blogger  # Alternative command
+# Launch GUI (default)
+autoblog
+
+# Show version
+autoblog --version
+
+# Show system info
+autoblog info
+autoblog info --full
+
+# Check requirements
+autoblog check
+autoblog check --fix
+
+# Run with debug mode
+autoblog --debug
 ```
 
-**If installed via script:**
+### Running with Make
+
 ```bash
-autoblog  # System-wide command
-# OR
-./autoblog  # From installation directory
+make run        # Run the GUI application
+make run-gui    # Run the GUI explicitly
+make run-cli    # Run CLI mode
 ```
 
-The application will automatically check for updates before launching (script installation only).
+### Environment Configuration
 
-### 2. Configure Authentication
-- Go to the **🔐 Authentication** tab
-- Enter your WordPress site URL (e.g., `https://yoursite.com/wp-json/wp/v2`)
-- Enter your WordPress username and password
-- Enter your Gemini API key
-- **NEW: Enter your OpenAI API key** for image generation
-- Click **Test Connection** to verify
-- Click **Login & Save** to store credentials
+Copy `.env.example` to `.env` and configure:
 
-### 3. Configure OpenAI Image Generation (Optional)
-- Go to the **🖼️ OpenAI Images** tab
-- Configure image settings (size, style, model)
-- Set prompt prefix and suffix for consistent styling
-- **Add custom prompts** for specific image styles
-- Test example prompts for different image types
-- Save configuration
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+```
 
-### 4. Configure Automation Settings
-- Go to the **🤖 Automation** tab
-- Set the maximum number of articles to process
-- **Select Featured Images option**: None, OpenAI DALL-E, or Getty Editorial
-- **Select Content Images option**: None, OpenAI Generated, or Getty Editorial
-- **Enable "Use Custom Prompt"** to use your custom image prompts
-- Verify the source URL for article scraping
-- Click **▶️ Start Automation**
+Key environment variables:
+- `WORDPRESS_URL` - Your WordPress site URL
+- `WORDPRESS_USERNAME` - WordPress username
+- `WORDPRESS_APP_PASSWORD` - WordPress application password
+- `GEMINI_API_KEY` - Google Gemini AI API key
+- `OPENAI_API_KEY` - OpenAI API key (optional)
 
-### 5. Monitor Progress
-- Watch real-time progress in the step tracker
-- View detailed logs in the **📋 Logs** tab
-- Monitor completion status and performance metrics
+---
 
-### 6. Advanced Configuration
-- Go to the **⚙️ Configuration** tab
-- Customize source URLs and CSS selectors
-- Configure internal and external link rules
-- Adjust processing timeouts and settings
+## Development
 
-## Configuration Options
+### Setup
 
-### Source Configuration
-- **Source URL**: The website to scrape articles from
-- **Article Selector**: CSS selector for finding article links
-- **Timeout**: Maximum time to wait for page loads
+```bash
+# Full development setup
+./setup.sh --dev
 
-### WordPress Configuration
-- **Site URL**: Your WordPress REST API endpoint
-- **Username**: WordPress username with posting permissions
-- **Password**: WordPress application password
-- **Gemini API Key**: Google Gemini AI API key
+# Or using Make
+make dev-setup
+```
 
-### Link Configuration
-- **Internal Links**: JSON configuration for internal site links
-- **External Links**: JSON configuration for external reference links
+### Testing
+
+```bash
+# Run all tests
+make test
+
+# Run with coverage
+make test-cov
+
+# Run fast tests only
+make test-fast
+```
+
+### Code Quality
+
+```bash
+# Format code
+make format
+
+# Run linters
+make lint
+
+# Type checking
+make type-check
+
+# All checks
+make check
+```
+
+### Building
+
+```bash
+# Build distribution
+make build
+
+# Upload to PyPI
+make upload
+
+# Upload to TestPyPI
+make upload-test
+```
+
+---
 
 ## Process Flow
 
-The automation follows this step-by-step process:
+The automation follows these steps:
 
 1. **Fetch Article Links** - Scrape source website for new articles
 2. **Extract Content** - Use Selenium to extract article title and content
 3. **AI Paraphrasing** - Use Gemini AI to rewrite and optimize content
 4. **Inject Internal Links** - Add relevant internal site links
 5. **Inject External Links** - Add authoritative external references
-6. **Add Content Images** - Generate and insert AI images or Getty editorial images within article content
+6. **Add Content Images** - Generate and insert images within content
 7. **Generate SEO Metadata** - Create optimized titles and descriptions
-8. **Extract Keyphrases** - Generate focus keyphrase and additional keyphrases for SEO
-9. **Process Featured Images** - Generate or source featured images using OpenAI DALL-E or Getty Images
+8. **Extract Keyphrases** - Generate focus and additional keyphrases
+9. **Process Featured Images** - Generate or source featured images
 10. **Detect Categories** - Automatically categorize content
 11. **Generate Tags** - Extract and create relevant tags
-12. **Create WordPress Post** - Publish as draft to WordPress with all media attached
+12. **Create WordPress Post** - Publish as draft with all media
 13. **Finalize** - Complete processing and update status
 
-## 🔄 Auto-Update System
+---
 
-AUTO-blogger features a sophisticated auto-update system:
+## Configuration
 
-- **Automatic Updates**: Every launch checks for new versions
-- **Progress Dialog**: Visual feedback during update process
-- **Zero Downtime**: Updates happen before application launch
-- **Rollback Safety**: Git-based updates with version tracking
-- **Cross-Platform**: Works on Windows, macOS, and Linux
+### Source Configuration
+- **Source URL**: Website to scrape articles from
+- **Article Selector**: CSS selector for article links
+- **Timeout**: Maximum page load wait time
 
-### How Auto-Updates Work
+### WordPress Configuration
+- **Site URL**: WordPress REST API endpoint
+- **Username**: WordPress username with posting permissions
+- **Password**: WordPress application password
+- **API Key**: Gemini AI API key
 
-1. **Launch Detection**: `autoblog_launcher.py` checks GitHub for updates
-2. **Update Check**: Compares local and remote commit hashes
-3. **Download**: Pulls latest changes via Git
-4. **Progress Display**: Shows update progress with tkinter dialog
-5. **Launch**: Starts the updated application automatically
+### Image Configuration
+- **OpenAI Model**: DALL-E 2 or DALL-E 3
+- **Image Size**: 256x256 to 1792x1024
+- **Style**: Vivid or Natural
 
-## 🔧 Troubleshooting
+---
 
-### Installation Issues
+## Troubleshooting
 
-**1. Permission Errors**
-- Run installation with appropriate permissions
-- On Linux/macOS: Use `sudo` if needed for system-wide installation
-- On Windows: Run PowerShell as Administrator
+### Common Issues
 
-**2. Git Not Found**
-- The installer will automatically install Git
-- Manual install: [https://git-scm.com/downloads](https://git-scm.com/downloads)
+**Import Errors:**
+```bash
+# Ensure virtual environment is activated
+source venv/bin/activate
 
-**3. Python Version Issues**
-- Requires Python 3.8 or higher
-- The installer will install compatible Python version
-- Check version: `python3 --version`
+# Reinstall dependencies
+pip install -r requirements/base.txt
+```
 
-### Runtime Issues
-
-**1. Import Errors**
-- Ensure virtual environment is activated
-- Run `autoblog` command instead of direct Python execution
-- Reinstall dependencies: `pip install -r requirements.txt`
-
-**2. Selenium Issues**
-- Chrome/Chromium browser required (auto-installed)
+**Selenium Issues:**
+- Chrome/Chromium browser required
 - ChromeDriver automatically managed by webdriver-manager
-- Check firewall/antivirus blocking WebDriver
 
-**3. WordPress Connection Issues**
-- Verify REST API is enabled on your WordPress site
-- Use application passwords, not regular passwords
+**WordPress Connection:**
+- Verify REST API is enabled
+- Use application passwords (not regular passwords)
 - Check URL format: `https://yoursite.com/wp-json/wp/v2`
-- Test connection in Authentication tab
 
-**4. API Issues**
-- **Gemini API**: Verify key is correct and billing is set up
-- **OpenAI API**: Check quotas and usage limits
-- **Rate Limits**: Application handles rate limiting automatically
+**API Issues:**
+- Verify API keys are correct
+- Check quota and usage limits
+- Application handles rate limiting automatically
 
-**5. Auto-Update Issues**
-- Ensure Git is installed and accessible
-- Check internet connection
-- Verify GitHub repository access
-- Manual update: `git pull origin main`
+### Logs
 
-### Error Logs
-Check the **📋 Logs** tab for detailed error messages and debugging information. Logs are saved in the `logs/` directory.
+Check the `logs/` directory or the Logs tab in the GUI for detailed error messages.
 
-## Security Notes
+---
 
-- Credentials are stored locally in `blog_config.json`
-- Use WordPress application passwords instead of regular passwords
-- Keep your Gemini API key secure and don't share configuration files
-- The application creates draft posts for review before publishing
+## Contributing
 
-## 📞 Support
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
-For issues and support:
+### Quick Start
 
-1. **Check Logs**: Review the **📋 Logs** tab for detailed error messages
-2. **Test Components**: Verify WordPress connection and API keys in respective tabs
-3. **Update Check**: Ensure you're running the latest version (auto-updates on launch)
-4. **Documentation**: Check the `docs/` folder for detailed guides
-5. **GitHub Issues**: Report bugs at [GitHub Issues](https://github.com/AryanVBW/AUTO-blogger/issues)
-6. **Email Support**: AryanVBW@gmail.com
+```bash
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/AUTO-blogger.git
+cd AUTO-blogger
 
-## 🏆 Benefits
+# Setup development environment
+./setup.sh --dev
 
-### For Content Creators
-- **Time Saving**: Automate entire blog posting workflow
-- **SEO Optimized**: Built-in SEO best practices and keyphrase extraction
-- **Professional Quality**: AI-generated images and content
-- **Multi-Site Support**: Manage multiple WordPress sites
+# Create feature branch
+git checkout -b feature/your-feature
 
-### For Developers
-- **Always Updated**: Auto-update system ensures latest features
-- **Cross-Platform**: Works on Windows, macOS, and Linux
-- **Extensible**: Modular design for easy customization
-- **Well-Documented**: Comprehensive documentation and guides
+# Make changes, test, and submit PR
+make test
+make lint
+```
 
-## 📄 License
+---
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## License
 
-## 🙏 Acknowledgments
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-- **GUI Framework**: Python tkinter for cross-platform interface
-- **Web Scraping**: Selenium WebDriver with automatic driver management
-- **AI Integration**: Google Gemini AI and OpenAI DALL-E
-- **WordPress API**: REST API for seamless publishing
-- **HTML Parsing**: BeautifulSoup4 for content extraction
-- **Image Processing**: Pillow (PIL) for image manipulation
-- **Auto-Updates**: Git-based version control and updates
+---
+
+## Acknowledgments
+
+- **GUI Framework**: Python tkinter
+- **Web Scraping**: Selenium WebDriver
+- **AI Integration**: Google Gemini AI, OpenAI DALL-E
+- **WordPress API**: REST API
+- **HTML Parsing**: BeautifulSoup4
+- **Image Processing**: Pillow (PIL)
+
+---
+
+## Support
+
+- **Documentation**: [aryanvbw.github.io/AUTO-blogger](https://aryanvbw.github.io/AUTO-blogger/website/)
+- **Issues**: [GitHub Issues](https://github.com/AryanVBW/AUTO-blogger/issues)
+- **Email**: AryanVBW@gmail.com
