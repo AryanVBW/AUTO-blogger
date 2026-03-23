@@ -39,6 +39,13 @@ try:
 except ImportError:
     SELENIUM_AVAILABLE = False
 
+# Google GenAI SDK (new official SDK - https://ai.google.dev/gemini-api/docs/quickstart)
+try:
+    from google import genai as _genai
+    GENAI_SDK_AVAILABLE = True
+except ImportError:
+    GENAI_SDK_AVAILABLE = False
+
 class BlogAutomationEngine:
     """Core automation engine for blog posting"""
     
@@ -168,6 +175,62 @@ class BlogAutomationEngine:
             }
         )
         
+    # -------------------------------------------------------------------------
+    # Gemini API helper — uses official google-genai SDK, falls back to REST
+    # -------------------------------------------------------------------------
+    def _call_gemini(self, prompt: str, timeout: int = 60) -> str:
+        """Call Gemini API and return the text response.
+
+        Uses the official google-genai SDK (from google import genai) when
+        available, otherwise falls back to the REST API via requests.post.
+
+        Args:
+            prompt: The text prompt to send to Gemini.
+            timeout: Request timeout in seconds (REST fallback only).
+
+        Returns:
+            str: The model's text response.
+
+        Raises:
+            ValueError: If the API key is not configured.
+            Exception: On API or network errors.
+        """
+        api_key = self.config.get('gemini_api_key', '')
+        if not api_key:
+            raise ValueError("Gemini API key not configured")
+
+        model = self.config.get('gemini_model', 'gemini-2.0-flash')
+
+        if GENAI_SDK_AVAILABLE:
+            # ── Official SDK path ────────────────────────────────────────────
+            try:
+                client = _genai.Client(api_key=api_key)
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                )
+                return response.text
+            except Exception as sdk_err:
+                self.logger.warning(
+                    f"⚠️ google-genai SDK error ({sdk_err}), falling back to REST API"
+                )
+                # Fall through to REST fallback below
+
+        # ── REST fallback ─────────────────────────────────────────────────────
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent?key={api_key}"
+        )
+        r = requests.post(
+            url,
+            headers={"Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=timeout,
+        )
+        r.raise_for_status()
+        data = r.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
     def load_json_config(self, filename, default):
         """Load JSON configuration file with proper error handling"""
         path = os.path.join(self.config_dir, filename)
@@ -911,28 +974,10 @@ HEADLINE:
 """
 
         try:
-            gemini_api_key = self.config.get('gemini_api_key', '')
-            if not gemini_api_key:
+            if not self.config.get('gemini_api_key', ''):
                 raise ValueError("Gemini API key not configured")
-                
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
-            headers = {"Content-Type": "application/json"}
-            payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
-            response = requests.post(url, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()
-
-            # Add error handling for API response structure
-            response_data = response.json()
-            if not response_data.get("candidates") or len(response_data["candidates"]) == 0:
-                self.logger.error("Empty or invalid Gemini API response for paraphrasing")
-                raise ValueError("Invalid API response structure")
-                
-            if not response_data["candidates"][0].get("content") or not response_data["candidates"][0]["content"].get("parts") or len(response_data["candidates"][0]["content"]["parts"]) == 0:
-                self.logger.error("Invalid content structure in Gemini API response for paraphrasing")
-                raise ValueError("Invalid content structure in API response")
-
-            text = response_data["candidates"][0]["content"]["parts"][0].get("text", "")
+            text = self._call_gemini(prompt, timeout=60)
             content_match = re.search(r"CONTENT:\s*(.*?)\s*HEADLINE:", text, re.DOTALL)
             headline_match = re.search(r"HEADLINE:\s*(.+)", text)
 
@@ -1040,8 +1085,6 @@ HEADLINE:
                 self.logger.warning("No Gemini API key - using fallback SEO generation")
                 return seo_title, meta_desc
 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
-
             # Use the configurable prompt from GEMINI_PROMPTS
             prompt = self.GEMINI_PROMPTS.get('seo_title_meta_prompt', '')
             if not prompt:
@@ -1081,25 +1124,7 @@ Article Content:
                 # Use the configured prompt and format it with title and content
                 prompt = prompt.format(title=title, content=content)
 
-            response = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={"contents": [{"parts": [{"text": prompt}]}]},
-                timeout=30
-            )
-            response.raise_for_status()
-            
-            # Add error handling for API response structure
-            response_data = response.json()
-            if not response_data.get("candidates") or len(response_data["candidates"]) == 0:
-                self.logger.error("Empty or invalid Gemini API response")
-                raise ValueError("Invalid API response structure")
-                
-            if not response_data["candidates"][0].get("content") or not response_data["candidates"][0]["content"].get("parts") or len(response_data["candidates"][0]["content"]["parts"]) == 0:
-                self.logger.error("Invalid content structure in Gemini API response")
-                raise ValueError("Invalid content structure in API response")
-                
-            text = response_data["candidates"][0]["content"]["parts"][0].get("text", "").strip()
+            text = self._call_gemini(prompt).strip()
 
             seo_title, meta_description = "", ""
 
@@ -1209,44 +1234,22 @@ Article Content:
                 # Use the configured prompt and format it with content
                 prompt = prompt.format(content=content)
 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
-            
-            response = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={"contents": [{"parts": [{"text": prompt}]}]},
-                timeout=30
-            )
+            raw = self._call_gemini(prompt)
+            for cand in [c.strip() for c in raw.split(",") if c.strip()]:
+                name = re.sub(r"\\s+", " ", cand)
 
-            if response.status_code == 200:
-                response_data = response.json()
-                if response_data.get("candidates") and len(response_data["candidates"]) > 0:
-                    candidate = response_data["candidates"][0]
-                    if candidate.get("content") and candidate["content"].get("parts") and len(candidate["content"]["parts"]) > 0:
-                        raw = candidate["content"]["parts"][0].get("text", "")
-                        for cand in [c.strip() for c in raw.split(",") if c.strip()]:
-                            name = re.sub(r"\\s+", " ", cand)
-                            
-                            # Apply synonym normalization from Jupyter notebook
-                            if name in self.TAG_SYNONYMS:
-                                name = self.TAG_SYNONYMS[name]
-                            
-                            # Keep if valid and present in content (from Jupyter notebook logic)
-                            if (
-                                (name in self.STATIC_CLUBS or re.fullmatch(r"[A-Z][a-z]+(?:\\s[A-Z][a-z]+)*", name))
-                                and re.search(rf"\\b{re.escape(name)}\\b", content, re.IGNORECASE)
-                                and name not in seen
-                            ):
-                                seen.add(name)
-                                tags.append(name)
-                    else:
-                        self.logger.error("Invalid content structure in Gemini tag API response")
-                else:
-                    self.logger.error("No candidates in Gemini tag API response")
-            else:
-                self.logger.error(f"Gemini Tag API Error {response.status_code}: {response.text}")
-                # If API fails, use fallback method immediately
-                return self.generate_tags_fallback(content)
+                # Apply synonym normalization from Jupyter notebook
+                if name in self.TAG_SYNONYMS:
+                    name = self.TAG_SYNONYMS[name]
+
+                # Keep if valid and present in content (from Jupyter notebook logic)
+                if (
+                    (name in self.STATIC_CLUBS or re.fullmatch(r"[A-Z][a-z]+(?:\\s[A-Z][a-z]+)*", name))
+                    and re.search(rf"\\b{re.escape(name)}\\b", content, re.IGNORECASE)
+                    and name not in seen
+                ):
+                    seen.add(name)
+                    tags.append(name)
 
             # Fallback scan from Jupyter notebook implementation
             for club in self.STATIC_CLUBS:
@@ -1648,28 +1651,7 @@ Article Content:
                 # Fallback to default prompt if not configured
                 prompt = "You are an SEO expert specializing in football content. Analyze the following article and extract:\n\n1. **Focus Keyphrase**: The single most important 2-4 word keyphrase that represents the core topic of this article. This should be what people would search for to find this specific article.\n\n2. **Additional Keyphrases**: 3-5 additional relevant keyphrases (2-4 words each) that are naturally mentioned in the content and would help with SEO ranking.\n\nRules:\n- Focus on keyphrases that football fans would actually search for\n- Include player names, club names, and football-specific terms\n- Avoid generic words like 'football', 'player', 'team' unless they're part of a specific phrase\n- Keyphrases should feel natural and be present in the content\n- Use British English spelling (e.g., 'rumours' not 'rumors')\n\nReturn format:\nFOCUS_KEYPHRASE:\n<main keyphrase here>\n\nADDITIONAL_KEYPHRASES:\n<keyphrase 1>\n<keyphrase 2>\n<keyphrase 3>\n<keyphrase 4>\n<keyphrase 5>\n\nArticle Title: {title}\n\nArticle Content:\n{content}"
             prompt = prompt.format(title=title, content=content)
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
-            response = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={"contents": [{"parts": [{"text": prompt}]}]},
-                timeout=30
-            )
-            if response.status_code != 200:
-                self.logger.error(f"Gemini Keyphrase API Error {response.status_code}: {response.text}")
-                return self.extract_keyphrases_fallback(content, title)
-                
-            response_data = response.json()
-            if not response_data.get("candidates") or len(response_data["candidates"]) == 0:
-                self.logger.error("Empty or invalid Gemini API response for keyphrase extraction")
-                return self.extract_keyphrases_fallback(content, title)
-                
-            candidate = response_data["candidates"][0]
-            if not candidate.get("content") or not candidate["content"].get("parts") or len(candidate["content"]["parts"]) == 0:
-                self.logger.error("Invalid content structure in Gemini API response for keyphrase extraction")
-                return self.extract_keyphrases_fallback(content, title)
-                
-            text = candidate["content"]["parts"][0].get("text", "")
+            text = self._call_gemini(prompt)
             # Parse the result
             focus = ""
             additional = []
@@ -2126,26 +2108,13 @@ Example responses:
 Your response (search terms only):
 """
             
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
-            
-            response = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={"contents": [{"parts": [{"text": prompt}]}]},
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                search_terms = response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                # Clean up the response
-                search_terms = re.sub(r'[^\w\s,]', '', search_terms)  # Remove special chars except commas
-                search_terms = search_terms.replace('\n', ', ').replace('  ', ' ')
-                
-                self.logger.info(f"🤖 Gemini suggested search terms: {search_terms}")
-                return search_terms
-            else:
-                self.logger.warning(f"⚠️ Gemini API error: {response.status_code}")
-                return title
+            search_terms = self._call_gemini(prompt).strip()
+            # Clean up the response
+            search_terms = re.sub(r'[^\w\s,]', '', search_terms)  # Remove special chars except commas
+            search_terms = search_terms.replace('\n', ', ').replace('  ', ' ')
+
+            self.logger.info(f"🤖 Gemini suggested search terms: {search_terms}")
+            return search_terms
                 
         except Exception as e:
             self.logger.error(f"❌ Error generating Getty search terms with Gemini: {e}")

@@ -55,7 +55,193 @@ class BlogAutomationEngine:
         
         # Cache for SEO field mappings to improve performance
         self._seo_field_cache = {}
-        
+
+    def _create_wp_session(self) -> requests.Session:
+        """Create a robust requests Session configured for WordPress API calls.
+
+        Handles:
+        - RetryAdapter for transient connection errors (RemoteDisconnected, etc.)
+        - Proper headers that prevent premature connection closing
+        - HTTP and HTTPS support (including self-signed certs)
+        - DDoS-Guard / slowAES bot-protection challenge (auto-solved)
+        """
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        import urllib3
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+        session = requests.Session()
+
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=["GET", "POST"],
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+
+        # Use a realistic browser User-Agent — many bot-protection systems block
+        # non-browser UAs outright before even serving the JS challenge.
+        session.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            ),
+            "Accept": "application/json, text/html, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            # Keep-Alive is fine here; we use Connection:close only for the
+            # probe request inside _solve_ddosguard so the challenge socket
+            # closes cleanly before we reuse the session.
+        })
+
+        wp_url = self.config.get('wp_base_url', '')
+        if wp_url.startswith('http://'):
+            session.verify = False
+
+        # Auto-solve DDoS-Guard / slowAES challenge if the site uses it
+        self._solve_ddosguard_challenge(session, wp_url)
+
+        return session
+
+    def _solve_ddosguard_challenge(self, session: 'requests.Session', wp_base_url: str) -> bool:
+        """Detect and solve the DDoS-Guard slowAES cookie challenge.
+
+        Many hosting providers (liveblog365, etc.) put an AES-based JavaScript
+        challenge in front of every page.  A browser solves it automatically;
+        a plain requests call just gets an HTML page with no JSON.
+
+        The challenge works like this:
+          1. Server returns HTML that runs:
+               var a = toNumbers("<key_hex>"),
+                   b = toNumbers("<iv_hex>"),
+                   c = toNumbers("<ct_hex>");
+               document.cookie = "__test=" + toHex(slowAES.decrypt(c, 2, a, b));
+               location.href = "<url>?i=1";
+          2. Client must AES-CBC-decrypt `ct` with `key` and `iv`, set the
+             resulting hex string as the `__test` cookie, then re-request the
+             URL with `?i=1` appended.
+
+        This method solves that challenge with Python's `cryptography` library
+        (or `pycryptodome` as fallback) and stores the cookie in `session`.
+
+        Returns True if the challenge was solved (or was not present), False on error.
+        """
+        if not wp_base_url:
+            return False
+
+        # Derive the site root from the wp-json base URL
+        # e.g. "http://example.com/wp-json/wp/v2" → "http://example.com"
+        from urllib.parse import urlparse
+        parsed = urlparse(wp_base_url)
+        site_root = f"{parsed.scheme}://{parsed.netloc}"
+        probe_url = f"{wp_base_url.rstrip('/')}/posts"
+
+        try:
+            # Use Connection:close for the probe so the server socket closes
+            # cleanly after the challenge response.
+            probe_resp = session.get(
+                probe_url,
+                timeout=15,
+                verify=False,
+                headers={"Connection": "close"},
+                allow_redirects=False,
+            )
+        except Exception as e:
+            self.logger.debug(f"DDoS-Guard probe request failed: {e}")
+            return False
+
+        if 'slowAES' not in probe_resp.text:
+            # No challenge — site is directly accessible
+            return True
+
+        self.logger.info("🔐 DDoS-Guard bot-protection detected — solving AES challenge...")
+
+        # Parse the three hex values from the JS
+        m = re.search(
+            r'var\s+a\s*=\s*toNumbers\(["\']([0-9a-fA-F]+)["\']\)'
+            r'.*?b\s*=\s*toNumbers\(["\']([0-9a-fA-F]+)["\']\)'
+            r'.*?c\s*=\s*toNumbers\(["\']([0-9a-fA-F]+)["\']\)',
+            probe_resp.text,
+            re.DOTALL,
+        )
+        if not m:
+            # Fallback: try the comma-separated inline format
+            m = re.search(
+                r'toNumbers\(["\']([0-9a-fA-F]+)["\']\)'
+                r',b=toNumbers\(["\']([0-9a-fA-F]+)["\']\)'
+                r',c=toNumbers\(["\']([0-9a-fA-F]+)["\']\)',
+                probe_resp.text,
+            )
+        if not m:
+            self.logger.warning("⚠️ Could not parse DDoS-Guard challenge values")
+            return False
+
+        key_hex, iv_hex, ct_hex = m.group(1), m.group(2), m.group(3)
+
+        # AES-CBC decrypt
+        cookie_value = None
+        try:
+            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+            from cryptography.hazmat.backends import default_backend
+            cipher = Cipher(
+                algorithms.AES(bytes.fromhex(key_hex)),
+                modes.CBC(bytes.fromhex(iv_hex)),
+                backend=default_backend(),
+            )
+            dec = cipher.decryptor()
+            cookie_value = (dec.update(bytes.fromhex(ct_hex)) + dec.finalize()).hex()
+        except Exception:
+            pass
+
+        if cookie_value is None:
+            try:
+                from Crypto.Cipher import AES as _AES
+                cipher = _AES.new(bytes.fromhex(key_hex), _AES.MODE_CBC, bytes.fromhex(iv_hex))
+                cookie_value = cipher.decrypt(bytes.fromhex(ct_hex)).hex()
+            except Exception as e:
+                self.logger.error(f"❌ AES decrypt failed — install 'cryptography' or 'pycryptodome': {e}")
+                return False
+
+        # Set the challenge cookie on the session for all future requests
+        session.cookies.set('__test', cookie_value, domain=parsed.netloc, path='/')
+        self.logger.info(f"✅ DDoS-Guard challenge solved (cookie __test={cookie_value[:12]}...)")
+
+        # Confirm by hitting the ?i=1 redirect URL
+        try:
+            sep = '&' if '?' in probe_url else '?'
+            confirm_resp = session.get(
+                f"{probe_url}{sep}i=1",
+                timeout=15,
+                verify=False,
+                allow_redirects=True,
+            )
+            if confirm_resp.status_code == 200 and (
+                confirm_resp.text.strip().startswith('[') or
+                confirm_resp.text.strip().startswith('{')
+            ):
+                self.logger.info("✅ WordPress API is now accessible")
+                return True
+            else:
+                self.logger.debug(f"Confirmation request: HTTP {confirm_resp.status_code}")
+        except Exception as e:
+            self.logger.debug(f"Confirmation request failed: {e}")
+
+        # Cookie is set even if confirmation was inconclusive — session will use it
+        return True
+
+    def _normalize_wp_password(self, password: str) -> str:
+        """Normalize WordPress Application Password.
+
+        WordPress Application Passwords come as 'ABCD EFGH IJKL MNOP QRST UVWX'.
+        Strip ALL spaces for reliable HTTP Basic Auth — WordPress accepts both formats.
+        """
+        return password.replace(' ', '')
+
     def setup_configurations(self):
         """Setup all configuration dictionaries"""
         
@@ -313,9 +499,10 @@ class BlogAutomationEngine:
             try:
                 self.logger.info(f"🔧 Using {seo_version} AIOSEO format (v{'2.7.1' if seo_version == 'old' else '4.7.3+'}) for SEO metadata (attempt {attempt + 1}/{max_retries})")
                 
-                update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=seo_data, timeout=10)
+                _session = self._create_wp_session()
+                update_resp = _session.post(f"{posts_url}/{post_id}", auth=auth, json=seo_data, timeout=15)
                 update_resp.raise_for_status()
-                
+
                 self.logger.info(f"✅ {seo_version.title()} AIOSEO SEO metadata updated successfully")
                 return True
                 
@@ -531,70 +718,143 @@ class BlogAutomationEngine:
             self.logger.info(f"🔍 Found {len(tags)} elements matching selector")
             
             if len(tags) == 0:
-                # Try alternative selectors with TBR Football specific ones
+                # Try generic alternative selectors that work on most CMS/blog sites
                 alternative_selectors = [
                     "article h2 a",
                     "article h3 a",
-                    "h2 a",
-                    "h3 a",
+                    "article h1 a",
                     ".post-title a",
                     ".entry-title a",
                     ".article-title a",
-                    "a[href*='tbrfootball.com']",
-                    "a[href*='/post/']",
-                    "a[href*='/article/']",
-                    "a[href*='/news/']",
-                    ".post a",
-                    ".entry a",
-                    ".content a[href*='tbrfootball']"
+                    ".post h2 a",
+                    ".post h3 a",
+                    "h2 a",
+                    "h3 a",
+                    ".card-title a",
+                    ".blog-title a",
+                    ".news-title a",
+                    "[class*='title'] a",
+                    "[class*='post'] h2 a",
+                    "[class*='article'] h2 a",
+                    "[class*='news'] h2 a",
+                    "main h2 a",
+                    "main h3 a",
                 ]
-                
-                self.logger.warning(f"⚠️ No articles found with selector '{selector}', trying alternatives...")
-                
+
+                self.logger.warning(f"⚠️ No articles found with selector '{selector}', trying generic alternatives...")
+
+                # Extract base domain for relative URL filtering
+                from urllib.parse import urlparse
+                parsed_source = urlparse(source_url)
+                base_domain = parsed_source.netloc
+
                 for alt_selector in alternative_selectors:
                     alt_tags = soup.select(alt_selector)
                     if alt_tags:
-                        # Filter to only include TBR Football links
                         valid_tags = []
                         for tag in alt_tags:
                             href = tag.get("href", "")
-                            if href and ("tbrfootball.com" in href or href.startswith("/")):
+                            text = tag.get_text().strip()
+                            # Accept links that are internal (same domain or relative) and have meaningful text
+                            if href and len(text) > 15 and (
+                                href.startswith("/") or
+                                base_domain in href or
+                                (href.startswith("http") and base_domain in href)
+                            ):
                                 valid_tags.append(tag)
-                        
+
                         if valid_tags:
-                            self.logger.info(f"✅ Found {len(valid_tags)} valid articles with alternative selector: {alt_selector}")
+                            self.logger.info(f"✅ Found {len(valid_tags)} articles with alternative selector: {alt_selector}")
                             tags = valid_tags
                             break
                         else:
-                            self.logger.debug(f"Found {len(alt_tags)} links with '{alt_selector}' but none were TBR Football articles")
-                
+                            self.logger.debug(f"Selector '{alt_selector}' found {len(alt_tags)} links but none passed validation")
+
                 if not tags:
-                    self.logger.error("❌ No articles found with any selector")
-                    # Enhanced debugging - log page structure and available links
-                    self.logger.info("🔍 Debugging page structure...")
-                    
-                    # Check for any links that might be articles
+                    # FINAL FALLBACK: Fetch ALL links from the page and intelligently identify articles
+                    self.logger.warning("⚠️ No articles found with any specific selector — scanning all page links...")
+
                     all_links = soup.find_all('a', href=True)
-                    tbr_links = [link for link in all_links if 'tbrfootball.com' in link.get('href', '') or link.get('href', '').startswith('/')]
-                    
-                    self.logger.info(f"Total links found: {len(all_links)}")
-                    self.logger.info(f"TBR Football related links: {len(tbr_links)}")
-                    
-                    # Show sample of TBR links
-                    for i, link in enumerate(tbr_links[:5]):
-                        href = link.get('href')
-                        text = link.get_text().strip()[:50]
-                        self.logger.info(f"TBR Link {i+1}: {href} - {text}")
-                    
-                    # Show page structure sample
-                    articles = soup.find_all(['article', 'div', 'section'], class_=True, limit=5)
-                    for i, article in enumerate(articles):
-                        classes = ' '.join(article.get('class', []))
-                        self.logger.info(f"Container {i+1} classes: {classes}")
-                        links_in_container = article.find_all('a', href=True)
-                        self.logger.info(f"  Links in container: {len(links_in_container)}")
-                    
-                    return []
+                    self.logger.info(f"🔍 Total links found on page: {len(all_links)}")
+
+                    # Patterns that commonly appear in article URLs
+                    article_url_patterns = [
+                        r'/\d{4}/\d{2}/',         # Date-based: /2024/03/
+                        r'/\d{4}/\d{2}/\d{2}/',   # Full date: /2024/03/15/
+                        r'/post/',
+                        r'/article/',
+                        r'/news/',
+                        r'/blog/',
+                        r'/story/',
+                        r'/read/',
+                        r'/p/',
+                    ]
+
+                    # Patterns to exclude (navigation, utility pages)
+                    exclude_patterns = [
+                        r'javascript:', r'mailto:', r'#$', r'/tag/', r'/tags/',
+                        r'/category/', r'/categories/', r'/author/', r'/authors/',
+                        r'/page/\d+', r'/search/', r'/login', r'/register',
+                        r'/contact', r'/about', r'/privacy', r'/terms',
+                        r'\.(css|js|png|jpg|jpeg|gif|pdf|zip|xml|json)$'
+                    ]
+
+                    candidate_links = []
+                    for link in all_links:
+                        href = link.get("href", "")
+                        text = link.get_text().strip()
+
+                        # Skip if no text or too short (navigation links)
+                        if not text or len(text) < 20:
+                            continue
+
+                        # Skip external links to different domains
+                        if href.startswith("http") and base_domain not in href:
+                            continue
+
+                        # Skip excluded patterns
+                        skip = False
+                        for pat in exclude_patterns:
+                            if re.search(pat, href, re.IGNORECASE):
+                                skip = True
+                                break
+                        if skip:
+                            continue
+
+                        # Score this link by how article-like it looks
+                        score = 0
+                        for pat in article_url_patterns:
+                            if re.search(pat, href, re.IGNORECASE):
+                                score += 2
+                        if len(text) > 30:
+                            score += 1
+                        if len(text) > 60:
+                            score += 1
+                        # Relative paths from same domain are good candidates
+                        if href.startswith("/"):
+                            score += 1
+
+                        if score > 0:
+                            candidate_links.append((score, link))
+
+                    # Sort by score descending and take best ones
+                    candidate_links.sort(key=lambda x: x[0], reverse=True)
+
+                    if candidate_links:
+                        tags = [link for _, link in candidate_links]
+                        self.logger.info(f"✅ Smart fallback identified {len(tags)} potential article links from full page scan")
+                        # Log top candidates for debugging
+                        for score, link in candidate_links[:5]:
+                            self.logger.debug(f"  Candidate (score={score}): {link.get('href', '')} — {link.get_text().strip()[:60]}")
+                    else:
+                        self.logger.error("❌ Could not find any article links on this page")
+                        # Log page structure for debugging
+                        containers = soup.find_all(['article', 'div', 'section'], class_=True, limit=5)
+                        for i, container in enumerate(containers):
+                            classes = ' '.join(container.get('class', []))
+                            container_links = container.find_all('a', href=True)
+                            self.logger.debug(f"Container {i+1} [{classes}]: {len(container_links)} links")
+                        return []
             
             links = []
             for i, tag in enumerate(tags):
@@ -627,66 +887,42 @@ class BlogAutomationEngine:
             return []
 
     def is_valid_article_url(self, url: str) -> bool:
-        """Check if URL looks like a valid article URL"""
+        """Check if URL looks like a valid article URL — works for any website"""
         try:
-            # Basic validation
             if not url or len(url) < 10:
                 return False
-                
-            # Must be HTTP/HTTPS
+
             if not url.startswith(('http://', 'https://')):
                 return False
-            
+
             url_lower = url.lower()
-            
-            # For TBR Football, be more specific about what constitutes an article
-            if 'tbrfootball.com' in url_lower:
-                # TBR Football specific validation
-                # Accept URLs that look like articles
-                valid_patterns = [
-                    '/post/',
-                    '/news/',
-                    '/article/',
-                    '/football/',
-                    '/premier-league/',
-                    '/transfer',
-                    '/analysis'
-                ]
-                
-                # Check if URL contains article-like patterns
-                has_valid_pattern = any(pattern in url_lower for pattern in valid_patterns)
-                
-                # Avoid obvious non-article URLs
-                invalid_patterns = [
-                    'javascript:', 'mailto:', '#', '/tag/', '/category/', 
-                    '/author/', '/page/', '/search/', '/login', '/register',
-                    '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.pdf',
-                    '/topic/english-premier-league/' # Avoid the main topic page
-                ]
-                
-                has_invalid_pattern = any(pattern in url_lower for pattern in invalid_patterns)
-                
-                # For TBR Football, either accept if it has valid pattern or if it doesn't have invalid patterns
-                if has_valid_pattern and not has_invalid_pattern:
-                    return True
-                elif not has_invalid_pattern and len(url) > 30:  # Likely an article if it's a longer URL
-                    return True
-                else:
+
+            # Always skip these non-article patterns
+            invalid_patterns = [
+                'javascript:', 'mailto:',
+                '/tag/', '/tags/',
+                '/category/', '/categories/',
+                '/author/', '/authors/',
+                '/search/', '/login', '/register', '/signup',
+                '/contact', '/about', '/privacy', '/terms',
+                '/feed/', '.rss', '.xml',
+                '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.pdf', '.zip',
+            ]
+
+            for pattern in invalid_patterns:
+                if pattern in url_lower:
                     return False
-            else:
-                # Generic validation for other sites
-                invalid_patterns = [
-                    'javascript:', 'mailto:', '#', 'tag/', 'category/', 
-                    'author/', 'page/', 'search/', 'login', 'register',
-                    '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.pdf'
-                ]
-                
-                for pattern in invalid_patterns:
-                    if pattern in url_lower:
-                        return False
-                        
+
+            # Skip bare pagination: /page/2, /page/3, etc.
+            if re.search(r'/page/\d+/?$', url_lower):
+                return False
+
+            # Skip pure anchor-only URLs
+            if url_lower.endswith('#'):
+                return False
+
             return True
-            
+
         except Exception:
             return False
 
@@ -763,6 +999,48 @@ class BlogAutomationEngine:
                     self.logger.info("ℹ️ Using fallback content extraction")
                 except:
                     content = "Content extraction failed"
+
+            # Extract social media embeds (Twitter/X, Instagram, YouTube, TikTok)
+            social_embeds = []
+            try:
+                # Twitter/X embeds
+                tweets = driver.find_elements(By.CSS_SELECTOR, 'blockquote.twitter-tweet, [data-tweet-id], .twitter-tweet')
+                for tweet in tweets:
+                    outer_html = driver.execute_script("return arguments[0].outerHTML;", tweet)
+                    if outer_html and outer_html not in social_embeds:
+                        social_embeds.append(outer_html)
+
+                # Instagram embeds
+                ig_posts = driver.find_elements(By.CSS_SELECTOR, 'blockquote.instagram-media, [data-instgrm-permalink]')
+                for post in ig_posts:
+                    outer_html = driver.execute_script("return arguments[0].outerHTML;", post)
+                    if outer_html and outer_html not in social_embeds:
+                        social_embeds.append(outer_html)
+
+                # YouTube iframes
+                yt_iframes = driver.find_elements(By.CSS_SELECTOR, 'iframe[src*="youtube.com"], iframe[src*="youtu.be"]')
+                for iframe in yt_iframes:
+                    outer_html = driver.execute_script("return arguments[0].outerHTML;", iframe)
+                    if outer_html and outer_html not in social_embeds:
+                        social_embeds.append(f'<div class="video-embed">{outer_html}</div>')
+
+                # TikTok embeds
+                tiktok_embeds = driver.find_elements(By.CSS_SELECTOR, 'blockquote.tiktok-embed, [data-video-id]')
+                for embed in tiktok_embeds:
+                    outer_html = driver.execute_script("return arguments[0].outerHTML;", embed)
+                    if outer_html and outer_html not in social_embeds:
+                        social_embeds.append(outer_html)
+
+                if social_embeds:
+                    self.logger.info(f"✅ Found {len(social_embeds)} social media embed(s)")
+                    # Append social embeds to the content
+                    if content:
+                        content = content + "\n\n" + "\n\n".join(social_embeds)
+                    else:
+                        content = "\n\n".join(social_embeds)
+
+            except Exception as embed_err:
+                self.logger.debug(f"Social embed extraction skipped: {embed_err}")
 
             # Validate extracted content
             if title and content and len(content) > 100:
@@ -1490,8 +1768,10 @@ Article Content:
                 self.logger.error("❌ WordPress credentials not properly configured")
                 return None
 
+            password = self._normalize_wp_password(password)
             auth = HTTPBasicAuth(username, password)
-            
+            session = self._create_wp_session()
+
             # Create excerpt from content
             clean_content = re.sub(r'<[^>]+>', '', article_data['content']).strip()
             excerpt = clean_content[:297] + "..." if len(clean_content) > 300 else clean_content
@@ -1513,61 +1793,61 @@ Article Content:
             
             for cat in article_data['categories']:
                 try:
-                    resp = requests.get(categories_url, auth=auth, params={"search": cat}, timeout=10)
+                    resp = session.get(categories_url, auth=auth, params={"search": cat}, timeout=15)
                     resp.raise_for_status()
                     found = resp.json()
-                    
+
                     cid = next((c["id"] for c in found if c["name"].lower() == cat.lower()), None)
                     if not cid and found:
                         cid = found[0]["id"]
-                    
+
                     if not cid:
                         # Create new category
-                        create_resp = requests.post(categories_url, auth=auth, json={"name": cat}, timeout=10)
+                        create_resp = session.post(categories_url, auth=auth, json={"name": cat}, timeout=15)
                         create_resp.raise_for_status()
                         cid = create_resp.json().get("id")
-                    
+
                     if cid and cid not in cat_ids:
                         cat_ids.append(cid)
-                        
+
                 except Exception as e:
                     self.logger.warning(f"Error processing category '{cat}': {e}")
-                    
+
             payload["categories"] = cat_ids
 
             # Process tags
             tags_url = f"{wp_base_url}/tags"
             tag_ids = []
-            
+
             for tag in article_data['tags']:
                 try:
-                    resp = requests.get(tags_url, auth=auth, params={"search": tag}, timeout=10)
+                    resp = session.get(tags_url, auth=auth, params={"search": tag}, timeout=15)
                     resp.raise_for_status()
                     found = resp.json()
-                    
+
                     tid = next((t["id"] for t in found if t["name"].lower() == tag.lower()), None)
                     if not tid and found:
                         tid = found[0]["id"]
-                    
+
                     if not tid:
                         # Create new tag
-                        create_resp = requests.post(tags_url, auth=auth, json={"name": tag}, timeout=10)
+                        create_resp = session.post(tags_url, auth=auth, json={"name": tag}, timeout=15)
                         create_resp.raise_for_status()
                         tid = create_resp.json().get("id")
-                    
+
                     if tid and tid not in tag_ids:
                         tag_ids.append(tid)
-                        
+
                 except Exception as e:
                     self.logger.warning(f"Error processing tag '{tag}': {e}")
-                    
+
             payload["tags"] = tag_ids
 
             # Create the post
             posts_url = f"{wp_base_url}/posts"
-            post_resp = requests.post(posts_url, auth=auth, json=payload, timeout=30)
+            post_resp = session.post(posts_url, auth=auth, json=payload, timeout=30)
             post_resp.raise_for_status()
-            
+
             post_id = post_resp.json().get("id")
             if not post_id:
                 self.logger.error("❌ Post created but ID not returned")
@@ -1590,8 +1870,9 @@ Article Content:
                             {"keyphrase": kp} for kp in article_data.get('additional_keyphrases', [])
                         ]
                     }
-                
-                update_resp = requests.post(f"{posts_url}/{post_id}", auth=auth, json=aioseo_data, timeout=10)
+
+                _seo_session = self._create_wp_session()
+                update_resp = _seo_session.post(f"{posts_url}/{post_id}", auth=auth, json=aioseo_data, timeout=15)
                 update_resp.raise_for_status()
                 self.logger.info("✅ SEO metadata updated successfully")
                 
@@ -2568,8 +2849,10 @@ Your response (search terms only):
             username = self.config.get('wp_username', '')
             password = self.config.get('wp_password', '')
 
+            password = self._normalize_wp_password(password)
             auth = HTTPBasicAuth(username, password)
-            
+            session = self._create_wp_session()
+
             # Check if we should append SEO details for old plugin
             should_append_seo = False
             if self.config.get('seo_plugin_version') == 'old':
@@ -2621,61 +2904,61 @@ Your response (search terms only):
             
             for cat in categories:
                 try:
-                    resp = requests.get(categories_url, auth=auth, params={"search": cat}, timeout=10)
+                    resp = session.get(categories_url, auth=auth, params={"search": cat}, timeout=15)
                     resp.raise_for_status()
                     found = resp.json()
-                    
+
                     cid = next((c["id"] for c in found if c["name"].lower() == cat.lower()), None)
                     if not cid and found:
                         cid = found[0]["id"]
-                    
+
                     if not cid:
                         # Create new category
-                        create_resp = requests.post(categories_url, auth=auth, json={"name": cat}, timeout=10)
+                        create_resp = session.post(categories_url, auth=auth, json={"name": cat}, timeout=15)
                         create_resp.raise_for_status()
                         cid = create_resp.json().get("id")
-                    
+
                     if cid and cid not in cat_ids:
                         cat_ids.append(cid)
-                        
+
                 except Exception as e:
                     self.logger.warning(f"Error processing category '{cat}': {e}")
-                    
+
             payload["categories"] = cat_ids
 
             # Process tags
             tags_url = f"{wp_base_url}/tags"
             tag_ids = []
-            
+
             for tag in tags:
                 try:
-                    resp = requests.get(tags_url, auth=auth, params={"search": tag}, timeout=10)
+                    resp = session.get(tags_url, auth=auth, params={"search": tag}, timeout=15)
                     resp.raise_for_status()
                     found = resp.json()
-                    
+
                     tid = next((t["id"] for t in found if t["name"].lower() == tag.lower()), None)
                     if not tid and found:
                         tid = found[0]["id"]
-                    
+
                     if not tid:
                         # Create new tag
-                        create_resp = requests.post(tags_url, auth=auth, json={"name": tag}, timeout=10)
+                        create_resp = session.post(tags_url, auth=auth, json={"name": tag}, timeout=15)
                         create_resp.raise_for_status()
                         tid = create_resp.json().get("id")
-                    
+
                     if tid and tid not in tag_ids:
                         tag_ids.append(tid)
-                        
+
                 except Exception as e:
                     self.logger.warning(f"Error processing tag '{tag}': {e}")
-                    
+
             payload["tags"] = tag_ids
 
             # Create the post
             posts_url = f"{wp_base_url}/posts"
-            post_resp = requests.post(posts_url, auth=auth, json=payload, timeout=30)
+            post_resp = session.post(posts_url, auth=auth, json=payload, timeout=30)
             post_resp.raise_for_status()
-            
+
             post_id = post_resp.json().get("id")
             if not post_id:
                 self.logger.error("❌ Post created but ID not returned")
@@ -2685,7 +2968,7 @@ Your response (search terms only):
             try:
                 # Prepare SEO data using the new method
                 seo_data = self.prepare_seo_data(seo_title, meta_description, focus_keyphrase, additional_keyphrases)
-                
+
                 # Update SEO metadata with retry logic
                 seo_success = self.update_seo_metadata_with_retry(posts_url, post_id, seo_data, auth)
                 

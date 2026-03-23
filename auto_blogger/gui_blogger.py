@@ -564,11 +564,19 @@ Licensed under the MIT License"""
         self.add_entry_context_menu(username_entry)
         
         # Password
-        ttk.Label(login_form, text="Password:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        pw_label_frame = ttk.Frame(login_form)
+        pw_label_frame.grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Label(pw_label_frame, text="Password:").pack(anchor=tk.W)
+        ttk.Label(pw_label_frame, text="(Application Password)", font=("Arial", 7), foreground="#888").pack(anchor=tk.W)
+
         self.password_var = tk.StringVar(value=self.config.get('wp_password', ''))
         password_entry = ttk.Entry(login_form, textvariable=self.password_var, show="*", width=50)
         password_entry.grid(row=2, column=1, pady=5, padx=10)
         self.add_entry_context_menu(password_entry)
+        ToolTip(password_entry,
+            "Use a WordPress Application Password, not your login password.\n"
+            "To create one: WordPress Admin → Users → Profile → Application Passwords\n"
+            "Format: ABCD EFGH IJKL MNOP QRST UVWX (spaces are OK, they will be handled automatically)")
         
         # Gemini API Key (global)
         ttk.Label(login_form, text="Gemini API Key:").grid(row=3, column=0, sticky=tk.W, pady=5)
@@ -1157,17 +1165,21 @@ Licensed under the MIT License"""
         
         ttk.Label(settings_frame, text="Max Articles:").pack(side=tk.LEFT)
         self.max_articles_var = tk.IntVar(value=self.config.get('max_articles', 2))
-        ttk.Spinbox(settings_frame, from_=1, to=10, textvariable=self.max_articles_var, width=5).pack(side=tk.LEFT, padx=5)
-        
+        max_articles_spin = ttk.Spinbox(settings_frame, from_=1, to=10, textvariable=self.max_articles_var, width=5)
+        max_articles_spin.pack(side=tk.LEFT, padx=5)
+        ToolTip(max_articles_spin, "How many articles to scrape and post in one run.\nStart with 1-2 to test your configuration before running larger batches.")
+
         # Force processing option
         self.force_processing_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(settings_frame, text="Force Processing (ignore history)", variable=self.force_processing_var).pack(side=tk.LEFT, padx=20)
-        
+        force_check = ttk.Checkbutton(settings_frame, text="Force Processing (ignore history)", variable=self.force_processing_var)
+        force_check.pack(side=tk.LEFT, padx=20)
+        ToolTip(force_check, "By default the app skips articles it has already posted.\nEnable this to reprocess and repost articles even if they were posted before.\nUseful for testing or fixing posts.")
+
         # Jupyter notebook style option
         self.use_jupyter_style_var = tk.BooleanVar(value=False)
         jupyter_checkbox = ttk.Checkbutton(settings_frame, text="Enhanced Processing (Jupyter Style)", variable=self.use_jupyter_style_var)
         jupyter_checkbox.pack(side=tk.LEFT, padx=20)
-        ToolTip(jupyter_checkbox, "Use enhanced processing methods from Jupyter notebook with improved SEO, tags, and content optimization")
+        ToolTip(jupyter_checkbox, "Use enhanced processing methods with improved SEO, tags, and content optimization.\nRecommended for production use. Uses more advanced Gemini prompts.")
         
         # Image generation options
         image_frame = ttk.LabelFrame(settings_frame, text="Featured Images", padding=10)
@@ -1232,26 +1244,42 @@ Licensed under the MIT License"""
         # Progress section
         progress_frame = ttk.LabelFrame(self.automation_frame, text="Progress", padding=10)
         progress_frame.pack(fill=tk.X, padx=10, pady=5)
-        
-        # Overall progress
-        ttk.Label(progress_frame, text="Overall Progress:").pack(anchor=tk.W)
-        self.overall_progress = ttk.Progressbar(progress_frame, mode='determinate')
-        self.overall_progress.pack(fill=tk.X, pady=5)
-        
-        # Current task progress
-        ttk.Label(progress_frame, text="Current Task:").pack(anchor=tk.W, pady=(10, 0))
-        self.task_progress = ttk.Progressbar(progress_frame, mode='indeterminate')
-        self.task_progress.pack(fill=tk.X, pady=5)
-        
-        # Status labels
+
+        # Overall progress row
+        overall_row = ttk.Frame(progress_frame)
+        overall_row.pack(fill=tk.X, pady=(0, 2))
+        ttk.Label(overall_row, text="Overall Progress:", font=("Arial", 9, "bold")).pack(side=tk.LEFT)
+        self.overall_pct_label = ttk.Label(overall_row, text="0%", font=("Arial", 9, "bold"), foreground="#0078d4")
+        self.overall_pct_label.pack(side=tk.RIGHT)
+        self.articles_count_label = ttk.Label(overall_row, text="Articles: 0/0", foreground="#555")
+        self.articles_count_label.pack(side=tk.RIGHT, padx=(0, 15))
+
+        self.overall_progress = ttk.Progressbar(progress_frame, mode='determinate', length=400)
+        self.overall_progress.pack(fill=tk.X, pady=(0, 8))
+
+        # Current step row
+        step_row = ttk.Frame(progress_frame)
+        step_row.pack(fill=tk.X, pady=(0, 2))
+        ttk.Label(step_row, text="Current Step:", font=("Arial", 9, "bold")).pack(side=tk.LEFT)
+        self.step_counter_label = ttk.Label(step_row, text="", foreground="#555")
+        self.step_counter_label.pack(side=tk.RIGHT)
+
+        self.task_progress = ttk.Progressbar(progress_frame, mode='determinate', length=400)
+        self.task_progress.pack(fill=tk.X, pady=(0, 5))
+
+        # Status / elapsed row
         self.status_frame = ttk.Frame(progress_frame)
-        self.status_frame.pack(fill=tk.X, pady=5)
-        
-        self.current_task_label = ttk.Label(self.status_frame, text="Status: Ready")
+        self.status_frame.pack(fill=tk.X, pady=2)
+
+        self.current_task_label = ttk.Label(self.status_frame, text="Status: Ready", foreground="#333")
         self.current_task_label.pack(side=tk.LEFT)
-        
-        self.articles_count_label = ttk.Label(self.status_frame, text="Articles: 0/0")
-        self.articles_count_label.pack(side=tk.RIGHT)
+
+        self.elapsed_label = ttk.Label(self.status_frame, text="", foreground="#777", font=("Arial", 8))
+        self.elapsed_label.pack(side=tk.RIGHT)
+
+        # Store automation start time
+        self._automation_start_time = None
+        self._step_start_time = None
         
         # Steps tracking
         self.create_steps_tracking()
@@ -1289,10 +1317,10 @@ Licensed under the MIT License"""
         self.initialize_steps()
         
     def initialize_steps(self):
-        """Initialize the process steps"""
+        """Initialize the process steps with color-coded rows"""
         self.process_steps = [
             "Fetching article links",
-            "Extracting article content", 
+            "Extracting article content",
             "Paraphrasing with Gemini",
             "Injecting internal links",
             "Injecting external links",
@@ -1305,14 +1333,33 @@ Licensed under the MIT License"""
             "Creating WordPress post",
             "Finalizing post"
         ]
-        
+
         # Clear existing items
         for item in self.steps_tree.get_children():
             self.steps_tree.delete(item)
-            
+
+        # Configure color tags for step statuses
+        self.steps_tree.tag_configure('running', background='#fff3cd', foreground='#856404')    # yellow
+        self.steps_tree.tag_configure('completed', background='#d4edda', foreground='#155724')  # green
+        self.steps_tree.tag_configure('error', background='#f8d7da', foreground='#721c24')      # red
+        self.steps_tree.tag_configure('skipped', background='#e2e3e5', foreground='#383d41')    # grey
+        self.steps_tree.tag_configure('pending', background='#ffffff', foreground='#333333')    # white
+
         # Add steps
         for i, step in enumerate(self.process_steps):
-            self.steps_tree.insert('', 'end', iid=str(i), values=(step, '⏳ Pending', '', ''))
+            self.steps_tree.insert('', 'end', iid=str(i), values=(step, '⏳ Pending', '', ''), tags=('pending',))
+
+        # Reset progress UI
+        self.overall_progress['value'] = 0
+        self.task_progress['value'] = 0
+        if hasattr(self, 'overall_pct_label'):
+            self.overall_pct_label.config(text="0%")
+        if hasattr(self, 'step_counter_label'):
+            self.step_counter_label.config(text="")
+        if hasattr(self, 'elapsed_label'):
+            self.elapsed_label.config(text="")
+        self._automation_start_time = None
+        self._step_start_time = None
             
     def create_logs_tab(self):
         """Create logs tab with session information and category viewing"""
@@ -2208,8 +2255,12 @@ Log Files:"""
         info_frame = ttk.LabelFrame(self.source_config_frame, text="ℹ️ Credential Management", padding=10)
         info_frame.pack(pady=10, padx=40, fill=tk.X)
         
-        info_text = "WordPress credentials and API keys are managed in the 🔐 Authentication tab.\nThis tab contains only source scraping and automation settings."
-        ttk.Label(info_frame, text=info_text, foreground="blue", font=("Arial", 9)).pack(anchor=tk.W)
+        info_lines = (
+            "WordPress credentials and API keys → manage in the 🔐 Authentication tab.\n"
+            "Source URLs and CSS selectors → manage in the 📰 Article Selector section below.\n"
+            "How it works: The app fetches the Source URL, finds article links using the CSS Selector, then scrapes and posts each article to WordPress."
+        )
+        ttk.Label(info_frame, text=info_lines, foreground="#1a56a4", font=("Arial", 9), wraplength=800, justify=tk.LEFT).pack(anchor=tk.W)
 
         # Article Selector section
         self.create_article_selector_section()
@@ -2265,9 +2316,9 @@ Log Files:"""
         selector_frame = ttk.LabelFrame(self.source_config_frame, text="📰 Article Selector", padding=15)
         selector_frame.pack(pady=10, padx=40, fill=tk.BOTH, expand=True)
         
-        # Description
-        desc_text = "Manage multiple source URLs and select which one to use for article scraping."
-        ttk.Label(selector_frame, text=desc_text, font=("Arial", 9), foreground="#666").pack(anchor=tk.W, pady=(0, 10))
+        # Description with help text
+        desc_text = "Add the website URLs you want to scrape articles from and the CSS selector that identifies article links on each page.\nDouble-click a source to set it as active, or use the buttons on the right. Use '🔍 Auto-Extract Selectors' when adding a new source."
+        ttk.Label(selector_frame, text=desc_text, font=("Arial", 9), foreground="#444", wraplength=700, justify=tk.LEFT).pack(anchor=tk.W, pady=(0, 10))
         
         # Create frame for source list and controls
         main_frame = ttk.Frame(selector_frame)
@@ -2557,8 +2608,11 @@ Log Files:"""
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Instructions label
-        instructions = ttk.Label(main_frame, text="💡 Tip: Right-click on any field for copy/paste options, or use Ctrl+V to paste", 
-                               font=('TkDefaultFont', 8), foreground='#666666')
+        instructions = ttk.Label(main_frame,
+            text="💡 Fill in all fields below. Use '🔍 Auto-Extract Selectors' to automatically detect the right CSS selector for your URL.\n"
+                 "CSS Selector tells the app which HTML elements contain the article links (e.g., 'article h2 a' or '.post-title a').\n"
+                 "Right-click any field for copy/paste, or use Ctrl+V / Cmd+V.",
+            font=('TkDefaultFont', 8), foreground='#444444', wraplength=480, justify=tk.LEFT)
         instructions.grid(row=0, column=0, columnspan=2, pady=(0, 15), sticky=tk.W)
         
         # Name field
@@ -2576,7 +2630,10 @@ Log Files:"""
         self.add_entry_context_menu(url_entry)
         
         # Selector field
-        ttk.Label(main_frame, text="CSS Selector:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        css_label_frame = ttk.Frame(main_frame)
+        css_label_frame.grid(row=3, column=0, sticky=tk.W, pady=5)
+        ttk.Label(css_label_frame, text="CSS Selector:").pack(anchor=tk.W)
+        ttk.Label(css_label_frame, text="(e.g. article h2 a)", font=("Arial", 8), foreground="#888").pack(anchor=tk.W)
         selector_var = tk.StringVar(value=source.get('selector', '') if source else '')
         selector_entry = ttk.Entry(main_frame, textvariable=selector_var, width=50)
         selector_entry.grid(row=3, column=1, pady=5, padx=10)
@@ -2702,11 +2759,38 @@ Log Files:"""
             articles = soup.select(selector)
             
             if articles:
+                # Collect sample article titles/urls for display
+                samples = []
+                for tag in articles[:5]:
+                    href = tag.get('href', '')
+                    text = tag.get_text(strip=True)[:60] if tag.get_text(strip=True) else href[:60]
+                    if href:
+                        full_url = urljoin(url, href) if not href.startswith('http') else href
+                        samples.append(f"• {text}\n  {full_url}")
+                sample_text = "\n\n".join(samples) if samples else "(Could not retrieve sample titles)"
                 self.logger.info(f"✅ {name} test successful! Found {len(articles)} articles.")
-                messagebox.showinfo("Test Successful", f"{name} configuration is working!\nFound {len(articles)} articles.")
+                for s in samples:
+                    self.logger.info(f"  {s}")
+                messagebox.showinfo(
+                    "Test Successful",
+                    f"✅ {name} is working!\n\nFound {len(articles)} article links.\n\nSample articles:\n\n{sample_text}"
+                )
             else:
-                self.logger.warning(f"⚠️ {name} test found no articles with selector: {selector}")
-                messagebox.showwarning("No Articles Found", f"No articles found with the CSS selector.\nPlease check the selector: {selector}")
+                self.logger.warning(f"⚠️ {name}: no articles found with selector '{selector}'")
+                # Try to give the user a hint by listing common selectors found on the page
+                hint_selectors = ["article h2 a", "h2 a", ".post-title a", ".entry-title a", "h3 a"]
+                found_hints = []
+                for hint_sel in hint_selectors:
+                    count = len(soup.select(hint_sel))
+                    if count > 0:
+                        found_hints.append(f"  '{hint_sel}' → {count} match(es)")
+                hint_text = "\n".join(found_hints) if found_hints else "  (no common article selectors found — try Auto-Extract)"
+                messagebox.showwarning(
+                    "No Articles Found",
+                    f"⚠️ No articles found with selector:\n  {selector}\n\n"
+                    f"Alternative selectors found on this page:\n{hint_text}\n\n"
+                    f"Tip: Click '🔍 Auto-Extract Selectors' in the Add/Edit Source dialog to automatically find the right selector."
+                )
                 
         except Exception as e:
             self.logger.error(f"❌ {name} test failed: {str(e)}")
@@ -3160,43 +3244,231 @@ Log Files:"""
             self.logger.error(f"Error installing requirements: {e}")
             messagebox.showerror("Error", f"Failed to install requirements: {e}")
             
-    def test_connection(self):
-        """Test WordPress connection"""
+    def _build_wp_session(self, wp_url: str) -> 'requests.Session':
+        """Build a requests.Session that can talk to any WordPress site, including
+        those protected by DDoS-Guard / slowAES bot challenges.
+
+        1. Creates session with retry adapter and realistic browser headers.
+        2. Makes a probe request; if the response contains the slowAES challenge,
+           solves it with AES-CBC decryption and sets the __test cookie.
+        3. Returns the ready-to-use session (cookie already set).
+        """
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+        session = requests.Session()
+        retry = Retry(total=3, backoff_factor=1,
+                      status_forcelist=[500, 502, 503, 504],
+                      allowed_methods=["GET", "POST"], raise_on_status=False)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        session.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            ),
+            "Accept": "application/json, text/html, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
+
+        verify = not wp_url.startswith('http://')
+        probe_url = f"{wp_url.rstrip('/')}/posts"
+
+        # Probe and solve DDoS-Guard if present
         try:
-            wp_url = self.wp_base_url_var.get().strip()
-            username = self.username_var.get().strip()
-            password = self.password_var.get().strip()
-            
-            if not all([wp_url, username, password]):
-                messagebox.showerror("Error", "Please fill in all WordPress credentials")
-                return
-                
-            self.log_api_event("Testing WordPress connection", "info")
-            self.log_security_event(f"Connection test attempted for {wp_url} with user {username}", "info")
-            
-            # Test API endpoint
-            auth = HTTPBasicAuth(username, password)
-            test_url = f"{wp_url}/posts"
-            
-            response = requests.get(test_url, auth=auth, timeout=10)
-            
-            if response.status_code == 200:
-                self.connection_status.config(text="✅ Connected successfully", foreground="green")
-                self.connection_indicator.config(foreground="green")
-                self.log_api_event(f"WordPress connection successful - Status: {response.status_code}", "info")
-                self.log_security_event("WordPress authentication successful", "info")
-                return True
-            else:
-                self.connection_status.config(text=f"❌ Connection failed ({response.status_code})", foreground="red")
-                self.log_api_event(f"Connection test failed - Status: {response.status_code}", "error")
-                self.log_security_event(f"WordPress authentication failed - Status: {response.status_code}", "warning")
-                return False
-                
+            r = session.get(probe_url, timeout=15, verify=verify,
+                            headers={"Connection": "close"}, allow_redirects=False)
+
+            if 'slowAES' in r.text:
+                self.logger.info("🔐 DDoS-Guard protection detected — solving AES challenge...")
+                cookie_val = self._solve_aes_challenge(r.text)
+                if cookie_val:
+                    from urllib.parse import urlparse
+                    domain = urlparse(wp_url).netloc
+                    session.cookies.set('__test', cookie_val, domain=domain, path='/')
+                    self.logger.info(f"✅ Challenge solved — __test cookie set")
+                    # Hit the ?i=1 confirmation URL so the server sees the cookie
+                    sep = '&' if '?' in probe_url else '?'
+                    session.get(f"{probe_url}{sep}i=1", timeout=15, verify=verify,
+                                allow_redirects=True)
+                else:
+                    self.logger.warning("⚠️ Could not solve DDoS-Guard challenge")
         except Exception as e:
-            self.connection_status.config(text=f"❌ Connection error: {str(e)}", foreground="red")
-            self.log_api_event(f"Connection test error: {e}", "error")
-            self.log_security_event(f"Connection test failed with exception: {e}", "error")
-            return False
+            self.logger.debug(f"Session probe: {e}")
+
+        return session
+
+    def _solve_aes_challenge(self, html: str) -> str:
+        """Parse and solve the slowAES DDoS-Guard challenge embedded in `html`.
+        Returns the hex cookie value, or empty string on failure.
+        """
+        # Two common patterns in the challenge JS
+        m = re.search(
+            r'toNumbers\(["\']([0-9a-fA-F]+)["\']\)'
+            r'.*?b=toNumbers\(["\']([0-9a-fA-F]+)["\']\)'
+            r'.*?c=toNumbers\(["\']([0-9a-fA-F]+)["\']\)',
+            html, re.DOTALL)
+        if not m:
+            m = re.search(
+                r'var\s+a\s*=\s*toNumbers\(["\']([0-9a-fA-F]+)["\']\)'
+                r'.*?b\s*=\s*toNumbers\(["\']([0-9a-fA-F]+)["\']\)'
+                r'.*?c\s*=\s*toNumbers\(["\']([0-9a-fA-F]+)["\']\)',
+                html, re.DOTALL)
+        if not m:
+            return ''
+
+        key_b = bytes.fromhex(m.group(1))
+        iv_b  = bytes.fromhex(m.group(2))
+        ct_b  = bytes.fromhex(m.group(3))
+
+        try:
+            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+            from cryptography.hazmat.backends import default_backend
+            c = Cipher(algorithms.AES(key_b), modes.CBC(iv_b), backend=default_backend())
+            d = c.decryptor()
+            return (d.update(ct_b) + d.finalize()).hex()
+        except Exception:
+            pass
+        try:
+            from Crypto.Cipher import AES as _AES
+            return _AES.new(key_b, _AES.MODE_CBC, iv_b).decrypt(ct_b).hex()
+        except Exception:
+            pass
+        return ''
+
+    def test_connection(self):
+        """Test WordPress connection — handles DDoS-Guard, HTTP, HTTPS, and Application Passwords"""
+        def _run_test():
+            try:
+                wp_url = self.wp_base_url_var.get().strip()
+                username = self.username_var.get().strip()
+                password = self.password_var.get().strip()
+
+                if not all([wp_url, username, password]):
+                    self.root.after(0, lambda: messagebox.showerror(
+                        "Missing Fields", "Please fill in WordPress URL, Username, and Password."))
+                    return
+
+                # Normalise URL
+                wp_url = wp_url.rstrip('/')
+                if not wp_url.startswith(('http://', 'https://')):
+                    wp_url = 'https://' + wp_url
+
+                # Strip spaces from Application Password
+                clean_password = password.replace(' ', '')
+
+                self.root.after(0, lambda: self.connection_status.config(
+                    text="🔄 Testing connection...", foreground="blue"))
+                self.logger.info(f"🔌 Testing WordPress connection: {wp_url}")
+
+                auth = HTTPBasicAuth(username, clean_password)
+
+                # Build a DDoS-Guard-aware session
+                session = self._build_wp_session(wp_url)
+
+                verify = not wp_url.startswith('http://')
+                test_url = f"{wp_url}/posts"
+
+                try:
+                    response = session.get(test_url, auth=auth, timeout=20, verify=verify)
+                except requests.exceptions.SSLError:
+                    self.logger.warning("⚠️ SSL error — retrying without certificate verification")
+                    response = session.get(test_url, auth=auth, timeout=20, verify=False)
+
+                # Check if we still got the challenge page instead of JSON
+                if response.status_code == 200 and 'slowAES' in response.text:
+                    self.root.after(0, lambda: self.connection_status.config(
+                        text="⚠️ Bot-protection could not be bypassed", foreground="orange"))
+                    self.root.after(0, lambda: messagebox.showwarning(
+                        "Bot Protection Active",
+                        "⚠️ The site's DDoS-Guard protection could not be bypassed automatically.\n\n"
+                        "This may happen if the site requires a real browser.\n"
+                        "The automation will still attempt to post — try running it and check the logs."))
+                    return
+
+                if response.status_code == 200:
+                    try:
+                        data = response.json()
+                        post_count = len(data) if isinstance(data, list) else 1
+                    except Exception:
+                        post_count = 0
+                    self.root.after(0, lambda: self.connection_status.config(
+                        text="✅ Connected successfully", foreground="green"))
+                    self.root.after(0, lambda: self.connection_indicator.config(foreground="green"))
+                    self.logger.info(f"✅ WordPress connection OK — {post_count} post(s) returned")
+                    self.root.after(0, lambda: messagebox.showinfo(
+                        "Connection Successful",
+                        f"✅ WordPress connection successful!\n\n"
+                        f"URL: {wp_url}\n"
+                        f"User: {username}\n"
+                        f"Posts found: {post_count}\n\n"
+                        f"Your site is reachable and authenticated correctly."))
+
+                elif response.status_code == 401:
+                    self.root.after(0, lambda: self.connection_status.config(
+                        text="❌ Authentication failed (401)", foreground="red"))
+                    self.root.after(0, lambda: messagebox.showerror(
+                        "Authentication Failed",
+                        "❌ HTTP 401 — Authentication failed.\n\n"
+                        "Please check:\n"
+                        "• Username is your WordPress login username\n"
+                        "• Password is an Application Password (not your login password)\n"
+                        "  → WordPress Admin ▸ Users ▸ Profile ▸ Application Passwords\n"
+                        "  Format example: ABCD EFGH IJKL MNOP QRST UVWX\n"
+                        "• Application Password feature is enabled on the site"))
+
+                elif response.status_code == 403:
+                    self.root.after(0, lambda: self.connection_status.config(
+                        text="❌ Forbidden (403)", foreground="red"))
+                    self.root.after(0, lambda: messagebox.showerror(
+                        "Access Forbidden",
+                        "❌ HTTP 403 — Access forbidden.\n\n"
+                        "• WordPress REST API may be disabled\n"
+                        "• A security plugin (Wordfence, etc.) may be blocking the request\n"
+                        "• The user account may lack the required permissions"))
+
+                else:
+                    status = response.status_code
+                    snippet = response.text[:300]
+                    self.root.after(0, lambda: self.connection_status.config(
+                        text=f"❌ HTTP {status}", foreground="red"))
+                    self.root.after(0, lambda: messagebox.showwarning(
+                        "Unexpected Response",
+                        f"HTTP {status}\n\nResponse preview:\n{snippet}"))
+
+            except requests.exceptions.ConnectionError as e:
+                err = str(e)
+                if 'RemoteDisconnected' in err or 'Connection aborted' in err:
+                    detail = (
+                        "The server closed the connection without a response.\n\n"
+                        "• Check that the URL is correct\n"
+                        "• The server may be blocking non-browser requests\n"
+                        "• Try the URL in a browser to confirm the site is up")
+                else:
+                    detail = f"Could not reach the server.\n\nCheck the URL and your internet connection.\n\n{err[:200]}"
+                self.root.after(0, lambda d=detail: self.connection_status.config(
+                    text="❌ Connection failed", foreground="red"))
+                self.root.after(0, lambda d=detail: messagebox.showerror("Connection Error", f"❌ {d}"))
+                self.logger.error(f"Connection error: {err}")
+
+            except requests.exceptions.Timeout:
+                self.root.after(0, lambda: self.connection_status.config(
+                    text="❌ Timed out", foreground="red"))
+                self.root.after(0, lambda: messagebox.showerror(
+                    "Timeout", "❌ The server did not respond within 20 seconds.\nCheck the URL and try again."))
+
+            except Exception as e:
+                msg = str(e)
+                self.root.after(0, lambda m=msg: self.connection_status.config(
+                    text=f"❌ {m[:50]}", foreground="red"))
+                self.root.after(0, lambda m=msg: messagebox.showerror("Connection Error", f"❌ {m}"))
+                self.logger.error(f"test_connection error: {e}")
+
+        threading.Thread(target=_run_test, daemon=True).start()
             
     def login(self):
         """Login and initialize automation engine"""
@@ -3315,29 +3587,59 @@ Log Files:"""
             messagebox.showerror("Error", f"Failed to save logs: {e}")
             
     def update_step_status(self, step_index, status, details="", elapsed_time=""):
-        """Update status of a specific step"""
+        """Update status of a specific step with color coding and progress bar update"""
         try:
-            if step_index < len(self.process_steps):
-                item_id = str(step_index)
-                step_name = self.process_steps[step_index]
-                
-                # Status emojis
-                status_emojis = {
-                    'pending': '⏳',
-                    'running': '🔄',
-                    'completed': '✅',
-                    'error': '❌',
-                    'skipped': '⏭️'
-                }
-                
-                display_status = f"{status_emojis.get(status, '❓')} {status.title()}"
-                
-                # Update the treeview item
-                self.steps_tree.item(item_id, values=(step_name, display_status, details, elapsed_time))
-                
-                # Scroll to current step
-                self.steps_tree.see(item_id)
-                
+            if step_index >= len(self.process_steps):
+                return
+
+            item_id = str(step_index)
+            step_name = self.process_steps[step_index]
+            total_steps = len(self.process_steps)
+
+            status_emojis = {
+                'pending': '⏳',
+                'running': '🔄',
+                'completed': '✅',
+                'error': '❌',
+                'skipped': '⏭️'
+            }
+            display_status = f"{status_emojis.get(status, '❓')} {status.title()}"
+
+            # Update treeview item with color tag
+            self.steps_tree.item(item_id, values=(step_name, display_status, details, elapsed_time), tags=(status,))
+            self.steps_tree.see(item_id)
+
+            # Update step progress bar (shows which step out of total)
+            if hasattr(self, 'task_progress'):
+                if status == 'running':
+                    self._step_start_time = time.time()
+                    self.task_progress.config(mode='determinate')
+                    self.task_progress['maximum'] = total_steps
+                    self.task_progress['value'] = step_index
+                    if hasattr(self, 'step_counter_label'):
+                        self.step_counter_label.config(text=f"Step {step_index + 1} of {total_steps}: {step_name}")
+                    if hasattr(self, 'current_task_label'):
+                        self.current_task_label.config(text=f"🔄 {step_name}...")
+                elif status == 'completed':
+                    self.task_progress['value'] = step_index + 1
+                    if hasattr(self, 'step_counter_label'):
+                        self.step_counter_label.config(text=f"Step {step_index + 1} of {total_steps}: {step_name} ✅")
+                    if hasattr(self, 'current_task_label') and elapsed_time:
+                        self.current_task_label.config(text=f"✅ {step_name} ({elapsed_time})")
+                elif status == 'error':
+                    if hasattr(self, 'current_task_label'):
+                        self.current_task_label.config(text=f"❌ {step_name} failed")
+                elif status == 'skipped':
+                    self.task_progress['value'] = step_index + 1
+                    if hasattr(self, 'current_task_label'):
+                        self.current_task_label.config(text=f"⏭️ {step_name} skipped")
+
+            # Update elapsed time display
+            if hasattr(self, 'elapsed_label') and self._automation_start_time:
+                elapsed = time.time() - self._automation_start_time
+                mins, secs = divmod(int(elapsed), 60)
+                self.elapsed_label.config(text=f"Elapsed: {mins:02d}:{secs:02d}")
+
         except Exception as e:
             self.logger.error(f"Error updating step status: {e}")
             
@@ -3382,12 +3684,17 @@ Log Files:"""
         self.stop_requested = False
         self.is_running = True
         
+        # Record automation start time for elapsed tracking
+        self._automation_start_time = time.time()
+
         # Log automation start with details
         self.log_automation_start()
-        
+
         # Initialize steps
         self.initialize_steps()
-        
+        # Restore start time after initialize_steps resets it
+        self._automation_start_time = time.time()
+
         # Start automation in a separate thread
         threading.Thread(target=self.run_automation, daemon=True).start()
         
@@ -3487,8 +3794,12 @@ Log Files:"""
                     posted_links.add(link)
                     self.automation_engine.save_posted_links(posted_links)
                     
-                # Update progress
-                self.overall_progress['value'] = i + 1
+                # Update overall progress
+                progress_val = i + 1
+                self.overall_progress['value'] = progress_val
+                pct = int((progress_val / self.total_articles) * 100) if self.total_articles > 0 else 0
+                if hasattr(self, 'overall_pct_label'):
+                    self.overall_pct_label.config(text=f"{pct}%")
                 self.articles_count_label.config(text=f"Articles: {self.processed_count}/{self.total_articles}")
                 
             self.automation_completed()
@@ -3747,6 +4058,23 @@ Log Files:"""
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
         self.current_task_label.config(text=f"Completed - {self.processed_count} articles processed")
+
+        # Final progress state
+        if hasattr(self, 'overall_pct_label') and self.total_articles > 0:
+            self.overall_pct_label.config(text="100%")
+            self.overall_progress['value'] = self.total_articles
+        if hasattr(self, 'task_progress'):
+            self.task_progress.config(mode='determinate')
+            self.task_progress['maximum'] = 100
+            self.task_progress['value'] = 100
+        if hasattr(self, 'step_counter_label'):
+            self.step_counter_label.config(text="All steps completed")
+        if hasattr(self, 'current_task_label'):
+            self.current_task_label.config(text=f"✅ Automation complete — {self.processed_count} article(s) posted")
+        if hasattr(self, 'elapsed_label') and self._automation_start_time:
+            elapsed = time.time() - self._automation_start_time
+            mins, secs = divmod(int(elapsed), 60)
+            self.elapsed_label.config(text=f"Total time: {mins:02d}:{secs:02d}")
         
         # Calculate error count for logging
         error_count = getattr(self, 'error_count', 0) if hasattr(self, 'error_count') else 0
