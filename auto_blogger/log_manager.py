@@ -93,14 +93,14 @@ class SessionLogManager:
         self._setup_loggers()
         
         # Log session initialization
-        self.get_logger('main').info(f"🚀 Logging system initialized for session: {self.session_id}")
-        self.get_logger('main').info(f"📁 Log files created in: {self.base_log_dir.absolute()}")
-        self.get_logger('main').info(f"📄 Main log: {self.log_files['main']}")
-        self.get_logger('main').info(f"🚨 Error log: {self.log_files['errors']}")
-        self.get_logger('main').info(f"🔧 Debug log: {self.log_files['debug']}")
-        self.get_logger('main').info(f"🤖 Automation log: {self.log_files['automation']}")
-        self.get_logger('main').info(f"🌐 API log: {self.log_files['api']}")
-        self.get_logger('main').info(f"🔒 Security log: {self.log_files['security']}")
+        self.get_logger('main').info(f"[>>] Logging system initialized for session: {self.session_id}")
+        self.get_logger('main').info(f"Log files created in: {self.base_log_dir.absolute()}")
+        self.get_logger('main').info(f"Main log: {self.log_files['main']}")
+        self.get_logger('main').info(f"[!!] Error log: {self.log_files['errors']}")
+        self.get_logger('main').info(f"Debug log: {self.log_files['debug']}")
+        self.get_logger('main').info(f"AUTOMATION: Automation log: {self.log_files['automation']}")
+        self.get_logger('main').info(f"API log: {self.log_files['api']}")
+        self.get_logger('main').info(f"SECURITY: Security log: {self.log_files['security']}")
         
     def _create_log_files(self):
         """Create log files for each category"""
@@ -262,8 +262,8 @@ class SessionLogManager:
                 json.dump(self.session_metadata, f, indent=2)
                 
             # Log session end
-            self.get_logger('main').info(f"📋 Session finalized: {self.session_id}")
-            self.get_logger('main').info(f"⏱️ Session duration: {duration:.1f} seconds")
+            self.get_logger('main').info(f"Session finalized: {self.session_id}")
+            self.get_logger('main').info(f"Session duration: {duration:.1f} seconds")
             
         except Exception as e:
             print(f"Error finalizing session: {e}")
@@ -326,7 +326,7 @@ class SessionLogManager:
                     print(f"Error cleaning session {metadata_file}: {e}")
                     
             if cleaned_count > 0:
-                self.get_logger('main').info(f"🧹 Cleaned up {cleaned_count} old log files")
+                self.get_logger('main').info(f"Cleaned up {cleaned_count} old log files")
                 
         except Exception as e:
             print(f"Error during cleanup: {e}")

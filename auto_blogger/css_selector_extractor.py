@@ -30,31 +30,66 @@ class CSSelectorExtractor:
             r'/news/',
             r'/story/',
             r'/blog/',
-            r'/\d{4}/\d{2}/',  # Date patterns like /2024/01/
-            r'/\d{4}/\d{1,2}/\d{1,2}/',  # Full date patterns
-            r'-\d{4}-\d{2}-\d{2}',  # Date in URL
+            r'/\d{4}/\d{2}/',           # Date patterns like /2024/01/
+            r'/\d{4}/\d{1,2}/\d{1,2}/', # Full date patterns
+            r'-\d{4}-\d{2}-\d{2}',      # Date in URL
+            r'/read/',
+            r'/watch/',
+            r'/p/',                       # Substack/Medium short paths
+            r'/entry/',
+            r'/topic/',
+            r'/feature/',
+            r'/review/',
+            r'/guide/',
+            r'/opinion/',
+            r'/analysis/',
         ]
-        
+
         # Common non-article patterns to avoid
         self.exclude_patterns = [
             r'javascript:',
             r'mailto:',
-            r'#',
-            r'/tag/',
-            r'/category/',
-            r'/author/',
-            r'/page/',
+            r'^#',
+            r'/tag/', r'/tags/',
+            r'/category/', r'/categories/',
+            r'/author/', r'/authors/',
+            r'/page/\d+',
             r'/search/',
-            r'/login',
-            r'/register',
+            r'/login', r'/signup', r'/register',
             r'/contact',
-            r'/about',
-            r'/privacy',
-            r'/terms',
-            r'\.(css|js|png|jpg|jpeg|gif|pdf|xml|rss)$',
-            r'/feed/',
-            r'/rss/',
+            r'/about$', r'/about/',
+            r'/privacy', r'/terms', r'/tos',
+            r'\.(css|js|png|jpg|jpeg|gif|svg|pdf|xml|rss|ico|woff|ttf|eot)$',
+            r'/feed/', r'/rss/',
             r'/sitemap',
+            r'/cart', r'/checkout', r'/account',
+            r'/wp-admin', r'/wp-login',
+            r'/cdn-cgi/',
+            r'#comments$',
+        ]
+
+        # CMS-specific known selectors — tried first for instant matching
+        self.cms_selectors = [
+            # WordPress
+            "article h2 a", ".entry-title a", ".post-title a",
+            ".wp-block-post-title a", ".hentry h2 a",
+            # Ghost CMS
+            ".post-card a", ".gh-card-link", ".post-feed .post-card-title a",
+            # Medium
+            "article a[data-action='open-post']", ".postArticle-readMore a",
+            # Substack
+            ".post-preview a", "[data-testid='post-preview-title'] a",
+            # Hugo / Jekyll
+            ".post-link", ".post-list a",
+            # General news sites
+            ".headline a", ".story-link", ".article-card a",
+            ".teaser a", ".teaser__link",
+            ".card-title a", ".news-title a",
+            "[class*='title'] a", "[class*='article'] a",
+            # Common patterns
+            "article h3 a", "article h1 a",
+            "main h2 a", "main h3 a",
+            "h2 a", "h3 a",
         ]
         
         # Headers to mimic real browser
@@ -168,7 +203,7 @@ class CSSelectorExtractor:
         Returns:
             Dict containing analysis results with selectors, examples, and metadata
         """
-        self.logger.info(f"🔍 Analyzing URL: {url}")
+        self.logger.info(f"Analyzing URL: {url}")
         
         # Normalize URL - ensure proper protocol
         normalized_url = self._normalize_url(url)
@@ -179,18 +214,32 @@ class CSSelectorExtractor:
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
-            
+
             # Extract all links
             all_links = soup.find_all('a', href=True)
-            self.logger.info(f"📊 Found {len(all_links)} total links")
-            
+            self.logger.info(f"Found {len(all_links)} total links")
+
+            # Quick CMS detection — try known selectors first for instant results
+            cms_matches = self._try_cms_selectors(soup, normalized_url)
+
             # Filter potential article links
             article_links = self._filter_article_links(all_links, normalized_url)
-            self.logger.info(f"📰 Identified {len(article_links)} potential article links")
-            
-            # Generate CSS selectors
+            self.logger.info(f"Identified {len(article_links)} potential article links")
+
+            # Generate CSS selectors from page analysis
             selectors = self._generate_selectors(article_links, soup)
-            
+
+            # Merge CMS matches (prioritized) with generated selectors
+            if cms_matches:
+                # Deduplicate by selector string, CMS matches first
+                seen_selectors = set()
+                merged = []
+                for s in cms_matches + selectors:
+                    if s['selector'] not in seen_selectors:
+                        seen_selectors.add(s['selector'])
+                        merged.append(s)
+                selectors = merged[:15]  # Top 15
+
             # Get latest post information
             latest_post = self._find_latest_post(article_links, normalized_url)
             
@@ -207,7 +256,7 @@ class CSSelectorExtractor:
             
         except requests.exceptions.RequestException as e:
             error_msg = self._get_user_friendly_error(e, normalized_url)
-            self.logger.error(f"❌ Network error analyzing {url} (normalized: {normalized_url}): {e}")
+            self.logger.error(f"[X] Network error analyzing {url} (normalized: {normalized_url}): {e}")
             return {
                 'url': normalized_url,
                 'original_url': url,
@@ -215,7 +264,7 @@ class CSSelectorExtractor:
                 'success': False
             }
         except Exception as e:
-            self.logger.error(f"❌ Error analyzing {url} (normalized: {normalized_url}): {e}")
+            self.logger.error(f"[X] Error analyzing {url} (normalized: {normalized_url}): {e}")
             return {
                 'url': normalized_url,
                 'original_url': url,
@@ -223,6 +272,58 @@ class CSSelectorExtractor:
                 'success': False
             }
     
+    def _try_cms_selectors(self, soup: BeautifulSoup, base_url: str) -> List[Dict]:
+        """Try known CMS-specific selectors for instant matching"""
+        results = []
+        base_domain = urlparse(base_url).netloc
+
+        for selector in self.cms_selectors:
+            try:
+                matches = soup.select(selector)
+                if not matches:
+                    continue
+
+                # Validate matches are actual article links
+                article_matches = []
+                for match in matches:
+                    href = match.get('href', '')
+                    text = match.get_text().strip()
+                    if not href or not text or len(text) < 8:
+                        continue
+
+                    full_url = urljoin(base_url, href)
+                    link_domain = urlparse(full_url).netloc
+
+                    # Must be same domain
+                    if base_domain not in link_domain and link_domain not in base_domain:
+                        continue
+
+                    # Must not match exclude patterns
+                    if any(re.search(p, full_url, re.IGNORECASE) for p in self.exclude_patterns):
+                        continue
+
+                    article_matches.append({
+                        'href': full_url,
+                        'text': text[:100]
+                    })
+
+                if len(article_matches) >= 2:  # Need at least 2 matches to be meaningful
+                    effectiveness = len(article_matches) / len(matches) if matches else 0
+                    results.append({
+                        'selector': selector,
+                        'total_matches': len(matches),
+                        'article_matches': len(article_matches),
+                        'effectiveness': effectiveness,
+                        'examples': article_matches[:3],
+                        'frequency': len(article_matches),
+                    })
+            except Exception:
+                continue
+
+        # Sort by article_matches * effectiveness
+        results.sort(key=lambda x: (x['effectiveness'] * x['article_matches']), reverse=True)
+        return results[:5]
+
     def _filter_article_links(self, links: List, base_url: str) -> List:
         """Filter links to find potential article links"""
         article_links = []
@@ -432,36 +533,36 @@ class CSSelectorExtractor:
     def format_analysis_report(self, analysis_result: Dict) -> str:
         """Format the analysis results into a readable report"""
         if not analysis_result.get('success'):
-            return f"❌ Analysis failed: {analysis_result.get('error', 'Unknown error')}"
+            return f"[X] Analysis failed: {analysis_result.get('error', 'Unknown error')}"
         
         report = []
-        report.append(f"📊 Analysis Report for: {analysis_result['url']}")
-        report.append(f"🔗 Total links found: {analysis_result['total_links']}")
-        report.append(f"📰 Article links identified: {analysis_result['article_links_count']}")
+        report.append(f"Analysis Report for: {analysis_result['url']}")
+        report.append(f"Total links found: {analysis_result['total_links']}")
+        report.append(f"Article links identified: {analysis_result['article_links_count']}")
         report.append("")
         
         if analysis_result.get('latest_post'):
             latest = analysis_result['latest_post']
-            report.append(f"🆕 Latest post: {latest['title'][:60]}...")
-            report.append(f"🔗 URL: {latest['url']}")
+            report.append(f"Latest post: {latest['title'][:60]}...")
+            report.append(f"URL: {latest['url']}")
             report.append("")
         
         selectors = analysis_result.get('selectors', [])
         if selectors:
-            report.append("🎯 Recommended CSS Selectors:")
+            report.append("Recommended CSS Selectors:")
             report.append("")
             
             for i, selector_data in enumerate(selectors[:5], 1):
                 effectiveness = selector_data['effectiveness'] * 100
                 report.append(f"{i}. {selector_data['selector']}")
-                report.append(f"   📊 Effectiveness: {effectiveness:.1f}% ({selector_data['article_matches']}/{selector_data['total_matches']} matches)")
+                report.append(f"   Effectiveness: {effectiveness:.1f}% ({selector_data['article_matches']}/{selector_data['total_matches']} matches)")
                 
                 if selector_data.get('examples'):
-                    report.append("   📝 Examples:")
+                    report.append("   Examples:")
                     for example in selector_data['examples'][:2]:
                         report.append(f"      • {example['text'][:50]}...")
                 report.append("")
         else:
-            report.append("❌ No suitable CSS selectors found")
+            report.append("[X] No suitable CSS selectors found")
         
         return "\n".join(report)

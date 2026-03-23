@@ -43,6 +43,15 @@ try:
 except ImportError:
     CSSelectorExtractor = None
 
+# Import the icon factory
+try:
+    from icon_factory import IconFactory
+except ImportError:
+    try:
+        from auto_blogger.icon_factory import IconFactory
+    except ImportError:
+        IconFactory = None
+
 class ToolTip:
     """
     Simple tooltip implementation for Tkinter widgets
@@ -72,6 +81,287 @@ class ToolTip:
         if self.tooltip:
             self.tooltip.destroy()
             self.tooltip = None
+
+class ModernPopup:
+    """Beautiful custom popup dialogs with canvas-drawn vector icons.
+
+    Supports: info, success, warning, error, confirm (yes/no).
+    Icons are drawn programmatically — no image files needed.
+    """
+
+    # Color themes per popup type
+    THEMES = {
+        'success': {'accent': '#10b981', 'bg': '#ecfdf5', 'border': '#6ee7b7', 'title_bg': '#10b981',
+                     'icon_bg': '#d1fae5', 'icon_fg': '#059669'},
+        'info':    {'accent': '#3b82f6', 'bg': '#eff6ff', 'border': '#93c5fd', 'title_bg': '#3b82f6',
+                     'icon_bg': '#dbeafe', 'icon_fg': '#2563eb'},
+        'warning': {'accent': '#f59e0b', 'bg': '#fffbeb', 'border': '#fcd34d', 'title_bg': '#f59e0b',
+                     'icon_bg': '#fef3c7', 'icon_fg': '#d97706'},
+        'error':   {'accent': '#ef4444', 'bg': '#fef2f2', 'border': '#fca5a5', 'title_bg': '#ef4444',
+                     'icon_bg': '#fee2e2', 'icon_fg': '#dc2626'},
+        'confirm': {'accent': '#8b5cf6', 'bg': '#f5f3ff', 'border': '#c4b5fd', 'title_bg': '#8b5cf6',
+                     'icon_bg': '#ede9fe', 'icon_fg': '#7c3aed'},
+    }
+
+    @staticmethod
+    def _draw_icon(canvas, popup_type, size=40):
+        """Draw a vector icon on a tkinter Canvas.
+
+        Each icon is hand-drawn with canvas primitives for crisp rendering at any size.
+        """
+        cx, cy = size / 2, size / 2
+        r = size * 0.42  # circle radius
+        theme = ModernPopup.THEMES[popup_type]
+        fg = theme['icon_fg']
+        bg = theme['icon_bg']
+
+        # Background circle
+        canvas.create_oval(cx - r, cy - r, cx + r, cy + r, fill=bg, outline=fg, width=2)
+
+        if popup_type == 'success':
+            # Checkmark
+            pts = [cx - r * 0.35, cy + r * 0.05,
+                   cx - r * 0.08, cy + r * 0.35,
+                   cx + r * 0.38, cy - r * 0.30]
+            canvas.create_line(*pts, fill=fg, width=3, capstyle='round', joinstyle='round')
+
+        elif popup_type == 'info':
+            # "i" letter — dot + line
+            dot_r = r * 0.10
+            canvas.create_oval(cx - dot_r, cy - r * 0.45 - dot_r, cx + dot_r, cy - r * 0.45 + dot_r,
+                               fill=fg, outline=fg)
+            canvas.create_line(cx, cy - r * 0.18, cx, cy + r * 0.42, fill=fg, width=2.5, capstyle='round')
+
+        elif popup_type == 'warning':
+            # Exclamation mark — line + dot
+            canvas.create_line(cx, cy - r * 0.42, cx, cy + r * 0.12, fill=fg, width=2.5, capstyle='round')
+            dot_r = r * 0.10
+            canvas.create_oval(cx - dot_r, cy + r * 0.30 - dot_r, cx + dot_r, cy + r * 0.30 + dot_r,
+                               fill=fg, outline=fg)
+
+        elif popup_type == 'error':
+            # X cross
+            off = r * 0.28
+            canvas.create_line(cx - off, cy - off, cx + off, cy + off, fill=fg, width=2.5, capstyle='round')
+            canvas.create_line(cx + off, cy - off, cx - off, cy + off, fill=fg, width=2.5, capstyle='round')
+
+        elif popup_type == 'confirm':
+            # Question mark — arc + dot
+            canvas.create_arc(cx - r * 0.28, cy - r * 0.50, cx + r * 0.28, cy + r * 0.05,
+                              start=0, extent=180, style='arc', outline=fg, width=2.5)
+            canvas.create_line(cx, cy + r * 0.05, cx, cy + r * 0.18, fill=fg, width=2.5, capstyle='round')
+            dot_r = r * 0.09
+            canvas.create_oval(cx - dot_r, cy + r * 0.32 - dot_r, cx + dot_r, cy + r * 0.32 + dot_r,
+                               fill=fg, outline=fg)
+
+    @staticmethod
+    def _draw_close_icon(canvas, size=14):
+        """Draw an X close icon on a canvas."""
+        m = 3  # margin
+        canvas.create_line(m, m, size - m, size - m, fill='#ffffff', width=2, capstyle='round')
+        canvas.create_line(size - m, m, m, size - m, fill='#ffffff', width=2, capstyle='round')
+
+    @staticmethod
+    def _create(parent, title, message, popup_type='info', auto_close_ms=0, on_result=None):
+        """Create and display a modern popup dialog with drawn icons."""
+        theme = ModernPopup.THEMES.get(popup_type, ModernPopup.THEMES['info'])
+        result = [None]
+
+        dialog = tk.Toplevel(parent)
+        dialog.withdraw()
+        dialog.title(title)
+        dialog.overrideredirect(True)
+        dialog.configure(bg=theme['border'])
+        dialog.attributes('-topmost', True)
+
+        # Outer border frame
+        outer = tk.Frame(dialog, bg=theme['border'], padx=2, pady=2)
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        # Main container
+        container = tk.Frame(outer, bg='#ffffff')
+        container.pack(fill=tk.BOTH, expand=True)
+
+        # ── Title bar ──
+        title_bar = tk.Frame(container, bg=theme['title_bg'], height=46)
+        title_bar.pack(fill=tk.X)
+        title_bar.pack_propagate(False)
+
+        # Small icon in title bar (drawn on canvas)
+        title_icon_canvas = tk.Canvas(title_bar, width=28, height=28,
+                                       bg=theme['title_bg'], highlightthickness=0)
+        title_icon_canvas.pack(side=tk.LEFT, padx=(12, 4), pady=9)
+        # Draw a mini white-on-accent icon
+        mini_r = 11
+        title_icon_canvas.create_oval(14 - mini_r, 14 - mini_r, 14 + mini_r, 14 + mini_r,
+                                       fill='', outline='#ffffff', width=1.5)
+        if popup_type == 'success':
+            title_icon_canvas.create_line(8, 14.5, 12, 18.5, 20, 9.5,
+                                           fill='#ffffff', width=2, capstyle='round', joinstyle='round')
+        elif popup_type == 'info':
+            title_icon_canvas.create_oval(13, 6, 15, 8, fill='#ffffff', outline='#ffffff')
+            title_icon_canvas.create_line(14, 11, 14, 21, fill='#ffffff', width=2, capstyle='round')
+        elif popup_type == 'warning':
+            title_icon_canvas.create_line(14, 7, 14, 16, fill='#ffffff', width=2, capstyle='round')
+            title_icon_canvas.create_oval(13, 19, 15, 21, fill='#ffffff', outline='#ffffff')
+        elif popup_type == 'error':
+            title_icon_canvas.create_line(9, 9, 19, 19, fill='#ffffff', width=2, capstyle='round')
+            title_icon_canvas.create_line(19, 9, 9, 19, fill='#ffffff', width=2, capstyle='round')
+        elif popup_type == 'confirm':
+            title_icon_canvas.create_arc(9, 5, 19, 15, start=0, extent=180,
+                                          style='arc', outline='#ffffff', width=2)
+            title_icon_canvas.create_line(14, 15, 14, 17, fill='#ffffff', width=2, capstyle='round')
+            title_icon_canvas.create_oval(13, 19, 15, 21, fill='#ffffff', outline='#ffffff')
+
+        # Title text
+        title_label = tk.Label(
+            title_bar, text=title,
+            bg=theme['title_bg'], fg='#ffffff',
+            font=('Helvetica', 13, 'bold'), anchor='w'
+        )
+        title_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # Close button (drawn X icon)
+        close_canvas = tk.Canvas(title_bar, width=28, height=28,
+                                  bg=theme['title_bg'], highlightthickness=0, cursor='hand2')
+        close_canvas.pack(side=tk.RIGHT, padx=(0, 8), pady=9)
+        # Draw X
+        close_canvas.create_line(8, 8, 20, 20, fill='#ffffff', width=2, capstyle='round')
+        close_canvas.create_line(20, 8, 8, 20, fill='#ffffff', width=2, capstyle='round')
+
+        def close_dialog(confirm_result=None):
+            if confirm_result is not None:
+                result[0] = confirm_result
+            try:
+                dialog.destroy()
+            except tk.TclError:
+                pass
+
+        close_canvas.bind('<Button-1>', lambda e: close_dialog(False if popup_type == 'confirm' else None))
+        close_canvas.bind('<Enter>', lambda e: close_canvas.configure(bg='#ffffff') or
+                          [close_canvas.itemconfigure(i, fill=theme['title_bg']) for i in close_canvas.find_all()])
+        close_canvas.bind('<Leave>', lambda e: close_canvas.configure(bg=theme['title_bg']) or
+                          [close_canvas.itemconfigure(i, fill='#ffffff') for i in close_canvas.find_all()])
+
+        # Make title bar draggable
+        drag_data = {'x': 0, 'y': 0}
+        def start_drag(event):
+            drag_data['x'] = event.x
+            drag_data['y'] = event.y
+        def do_drag(event):
+            x = dialog.winfo_x() + event.x - drag_data['x']
+            y = dialog.winfo_y() + event.y - drag_data['y']
+            dialog.geometry(f"+{x}+{y}")
+        for w in (title_bar, title_label, title_icon_canvas):
+            w.bind('<Button-1>', start_drag)
+            w.bind('<B1-Motion>', do_drag)
+
+        # ── Body area ──
+        body = tk.Frame(container, bg=theme['bg'], padx=24, pady=20)
+        body.pack(fill=tk.BOTH, expand=True)
+
+        # Icon + Message row
+        content_row = tk.Frame(body, bg=theme['bg'])
+        content_row.pack(fill=tk.BOTH, expand=True, pady=(0, 16))
+
+        # Large body icon (drawn on canvas)
+        icon_size = 48
+        icon_canvas = tk.Canvas(content_row, width=icon_size, height=icon_size,
+                                 bg=theme['bg'], highlightthickness=0)
+        icon_canvas.pack(side=tk.LEFT, padx=(0, 16), anchor='n', pady=(2, 0))
+        ModernPopup._draw_icon(icon_canvas, popup_type, size=icon_size)
+
+        # Message text
+        msg_label = tk.Label(
+            content_row, text=message,
+            bg=theme['bg'], fg='#1f2937',
+            font=('Helvetica', 11),
+            wraplength=380, justify=tk.LEFT, anchor='nw'
+        )
+        msg_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # ── Button area ──
+        btn_frame = tk.Frame(body, bg=theme['bg'])
+        btn_frame.pack(fill=tk.X)
+
+        def make_button(parent_frame, text, command, primary=False):
+            bg_color = theme['accent'] if primary else '#e5e7eb'
+            fg_color = '#ffffff' if primary else '#374151'
+            hover_bg = theme['border'] if primary else '#d1d5db'
+
+            btn = tk.Label(
+                parent_frame, text=f'  {text}  ',
+                bg=bg_color, fg=fg_color,
+                font=('Helvetica', 11, 'bold' if primary else 'normal'),
+                cursor='hand2', padx=20, pady=8, relief='flat',
+            )
+            btn.pack(side=tk.RIGHT, padx=(8, 0))
+            btn.bind('<Button-1>', lambda e: command())
+            btn.bind('<Enter>', lambda e: btn.configure(bg=hover_bg))
+            btn.bind('<Leave>', lambda e: btn.configure(bg=bg_color))
+            return btn
+
+        if popup_type == 'confirm':
+            make_button(btn_frame, 'No', lambda: close_dialog(False), primary=False)
+            make_button(btn_frame, 'Yes', lambda: close_dialog(True), primary=True)
+        else:
+            make_button(btn_frame, 'OK', lambda: close_dialog(), primary=True)
+
+        # Auto-close timer
+        if auto_close_ms > 0 and popup_type != 'confirm':
+            remaining = [auto_close_ms // 1000]
+            timer_label = tk.Label(btn_frame, text=f"Auto-close in {remaining[0]}s",
+                                   bg=theme['bg'], fg='#9ca3af', font=('Helvetica', 9))
+            timer_label.pack(side=tk.LEFT)
+
+            def tick():
+                remaining[0] -= 1
+                if remaining[0] <= 0:
+                    close_dialog()
+                else:
+                    timer_label.config(text=f"Auto-close in {remaining[0]}s")
+                    dialog.after(1000, tick)
+            dialog.after(1000, tick)
+
+        # Size and center
+        dialog.update_idletasks()
+        w = max(dialog.winfo_reqwidth(), 420)
+        h = dialog.winfo_reqheight()
+        px = parent.winfo_rootx() + (parent.winfo_width() // 2) - (w // 2)
+        py = parent.winfo_rooty() + (parent.winfo_height() // 2) - (h // 2)
+        dialog.geometry(f"{w}x{h}+{px}+{py}")
+        dialog.deiconify()
+
+        # Keyboard
+        dialog.bind('<Return>', lambda e: close_dialog(True if popup_type == 'confirm' else None))
+        dialog.bind('<Escape>', lambda e: close_dialog(False if popup_type == 'confirm' else None))
+
+        dialog.focus_force()
+        dialog.grab_set()
+        parent.wait_window(dialog)
+        return result[0]
+
+    @staticmethod
+    def showinfo(parent, title, message, auto_close_ms=0):
+        """Show an info popup (auto-detects success theme for success-like titles)"""
+        ptype = 'success' if any(w in title.lower() for w in ['success', 'saved', 'complete', 'done']) else 'info'
+        return ModernPopup._create(parent, title, message, popup_type=ptype, auto_close_ms=auto_close_ms)
+
+    @staticmethod
+    def showwarning(parent, title, message, auto_close_ms=0):
+        """Show a warning popup"""
+        return ModernPopup._create(parent, title, message, popup_type='warning', auto_close_ms=auto_close_ms)
+
+    @staticmethod
+    def showerror(parent, title, message, auto_close_ms=0):
+        """Show an error popup"""
+        return ModernPopup._create(parent, title, message, popup_type='error', auto_close_ms=auto_close_ms)
+
+    @staticmethod
+    def askyesno(parent, title, message):
+        """Show a confirm (yes/no) popup. Returns True or False."""
+        return ModernPopup._create(parent, title, message, popup_type='confirm')
+
 
 class BlogAutomationGUI:
     def __init__(self, root):
@@ -151,10 +441,16 @@ class BlogAutomationGUI:
                     self.automation_engine = BlogAutomationEngine(temp_config, self.logger)
                 else:
                     self.automation_engine = BlogAutomationEngine(self.config, self.logger)
-                self.logger.info("✅ Automation engine initialized on startup")
+                self.logger.info("[OK] Automation engine initialized on startup")
             except Exception as e:
                 self.logger.error(f"Failed to initialize automation engine on startup: {e}")
         
+        # Initialize icon factory (must be before create_ui)
+        if IconFactory:
+            self.icons = IconFactory(self.root, size=16)
+        else:
+            self.icons = None
+
         # Create UI
         self.create_ui()
         
@@ -165,25 +461,25 @@ class BlogAutomationGUI:
         self.process_log_queue()
         
         # Add startup logs to verify logging is working
-        self.logger.info("🎯 AUTO Blogger GUI started successfully")
-        self.logger.info(f"📁 Configuration directory: {self.base_config_dir}")
-        self.logger.debug("🔧 Debug logging is active")
+        self.logger.info("AUTO Blogger GUI started successfully")
+        self.logger.info(f"Configuration directory: {self.base_config_dir}")
+        self.logger.debug("Debug logging is active")
         
         # Log system information
         import platform
-        self.logger.info(f"💻 System: {platform.system()} {platform.release()}")
-        self.logger.info(f"🐍 Python: {platform.python_version()}")
+        self.logger.info(f"System: {platform.system()} {platform.release()}")
+        self.logger.info(f"Python: {platform.python_version()}")
         
         # Check and log Selenium availability
         try:
             from selenium import webdriver
-            self.logger.info("✅ Selenium WebDriver available")
+            self.logger.info("[OK] Selenium WebDriver available")
         except ImportError:
-            self.logger.warning("⚠️ Selenium not available - install with: pip install selenium webdriver-manager")
+            self.logger.warning("[!] Selenium not available - install with: pip install selenium webdriver-manager")
         
         # Log initial status
-        self.logger.info("🔄 Application ready for use")
-        self.logger.info("📋 Check logs tab to view all application logs")
+        self.logger.info("[>>] Application ready for use")
+        self.logger.info("Check logs tab to view all application logs")
         
     def setup_logging(self):
         """Setup advanced session-based logging to capture all messages"""
@@ -269,9 +565,9 @@ class BlogAutomationGUI:
         self.logger.propagate = False
         
         # Log startup message with session info (only once)
-        self.logger.info(f"🚀 Unified logging system initialized - Session: {self.session_info['session_id']}")
-        self.logger.info(f"📁 Session logs in: {self.session_info['base_dir']}")
-        self.logger.info(f"📄 Unified log file: {self.session_info['unified_log_file']}")
+        self.logger.info(f"[>>] Unified logging system initialized - Session: {self.session_info['session_id']}")
+        self.logger.info(f"Session logs in: {self.session_info['base_dir']}")
+        self.logger.info(f"Unified log file: {self.session_info['unified_log_file']}")
         
     def _setup_basic_logging(self):
         """Fallback to basic logging if log_manager is not available"""
@@ -321,7 +617,7 @@ class BlogAutomationGUI:
         self.logger.addHandler(queue_handler)
         
         # Log startup message
-        self.logger.info("🚀 Basic logging system initialized - capturing all logs")
+        self.logger.info("[>>] Basic logging system initialized - capturing all logs")
         
     def get_config_files(self):
         """Get configuration files from current domain directory"""
@@ -457,19 +753,19 @@ class BlogAutomationGUI:
                         self.config['source_url'] = active_source['url']
                         self.config['article_selector'] = active_source['selector']
                         
-                        self.logger.info(f"✅ Active source synchronized: {active_source['name']}")
-                        self.logger.info(f"📍 Source URL: {active_source['url']}")
-                        self.logger.info(f"🎯 Selector: {active_source['selector']}")
+                        self.logger.info(f"[OK] Active source synchronized: {active_source['name']}")
+                        self.logger.info(f"Source URL: {active_source['url']}")
+                        self.logger.info(f"Selector: {active_source['selector']}")
                     else:
-                        self.logger.warning("⚠️ No active source found in source_urls array")
+                        self.logger.warning("[!] No active source found in source_urls array")
                 else:
-                    self.logger.info("📝 No source_urls array found in configuration")
+                    self.logger.info("No source_urls array found in configuration")
                     
             else:
-                self.logger.info("📄 blog_config.json not found, using default configuration")
+                self.logger.info("blog_config.json not found, using default configuration")
                 
         except Exception as e:
-            self.logger.error(f"❌ Error loading main configuration: {e}")
+            self.logger.error(f"[X] Error loading main configuration: {e}")
             
     def save_main_config(self):
         """Save the main blog_config.json file"""
@@ -477,10 +773,42 @@ class BlogAutomationGUI:
             import json
             with open('blog_config.json', 'w') as f:
                 json.dump(self.config, f, indent=4)
-            self.logger.info("✅ Main configuration saved to blog_config.json")
+            self.logger.info("[OK] Main configuration saved to blog_config.json")
         except Exception as e:
-            self.logger.error(f"❌ Error saving main configuration: {e}")
+            self.logger.error(f"[X] Error saving main configuration: {e}")
         
+    def _icon(self, name: str, size: int = 16, color: str = ''):
+        """Get a named icon from the factory. Returns None if unavailable."""
+        if self.icons:
+            return self.icons.get(name, size=size, color=color)
+        return None
+
+    def _icon_opts(self, name: str, text: str, size: int = 16, color: str = ''):
+        """Return dict of image/text/compound options for a widget, with fallback to plain text."""
+        icon = self._icon(name, size, color)
+        if icon:
+            return {'text': f' {text}', 'image': icon, 'compound': 'left'}
+        return {'text': text}
+
+    def _add_tab(self, frame, text: str, icon_name: str):
+        """Add a tab to the notebook with an icon."""
+        icon = self._icon(icon_name)
+        if icon:
+            self.notebook.add(frame, text=f' {text}', image=icon, compound='left')
+        else:
+            self.notebook.add(frame, text=text)
+
+    def _btn(self, parent, text: str, icon_name: str, command=None, **kwargs):
+        """Create a ttk.Button with a drawn icon (fallback to plain text)."""
+        icon = self._icon(icon_name)
+        if icon:
+            btn = ttk.Button(parent, text=f' {text}', image=icon, compound='left',
+                             command=command, **kwargs)
+            btn._icon_ref = icon  # prevent GC
+        else:
+            btn = ttk.Button(parent, text=text, command=command, **kwargs)
+        return btn
+
     def create_ui(self):
         """Create all GUI widgets"""
         # Create menu bar
@@ -530,12 +858,12 @@ GitHub: https://github.com/AryanVBW
 
 Licensed under the MIT License"""
         
-        messagebox.showinfo("About WordPress Blog Automation Suite", about_text)
+        ModernPopup.showinfo(self.root,"About WordPress Blog Automation Suite", about_text)
         
     def create_login_tab(self):
         """Create login and authentication tab"""
         self.login_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.login_frame, text="🔐 Authentication")
+        self._add_tab(self.login_frame, "Authentication", "lock")
         
         # Title
         title_label = ttk.Label(self.login_frame, text="WordPress Blog Automation", font=('Arial', 16, 'bold'))
@@ -616,8 +944,8 @@ Licensed under the MIT License"""
         style.configure("Sidebar.TFrame", background="#f4f6fa", borderwidth=1, relief="solid")
 
         self.creds_tree = ttk.Treeview(sidebar_frame, columns=("site", "user"), show="headings", selectmode="browse", style="Sidebar.Treeview", height=8)
-        self.creds_tree.heading("site", text="🌐 Site URL")
-        self.creds_tree.heading("user", text="👤 Username")
+        self.creds_tree.heading("site", text="Site URL")
+        self.creds_tree.heading("user", text="Username")
         self.creds_tree.column("site", width=180, anchor=tk.W)
         self.creds_tree.column("user", width=120, anchor=tk.W)
         self.creds_tree.pack(fill=tk.Y, expand=True, padx=4, pady=2)
@@ -628,14 +956,14 @@ Licensed under the MIT License"""
         btn_frame.pack(fill=tk.X, pady=4)
         select_btn = ttk.Button(btn_frame, text="Select User", command=self.select_credential)
         select_btn.pack(side=tk.LEFT, padx=4)
-        del_btn = ttk.Button(btn_frame, text="🗑️ Delete", command=self.delete_credential)
+        del_btn = self._btn(btn_frame, "Delete", "trash", command=self.delete_credential)
         del_btn.pack(side=tk.LEFT, padx=4)
 
     def create_openai_image_tab(self):
         import os
         import json
         self.openai_image_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.openai_image_frame, text="🖼️ OpenAI Images")
+        self._add_tab(self.openai_image_frame, "OpenAI Images", "image")
 
         # Create a scrollable frame for all content
         canvas = tk.Canvas(self.openai_image_frame)
@@ -835,7 +1163,7 @@ Licensed under the MIT License"""
             var.set(str(weights_defaults.get(key, "")))
         
         self.custom_prompt_text.delete(1.0, tk.END)
-        messagebox.showinfo("Reset", "OpenAI image configuration and weights reset to defaults.")
+        ModernPopup.showinfo(self.root,"Reset", "OpenAI image configuration and weights reset to defaults.")
 
     def save_openai_image_config(self):
         """Save OpenAI image configuration to current domain directory"""
@@ -877,8 +1205,8 @@ Licensed under the MIT License"""
             json.dump(weights_config, f, indent=2)
         
         domain_info = f" for domain: {self.current_domain}" if self.current_domain else ""
-        self.logger.info(f"✅ OpenAI image and weights configuration saved{domain_info}")
-        messagebox.showinfo("Success", f"OpenAI image and weights configuration saved{domain_info}.")
+        self.logger.info(f"[OK] OpenAI image and weights configuration saved{domain_info}")
+        ModernPopup.showinfo(self.root,"Success", f"OpenAI image and weights configuration saved{domain_info}.")
 
     def cancel_openai_image_config(self):
         self.openai_image_frame.destroy()
@@ -892,15 +1220,15 @@ Licensed under the MIT License"""
         password = self.password_var.get().strip()
         
         if not all([wp_url, username, password]):
-            messagebox.showerror("Error", "Please fill in all WordPress credentials")
+            ModernPopup.showerror(self.root,"Error", "Please fill in all WordPress credentials")
             return
         
         # Extract domain and setup domain-specific configuration
         domain = self.extract_domain_from_url(wp_url)
         self.setup_domain_config_directory(domain)
         
-        self.logger.info(f"🌐 Setting up configuration for domain: {domain}")
-        self.logger.info(f"📁 Domain config directory: {self.domain_config_dir}")
+        self.logger.info(f"Setting up configuration for domain: {domain}")
+        self.logger.info(f"Domain config directory: {self.domain_config_dir}")
         
         # Save credentials to config and domain-specific credentials.json
         creds = {
@@ -950,10 +1278,10 @@ Licensed under the MIT License"""
         self.load_saved_credentials()
         self.update_config_ui_for_domain()
         
-        self.logger.info(f"✅ Credentials saved for domain: {domain}")
-        self.connection_status.config(text=f"✅ Saved for {domain}", foreground="green")
+        self.logger.info(f"[OK] Credentials saved for domain: {domain}")
+        self.connection_status.config(text=f"Saved for {domain}", foreground="green")
         
-        messagebox.showinfo("Success", 
+        ModernPopup.showinfo(self.root,"Success", 
             f"Credentials saved successfully!\n\n"
             f"Domain: {domain}\n"
             f"Configuration directory: {self.domain_config_dir}\n\n"
@@ -1006,7 +1334,7 @@ Licensed under the MIT License"""
         for domain, creds in domain_groups.items():
             # Add domain header
             domain_header = self.creds_tree.insert("", "end", iid=f"domain_{domain}", 
-                                                  values=(f"🌐 {domain.upper()}", ""), 
+                                                  values=(f"[{domain.upper()}]", ""),
                                                   tags=("domain_header",))
             
             # Add credentials under domain
@@ -1058,11 +1386,11 @@ Licensed under the MIT License"""
                 self.update_config_ui_for_domain()
                 
                 self.connection_status.config(
-                    text=f"✅ Loaded: {domain} | {cred['wp_username']}", 
+                    text=f"Loaded: {domain} | {cred['wp_username']}", 
                     foreground="blue"
                 )
                 
-                self.logger.info(f"🔄 Switched to domain configuration: {domain}")
+                self.logger.info(f"[>>] Switched to domain configuration: {domain}")
                 
             except (ValueError, IndexError, KeyError) as e:
                 self.logger.error(f"Error selecting credential: {e}")
@@ -1079,14 +1407,14 @@ Licensed under the MIT License"""
             
             # Skip if domain header is selected
             if selected_id.startswith("domain_"):
-                messagebox.showinfo("Info", "Please select a specific credential to delete, not the domain header.")
+                ModernPopup.showinfo(self.root,"Info", "Please select a specific credential to delete, not the domain header.")
                 return
             
             try:
                 idx = int(selected_id)
                 cred = self.saved_creds[idx]
                 
-                if messagebox.askyesno("Delete Credential", 
+                if ModernPopup.askyesno(self.root,"Delete Credential", 
                     f"Delete credentials for {cred['wp_username']} at {cred['wp_base_url']}?\n\n"
                     f"This will remove the credential from both domain-specific and global storage."):
                     
@@ -1115,11 +1443,11 @@ Licensed under the MIT License"""
                             json.dump(domain_creds, f, indent=2)
                     
                     self.load_saved_credentials()
-                    self.logger.info(f"🗑️ Deleted credentials for {cred['wp_username']} at {cred['wp_base_url']}")
+                    self.logger.info(f"Deleted credentials for {cred['wp_username']} at {cred['wp_base_url']}")
                     
             except (ValueError, IndexError, KeyError) as e:
                 self.logger.error(f"Error deleting credential: {e}")
-                messagebox.showerror("Error", f"Error deleting credential: {e}")
+                ModernPopup.showerror(self.root,"Error", f"Error deleting credential: {e}")
         
     def create_prerequisites_section(self):
         """Create prerequisites check section"""
@@ -1127,7 +1455,7 @@ Licensed under the MIT License"""
         prereq_frame.pack(pady=20, padx=40, fill=tk.X)
         
         # Check selenium
-        selenium_status = "✅ Available" if SELENIUM_AVAILABLE else "❌ Not installed"
+        selenium_status = "[OK] Available" if SELENIUM_AVAILABLE else "[X] Not installed"
         ttk.Label(prereq_frame, text=f"Selenium WebDriver: {selenium_status}").pack(anchor=tk.W)
         
         # Check other requirements
@@ -1140,9 +1468,9 @@ Licensed under the MIT License"""
         for req_name, import_name in requirements:
             try:
                 __import__(import_name)
-                status = "✅ Available"
+                status = "[OK] Available"
             except ImportError:
-                status = "❌ Not installed"
+                status = "[X] Not installed"
             ttk.Label(prereq_frame, text=f"{req_name}: {status}").pack(anchor=tk.W)
             
         if not SELENIUM_AVAILABLE:
@@ -1153,7 +1481,7 @@ Licensed under the MIT License"""
     def create_automation_tab(self):
         """Create main automation tab"""
         self.automation_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.automation_frame, text="🤖 Automation")
+        self._add_tab(self.automation_frame, "Automation", "robot")
         
         # Control panel
         control_panel = ttk.LabelFrame(self.automation_frame, text="Control Panel", padding=10)
@@ -1225,19 +1553,19 @@ Licensed under the MIT License"""
         buttons_frame = ttk.Frame(control_panel)
         buttons_frame.pack(fill=tk.X, pady=10)
         
-        self.start_btn = ttk.Button(buttons_frame, text="▶️ Start Automation", 
-                                   command=self.start_automation, style="Accent.TButton")
+        self.start_btn = self._btn(buttons_frame, "Start Automation", "play",
+                                    command=self.start_automation, style="Accent.TButton")
         self.start_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.stop_btn = ttk.Button(buttons_frame, text="⏹️ Stop", 
+
+        self.stop_btn = self._btn(buttons_frame, "Stop", "stop",
                                   command=self.stop_automation, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.clear_logs_btn = ttk.Button(buttons_frame, text="🗑️ Clear Logs", 
+
+        self.clear_logs_btn = self._btn(buttons_frame, "Clear Logs", "trash",
                                         command=self.clear_logs)
         self.clear_logs_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.test_config_btn = ttk.Button(buttons_frame, text="🔍 Test Configuration", 
+
+        self.test_config_btn = self._btn(buttons_frame, "Test Configuration", "search",
                                          command=self.test_configuration)
         self.test_config_btn.pack(side=tk.LEFT, padx=5)
         
@@ -1347,7 +1675,7 @@ Licensed under the MIT License"""
 
         # Add steps
         for i, step in enumerate(self.process_steps):
-            self.steps_tree.insert('', 'end', iid=str(i), values=(step, '⏳ Pending', '', ''), tags=('pending',))
+            self.steps_tree.insert('', 'end', iid=str(i), values=(step, '[...] Pending', '', ''), tags=('pending',))
 
         # Reset progress UI
         self.overall_progress['value'] = 0
@@ -1364,7 +1692,7 @@ Licensed under the MIT License"""
     def create_logs_tab(self):
         """Create logs tab with session information and category viewing"""
         self.logs_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.logs_frame, text="📋 Logs")
+        self._add_tab(self.logs_frame, "Logs", "clipboard")
         
         # Session info frame at top
         session_frame = ttk.LabelFrame(self.logs_frame, text="Current Session", padding=5)
@@ -1376,9 +1704,9 @@ Licensed under the MIT License"""
             session_id_label.pack(side=tk.LEFT)
             
             # Add buttons to open log directory and view categories
-            ttk.Button(session_frame, text="📁 Open Log Directory", 
+            self._btn(session_frame, "Open Log Directory", "folder",
                       command=self.open_log_directory).pack(side=tk.RIGHT, padx=2)
-            ttk.Button(session_frame, text="📊 Session Info", 
+            self._btn(session_frame, "Session Info", "chart",
                       command=self.show_session_info).pack(side=tk.RIGHT, padx=2)
         
         # Log category selector frame
@@ -1439,8 +1767,8 @@ Licensed under the MIT License"""
         try:
             if hasattr(self, 'session_info') and self.session_info:
                 # Load from current session files
-                self.logs_text.insert(tk.END, f"📋 Loading logs from session: {self.session_info['session_id']}\n")
-                self.logs_text.insert(tk.END, f"📁 Log directory: {self.session_info['base_dir']}\n\n")
+                self.logs_text.insert(tk.END, f"Loading logs from session: {self.session_info['session_id']}\n")
+                self.logs_text.insert(tk.END, f"Log directory: {self.session_info['base_dir']}\n\n")
                 
                 # Load main log first
                 main_log_file = self.session_info['log_files'].get('main')
@@ -1455,7 +1783,7 @@ Licensed under the MIT License"""
                         if line:  # Skip empty lines
                             self.add_log_message(line)
                             
-                self.logs_text.insert(tk.END, "\n🔄 Real-time logs will appear below...\n")
+                self.logs_text.insert(tk.END, "\n[>>] Real-time logs will appear below...\n")
                 self.logs_text.see(tk.END)
                 
                 # Add separator
@@ -1467,7 +1795,7 @@ Licensed under the MIT License"""
                 self.load_existing_logs()
                 
         except Exception as e:
-            self.logs_text.insert(tk.END, f"⚠️ Could not load session logs: {e}\n")
+            self.logs_text.insert(tk.END, f"[!] Could not load session logs: {e}\n")
             # Fallback to basic logs
             self.load_existing_logs()
             
@@ -1556,10 +1884,10 @@ Licensed under the MIT License"""
                 
             log_file = self.session_info['log_files'].get(log_key)
             if not log_file or not os.path.exists(log_file):
-                self.logs_text.insert(tk.END, f"📄 No {category.lower()} logs found for this session.\n")
+                self.logs_text.insert(tk.END, f"No {category.lower()} logs found for this session.\n")
                 return
                 
-            self.logs_text.insert(tk.END, f"📋 Showing {category} logs from: {log_file}\n\n")
+            self.logs_text.insert(tk.END, f"Showing {category} logs from: {log_file}\n\n")
             
             with open(log_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
@@ -1572,7 +1900,7 @@ Licensed under the MIT License"""
             self.logs_text.see(tk.END)
             
         except Exception as e:
-            self.logs_text.insert(tk.END, f"⚠️ Error loading {category} logs: {e}\n")
+            self.logs_text.insert(tk.END, f"[!] Error loading {category} logs: {e}\n")
             
     def open_log_directory(self):
         """Open the log directory in file explorer"""
@@ -1594,17 +1922,17 @@ Licensed under the MIT License"""
             else:  # Linux
                 subprocess.run(["xdg-open", log_dir])
                 
-            self.logger.info(f"📁 Opened log directory: {log_dir}")
+            self.logger.info(f"Opened log directory: {log_dir}")
             
         except Exception as e:
             self.logger.error(f"Error opening log directory: {e}")
-            messagebox.showerror("Error", f"Could not open log directory: {e}")
+            ModernPopup.showerror(self.root,"Error", f"Could not open log directory: {e}")
             
     def show_session_info(self):
         """Show detailed session information"""
         try:
             if not hasattr(self, 'session_info') or not self.session_info:
-                messagebox.showinfo("Session Info", "No session information available")
+                ModernPopup.showinfo(self.root,"Session Info", "No session information available")
                 return
                 
             info = self.session_info
@@ -1653,7 +1981,7 @@ Log Files:"""
             ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
             
         except Exception as e:
-            messagebox.showerror("Error", f"Could not show session info: {e}")
+            ModernPopup.showerror(self.root,"Error", f"Could not show session info: {e}")
         
     def load_existing_logs(self):
         """Load existing logs from the log file"""
@@ -1664,14 +1992,14 @@ Log Files:"""
                     # Load last 500 lines to avoid overwhelming the GUI
                     recent_lines = lines[-500:] if len(lines) > 500 else lines
                     
-                self.logs_text.insert(tk.END, "📋 Loading recent logs from blog_automation.log...\n\n")
+                self.logs_text.insert(tk.END, "Loading recent logs from blog_automation.log...\n\n")
                 
                 for line in recent_lines:
                     line = line.strip()
                     if line:  # Skip empty lines
                         self.add_log_message(line)
                         
-                self.logs_text.insert(tk.END, "\n🔄 Real-time logs will appear below...\n")
+                self.logs_text.insert(tk.END, "\n[>>] Real-time logs will appear below...\n")
                 self.logs_text.see(tk.END)
                 
                 # Add separator
@@ -1679,7 +2007,7 @@ Log Files:"""
                 self.logs_text.insert(tk.END, separator)
                 
         except Exception as e:
-            self.logs_text.insert(tk.END, f"⚠️ Could not load existing logs: {e}\n")
+            self.logs_text.insert(tk.END, f"[!] Could not load existing logs: {e}\n")
             
     def refresh_logs(self):
         """Refresh logs by reloading from file"""
@@ -1689,7 +2017,7 @@ Log Files:"""
     def create_config_tab(self):
         """Create configuration tab with domain-aware settings"""
         self.config_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.config_frame, text="⚙️ Configuration")
+        self._add_tab(self.config_frame, "Configuration", "gear")
         
         # Domain info section at the top
         domain_info_frame = ttk.LabelFrame(self.config_frame, text="Domain Configuration", padding=10)
@@ -1705,7 +2033,7 @@ Log Files:"""
         config_dir_label.pack(side=tk.LEFT, padx=(20, 0))
         
         if not self.current_domain:
-            warning_label = ttk.Label(domain_info_frame, text="⚠️ Please login to select a domain", foreground="orange")
+            warning_label = ttk.Label(domain_info_frame, text="Please login to select a domain", foreground="orange")
             warning_label.pack(side=tk.RIGHT)
         
         # Add config selector at the top
@@ -1738,22 +2066,22 @@ Log Files:"""
         style.configure("Sidebar.TFrame", background="#f4f6fa", borderwidth=1, relief="solid")
 
         self.config_sections = [
-            ("SEO Plugin Settings", "seo_plugin_settings", "🔧"),
-            ("Internal Links", "internal_links", "🔗"),
-            ("External Links", "external_links", "🌐"),
-            ("Style Prompt", "style_prompt", "📝"),
-            ("SEO Title & Meta Prompt", "seo_title_meta_prompt", "🎯"),
-            ("Tag Generation Prompt", "tag_generation_prompt", "🏷️"),
-            ("Keyphrase Extraction Prompt", "keyphrase_extraction_prompt", "🔑"),
-            ("Category Keywords", "category_keywords", "🏷️"),
-            ("Tag Synonyms", "tag_synonyms", "🔄"),
-            ("Static Clubs", "static_clubs", "⚽"),
-            ("Stop Words", "stop_words", "🚫"),
-            ("Do-Follow URLs", "do_follow_urls", "✅")
+            ("SEO Plugin Settings", "seo_plugin_settings", ""),
+            ("Internal Links", "internal_links", ""),
+            ("External Links", "external_links", ""),
+            ("Style Prompt", "style_prompt", ""),
+            ("SEO Title & Meta Prompt", "seo_title_meta_prompt", ""),
+            ("Tag Generation Prompt", "tag_generation_prompt", ""),
+            ("Keyphrase Extraction Prompt", "keyphrase_extraction_prompt", ""),
+            ("Category Keywords", "category_keywords", ""),
+            ("Tag Synonyms", "tag_synonyms", ""),
+            ("Static Clubs", "static_clubs", ""),
+            ("Stop Words", "stop_words", ""),
+            ("Do-Follow URLs", "do_follow_urls", "")
         ]
         sidebar = ttk.Treeview(sidebar_frame, show="tree", selectmode="browse", style="Sidebar.Treeview", height=len(self.config_sections))
-        for idx, (label, _, emoji) in enumerate(self.config_sections):
-            sidebar.insert("", "end", iid=str(idx), text=f"{emoji}  {label}")
+        for idx, (label, _, _icon_unused) in enumerate(self.config_sections):
+            sidebar.insert("", "end", iid=str(idx), text=label)
         sidebar.pack(fill=tk.Y, expand=True, padx=4, pady=2)
         sidebar.bind('<<TreeviewSelect>>', self.on_sidebar_select)
         self.sidebar = sidebar
@@ -1780,15 +2108,15 @@ Log Files:"""
         self.show_section_editor(0)
         
         # Add comprehensive help section at the bottom
-        help_frame = ttk.LabelFrame(self.config_frame, text="📚 Configuration Guide", padding=10)
+        help_frame = ttk.LabelFrame(self.config_frame, text="Configuration Guide", padding=10)
         help_frame.pack(fill=tk.X, pady=5, padx=10)
         
         help_text = (
-            "🎯 Quick Start Guide:\n"
+            "Quick Start Guide:\n"
             "1. Select a configuration section from the sidebar (SEO Title & Meta, Tag Generation, etc.)\n"
             "2. Edit the prompt text in the editor area - default examples are provided\n"
             "3. Click 'Save Section' to apply your changes\n\n"
-            "💡 Pro Tips:\n"
+            "Pro Tips:\n"
             "• Each section contains example prompts that you can customize\n"
             "• Use 'Reset to Default' to restore original settings\n"
             "• Test your changes with the automation tools to see results\n"
@@ -1818,9 +2146,9 @@ Log Files:"""
         if default_value and hasattr(self, 'section_text'):
             self.section_text.delete(1.0, tk.END)
             self.section_text.insert(1.0, default_value)
-            messagebox.showinfo("Reset", f"Reset {key.replace('_', ' ').title()} to default value.")
+            ModernPopup.showinfo(self.root,"Reset", f"Reset {key.replace('_', ' ').title()} to default value.")
         else:
-            messagebox.showinfo("No Default", f"No default value available for {key.replace('_', ' ').title()}.")
+            ModernPopup.showinfo(self.root,"No Default", f"No default value available for {key.replace('_', ' ').title()}.")
 
     def on_sidebar_select(self, event=None):
         idxs = self.sidebar.selection()
@@ -1844,70 +2172,70 @@ Log Files:"""
             delattr(self, 'section_text')
         if hasattr(self, 'section_widget'):
             delattr(self, 'section_widget')
-        label, key, emoji = self.config_sections[idx]
+        label, key, _icon_unused = self.config_sections[idx]
         # Section label
-        section_label = ttk.Label(self.editor_frame, text=f"{emoji}  {label}", font=("Arial", 12, "bold"))
+        section_label = ttk.Label(self.editor_frame, text=label, font=("Arial", 12, "bold"))
         section_label.pack(anchor=tk.W, pady=(0, 6))
         
         # Add helpful descriptions and guidance for individual prompt sections
         if key == "seo_plugin_settings":
-            desc_text = ("🔧 SEO Plugin Configuration\n"
+            desc_text = ("SEO Plugin Configuration\n"
                         "Configure which SEO plugin version your WordPress site uses.\n\n"
-                        "✏️ Plugin Versions:\n"
+                        "Plugin Versions:\n"
                         "• New Version: All in One SEO Pro v4.7.3+ (example-sports-site.com, example-spurs-site.com, example-leeds-site.com)\n"
             "• Old Version: All in One SEO Pack Pro v2.7.1 (example-arsenal-site.com, example-city-site.com)\n\n"
-                        "💡 This setting determines how SEO metadata is formatted and sent to your WordPress site.")
+                        "Note: This setting determines how SEO metadata is formatted and sent to your WordPress site.")
             desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         elif key == "seo_title_meta_prompt":
-            desc_text = ("📝 SEO Title & Meta Description Generator\n"
+            desc_text = ("SEO Title & Meta Description Generator\n"
                         "This prompt creates SEO-optimized titles (50-59 chars) and meta descriptions (155-160 chars).\n\n"
-                        "✏️ How to customize:\n"
+                        "How to customize:\n"
                         "• Modify character limits and formatting rules\n"
                         "• Add specific keyword requirements\n"
                         "• Adjust tone and style preferences\n\n"
-                        "💡 Writing style: Use clear instructions with specific character limits and examples")
+                        "Tip: Use clear instructions with specific character limits and examples")
             desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         elif key == "tag_generation_prompt":
-            desc_text = ("🏷️ Tag Extraction System\n"
+            desc_text = ("Tag Extraction System\n"
                         "This prompt extracts relevant tags from article content (players, clubs, competitions).\n\n"
-                        "✏️ How to customize:\n"
+                        "How to customize:\n"
                         "• Add specific tag categories to focus on\n"
                         "• Modify output format (comma-separated, JSON, etc.)\n"
                         "• Include/exclude certain types of entities\n\n"
-                        "💡 Writing style: Be specific about what to extract and how to format the output")
+                        "Tip: Be specific about what to extract and how to format the output")
             desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         elif key == "keyphrase_extraction_prompt":
-            desc_text = ("🔑 SEO Keyphrase Extraction\n"
+            desc_text = ("SEO Keyphrase Extraction\n"
                         "This prompt identifies focus keyphrases and additional SEO terms for search optimization.\n\n"
-                        "✏️ How to customize:\n"
+                        "How to customize:\n"
                         "• Adjust the number of keyphrases to extract\n"
                         "• Modify keyphrase length requirements (2-4 words)\n"
                         "• Add industry-specific terminology guidelines\n\n"
-                        "💡 Writing style: Provide clear rules for keyphrase selection and formatting")
+                        "Tip: Provide clear rules for keyphrase selection and formatting")
             desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         elif key == "style_prompt":
-            desc_text = ("📖 Article Rewriting Style Guide\n"
+            desc_text = ("Article Rewriting Style Guide\n"
                         "This prompt controls how articles are rewritten and formatted for your blog.\n\n"
-                        "✏️ How to customize:\n"
+                        "How to customize:\n"
                         "• Adjust tone and voice (professional, casual, enthusiastic)\n"
                         "• Modify structural requirements (headings, paragraphs, word count)\n"
                         "• Add specific formatting rules and HTML requirements\n\n"
-                        "💡 Writing style: Include detailed formatting rules and examples")
+                        "Tip: Include detailed formatting rules and examples")
             desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         else:
             # General guidance for JSON configuration files
-            desc_text = ("⚙️ Configuration Settings\n"
+            desc_text = ("Configuration Settings\n"
                         "This section contains JSON configuration data for the system.\n\n"
-                        "✏️ How to edit:\n"
+                        "How to edit:\n"
                         "• Add new entries: Insert new key-value pairs following the existing format\n"
                         "• Edit existing entries: Modify values while keeping the JSON structure\n"
                         "• Use proper JSON syntax: strings in quotes, arrays with [], objects with {}\n\n"
-                        "💡 Always validate JSON syntax before saving to avoid errors")
+                        "Tip: Always validate JSON syntax before saving to avoid errors")
             desc_label = ttk.Label(self.editor_frame, text=desc_text, font=("Arial", 9), foreground="#2c3e50", justify=tk.LEFT)
             desc_label.pack(anchor=tk.W, pady=(0, 10))
         
@@ -1917,7 +2245,7 @@ Log Files:"""
                                   font=("Arial", 9, "italic"), foreground="blue")
             domain_info.pack(anchor=tk.W, pady=(0, 10))
         else:
-            warning_info = ttk.Label(self.editor_frame, text="⚠️ No domain selected - using base configuration", 
+            warning_info = ttk.Label(self.editor_frame, text="No domain selected - using base configuration", 
                                    font=("Arial", 9, "italic"), foreground="orange")
             warning_info.pack(anchor=tk.W, pady=(0, 10))
         
@@ -2159,9 +2487,9 @@ Log Files:"""
                 if hasattr(self, 'print_seo_details_var') and plugin_version == "old":
                     checkbox_status = "enabled" if self.print_seo_details_var.get() else "disabled"
                     success_msg += f"\nPrint SEO details: {checkbox_status}"
-                messagebox.showinfo("Success", success_msg)
+                ModernPopup.showinfo(self.root,"Success", success_msg)
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to save SEO plugin settings: {e}")
+                ModernPopup.showerror(self.root,"Error", f"Failed to save SEO plugin settings: {e}")
             return
         
         text = self.section_text.get("1.0", tk.END).strip()
@@ -2236,28 +2564,28 @@ Log Files:"""
             self.save_config()
             
             domain_info = f" for domain: {self.current_domain}" if self.current_domain else ""
-            self.logger.info(f"✅ Saved {key.replace('_', ' ').title()}{domain_info}")
-            messagebox.showinfo("Success", f"Saved {key.replace('_', ' ').title()}{domain_info} successfully.")
+            self.logger.info(f"[OK] Saved {key.replace('_', ' ').title()}{domain_info}")
+            ModernPopup.showinfo(self.root,"Success", f"Saved {key.replace('_', ' ').title()}{domain_info} successfully.")
             
         except Exception as e:
             self.logger.error(f"Error saving {key}: {e}")
-            messagebox.showerror("Invalid Data", f"Error in {key}: {e}")
+            ModernPopup.showerror(self.root,"Invalid Data", f"Error in {key}: {e}")
 
     def create_source_config_tab(self):
         self.source_config_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.source_config_frame, text="🛠️ Source & Automation")
+        self._add_tab(self.source_config_frame, "Source & Automation", "wrench")
 
         self.source_edit_mode = False
         self.source_config_vars = {}
         self.source_config_prev = {}
 
         # Credentials info section
-        info_frame = ttk.LabelFrame(self.source_config_frame, text="ℹ️ Credential Management", padding=10)
+        info_frame = ttk.LabelFrame(self.source_config_frame, text="Credential Management", padding=10)
         info_frame.pack(pady=10, padx=40, fill=tk.X)
         
         info_lines = (
-            "WordPress credentials and API keys → manage in the 🔐 Authentication tab.\n"
-            "Source URLs and CSS selectors → manage in the 📰 Article Selector section below.\n"
+            "WordPress credentials and API keys → manage in the Authentication tab.\n"
+            "Source URLs and CSS selectors → manage in the Article Selector section below.\n"
             "How it works: The app fetches the Source URL, finds article links using the CSS Selector, then scrapes and posts each article to WordPress."
         )
         ttk.Label(info_frame, text=info_lines, foreground="#1a56a4", font=("Arial", 9), wraplength=800, justify=tk.LEFT).pack(anchor=tk.W)
@@ -2271,7 +2599,7 @@ Log Files:"""
         self.source_config_form = form
 
         # Edit icon/button
-        self.edit_icon_btn = ttk.Button(form, text="✏️ Edit", width=7, command=self.toggle_source_edit_mode)
+        self.edit_icon_btn = self._btn(form, "Edit", "pencil", width=7, command=self.toggle_source_edit_mode)
         self.edit_icon_btn.place(relx=1.0, x=-10, y=10, anchor="ne")
 
         # Fields - Only source and automation settings (credentials are managed in Authentication tab)
@@ -2313,79 +2641,96 @@ Log Files:"""
 
     def create_article_selector_section(self):
         """Create the Article Selector section for managing multiple source URLs"""
-        selector_frame = ttk.LabelFrame(self.source_config_frame, text="📰 Article Selector", padding=15)
+        selector_frame = ttk.LabelFrame(self.source_config_frame, text="Article Selector", padding=15)
         selector_frame.pack(pady=10, padx=40, fill=tk.BOTH, expand=True)
-        
+
         # Description with help text
-        desc_text = "Add the website URLs you want to scrape articles from and the CSS selector that identifies article links on each page.\nDouble-click a source to set it as active, or use the buttons on the right. Use '🔍 Auto-Extract Selectors' when adding a new source."
+        desc_text = (
+            "Add website URLs to scrape articles from. You can activate MULTIPLE sources at once — "
+            "the automation will pull articles from all active sources.\n"
+            "Double-click a source to toggle active/inactive. Use 'Auto-Extract Selectors' when adding a new source."
+        )
         ttk.Label(selector_frame, text=desc_text, font=("Arial", 9), foreground="#444", wraplength=700, justify=tk.LEFT).pack(anchor=tk.W, pady=(0, 10))
-        
+
+        # Active sources summary bar
+        self.active_sources_summary = tk.StringVar(value="No active sources")
+        summary_frame = ttk.Frame(selector_frame)
+        summary_frame.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(summary_frame, text="Active:", font=("Arial", 9, "bold")).pack(side=tk.LEFT)
+        ttk.Label(summary_frame, textvariable=self.active_sources_summary, font=("Arial", 9), foreground="#0078d4").pack(side=tk.LEFT, padx=(5, 0))
+
         # Create frame for source list and controls
         main_frame = ttk.Frame(selector_frame)
         main_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # Left side - Source list
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        
+
         ttk.Label(list_frame, text="Available Sources:", font=("Arial", 10, "bold")).pack(anchor=tk.W)
-        
+
         # Create treeview for sources
         columns = ('Active', 'Name', 'URL', 'Selector')
         self.sources_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=8)
-        
+
         # Define headings
         self.sources_tree.heading('Active', text='Active')
         self.sources_tree.heading('Name', text='Source Name')
         self.sources_tree.heading('URL', text='URL')
         self.sources_tree.heading('Selector', text='CSS Selector')
-        
+
         # Define column widths
         self.sources_tree.column('Active', width=60)
         self.sources_tree.column('Name', width=200)
         self.sources_tree.column('URL', width=300)
         self.sources_tree.column('Selector', width=200)
-        
+
         # Scrollbar for treeview
         sources_scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.sources_tree.yview)
         self.sources_tree.configure(yscrollcommand=sources_scrollbar.set)
-        
+
         # Pack treeview and scrollbar
         self.sources_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         sources_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         # Right side - Controls
         controls_frame = ttk.Frame(main_frame)
         controls_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
-        
+
         ttk.Label(controls_frame, text="Actions:", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(0, 10))
-        
+
         # Control buttons
-        ttk.Button(controls_frame, text="➕ Add Source", command=self.add_source_url, width=15).pack(pady=2, fill=tk.X)
-        ttk.Button(controls_frame, text="✏️ Edit Source", command=self.edit_source_url, width=15).pack(pady=2, fill=tk.X)
-        ttk.Button(controls_frame, text="🗑️ Remove Source", command=self.remove_source_url, width=15).pack(pady=2, fill=tk.X)
-        ttk.Button(controls_frame, text="✅ Set Active", command=self.set_active_source, width=15, style="Accent.TButton").pack(pady=2, fill=tk.X)
-        
+        self._btn(controls_frame, "Add Source", "plus", command=self.add_source_url, width=18).pack(pady=2, fill=tk.X)
+        self._btn(controls_frame, "Bulk Import", "download", command=self.bulk_import_sources, width=18).pack(pady=2, fill=tk.X)
+        self._btn(controls_frame, "Edit Source", "pencil", command=self.edit_source_url, width=18).pack(pady=2, fill=tk.X)
+        self._btn(controls_frame, "Remove Source", "trash", command=self.remove_source_url, width=18).pack(pady=2, fill=tk.X)
+
         ttk.Separator(controls_frame, orient='horizontal').pack(fill=tk.X, pady=10)
-        
-        ttk.Button(controls_frame, text="🔍 Test Source", command=self.test_selected_source, width=15).pack(pady=2, fill=tk.X)
-        ttk.Button(controls_frame, text="🔄 Refresh List", command=self.refresh_sources_list, width=15).pack(pady=2, fill=tk.X)
-        
+
+        self._btn(controls_frame, "Toggle Active", "check", command=self.toggle_active_source, width=18, style="Accent.TButton").pack(pady=2, fill=tk.X)
+        self._btn(controls_frame, "Activate All", "toggle", command=self.activate_all_sources, width=18).pack(pady=2, fill=tk.X)
+        self._btn(controls_frame, "Deactivate All", "circle", command=self.deactivate_all_sources, width=18).pack(pady=2, fill=tk.X)
+
+        ttk.Separator(controls_frame, orient='horizontal').pack(fill=tk.X, pady=10)
+
+        self._btn(controls_frame, "Test Source", "search", command=self.test_selected_source, width=18).pack(pady=2, fill=tk.X)
+        self._btn(controls_frame, "Refresh List", "refresh", command=self.refresh_sources_list, width=18).pack(pady=2, fill=tk.X)
+
         # Load sources into the tree
         self.refresh_sources_list()
-        
-        # Bind double-click to set active
-        self.sources_tree.bind('<Double-1>', lambda e: self.set_active_source())
+
+        # Bind double-click to toggle active
+        self.sources_tree.bind('<Double-1>', lambda e: self.toggle_active_source())
 
     def refresh_sources_list(self):
         """Refresh the sources list in the treeview"""
         # Clear existing items
         for item in self.sources_tree.get_children():
             self.sources_tree.delete(item)
-        
+
         # Get source URLs from config
         source_urls = self.config.get('source_urls', [])
-        
+
         # If no source_urls in config, create from legacy format
         if not source_urls and self.config.get('source_url'):
             source_urls = [{
@@ -2396,16 +2741,27 @@ Log Files:"""
             }]
             self.config['source_urls'] = source_urls
             self.save_config()
-        
+
         # Add sources to tree
+        active_names = []
         for i, source in enumerate(source_urls):
-            active_text = "✅" if source.get('active', False) else "⭕"
+            is_active = source.get('active', False)
+            active_text = "[ON]" if is_active else "[OFF]"
             self.sources_tree.insert('', 'end', values=(
                 active_text,
                 source.get('name', f'Source {i+1}'),
                 source.get('url', ''),
                 source.get('selector', '')
             ))
+            if is_active:
+                active_names.append(source.get('name', f'Source {i+1}'))
+
+        # Update active sources summary
+        if hasattr(self, 'active_sources_summary'):
+            if active_names:
+                self.active_sources_summary.set(f"{len(active_names)} source(s): {', '.join(active_names)}")
+            else:
+                self.active_sources_summary.set("No active sources — select at least one!")
 
     def add_source_url(self):
         """Add a new source URL"""
@@ -2415,7 +2771,7 @@ Log Files:"""
         """Edit the selected source URL"""
         selection = self.sources_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a source to edit.")
+            ModernPopup.showwarning(self.root,"No Selection", "Please select a source to edit.")
             return
         
         # Get the index of selected item
@@ -2427,67 +2783,237 @@ Log Files:"""
             self.show_source_dialog(source_urls[index], index)
 
     def remove_source_url(self):
-        """Remove the selected source URL"""
+        """Remove the selected source URL(s)"""
         selection = self.sources_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a source to remove.")
+            ModernPopup.showwarning(self.root,"No Selection", "Please select a source to remove.")
             return
-        
-        if messagebox.askyesno("Confirm Removal", "Are you sure you want to remove this source?"):
-            # Get the index of selected item
-            item = selection[0]
-            index = self.sources_tree.index(item)
-            
-            source_urls = self.config.get('source_urls', [])
-            if index < len(source_urls):
-                removed_source = source_urls.pop(index)
-                
-                # If we removed the active source, set the first one as active
-                if removed_source.get('active', False) and source_urls:
-                    source_urls[0]['active'] = True
-                    self.update_active_source_config(source_urls[0])
-                
-                self.config['source_urls'] = source_urls
-                self.save_config()
-                self.save_main_config()  # Save to blog_config.json for persistence
-                self.refresh_sources_list()
-                self.logger.info(f"Removed source: {removed_source.get('name', 'Unknown')}")
 
-    def set_active_source(self):
-        """Set the selected source as active"""
-        selection = self.sources_tree.selection()
-        if not selection:
-            messagebox.showwarning("No Selection", "Please select a source to set as active.")
-            return
-        
-        # Get the index of selected item
-        item = selection[0]
-        index = self.sources_tree.index(item)
-        
-        source_urls = self.config.get('source_urls', [])
-        if index < len(source_urls):
-            # Set all sources as inactive
-            for source in source_urls:
-                source['active'] = False
-            
-            # Set selected source as active
-            source_urls[index]['active'] = True
-            
-            # Update main config with active source
-            self.update_active_source_config(source_urls[index])
-            
+        count = len(selection)
+        msg = f"Are you sure you want to remove {count} source(s)?" if count > 1 else "Are you sure you want to remove this source?"
+        if ModernPopup.askyesno(self.root,"Confirm Removal", msg):
+            source_urls = self.config.get('source_urls', [])
+            # Get indices in reverse order to avoid shifting
+            indices = sorted([self.sources_tree.index(item) for item in selection], reverse=True)
+            removed_names = []
+            for index in indices:
+                if index < len(source_urls):
+                    removed = source_urls.pop(index)
+                    removed_names.append(removed.get('name', 'Unknown'))
+
+            # If no active sources remain, activate the first one
+            active_sources = [s for s in source_urls if s.get('active', False)]
+            if not active_sources and source_urls:
+                source_urls[0]['active'] = True
+                self.update_active_source_config(source_urls[0])
+            elif active_sources:
+                self.update_active_source_config(active_sources[0])
+
             self.config['source_urls'] = source_urls
             self.save_config()
-            self.save_main_config()  # Save to blog_config.json for persistence
+            self.save_main_config()
             self.refresh_sources_list()
-            
-            # Update the source config form if it exists
-            if hasattr(self, 'source_config_vars'):
-                self.source_config_vars['source_url'][0].set(source_urls[index]['url'])
-                self.source_config_vars['article_selector'][0].set(source_urls[index]['selector'])
-            
-            self.logger.info(f"Set active source: {source_urls[index].get('name', 'Unknown')}")
-            messagebox.showinfo("Success", f"Active source set to: {source_urls[index].get('name', 'Unknown')}")
+            self.logger.info(f"Removed source(s): {', '.join(removed_names)}")
+
+    def set_active_source(self):
+        """Legacy method — redirects to toggle_active_source for backward compatibility"""
+        self.toggle_active_source()
+
+    def toggle_active_source(self):
+        """Toggle active state of selected source(s) — supports multiple active sources"""
+        selection = self.sources_tree.selection()
+        if not selection:
+            ModernPopup.showwarning(self.root,"No Selection", "Please select one or more sources to toggle.")
+            return
+
+        source_urls = self.config.get('source_urls', [])
+        toggled_names = []
+
+        for item in selection:
+            index = self.sources_tree.index(item)
+            if index < len(source_urls):
+                # Toggle active state
+                source_urls[index]['active'] = not source_urls[index].get('active', False)
+                state = "activated" if source_urls[index]['active'] else "deactivated"
+                name = source_urls[index].get('name', 'Unknown')
+                toggled_names.append(f"{name} ({state})")
+
+        # Sync the first active source to legacy config fields
+        active_sources = [s for s in source_urls if s.get('active', False)]
+        if active_sources:
+            self.update_active_source_config(active_sources[0])
+
+        self.config['source_urls'] = source_urls
+        self.save_config()
+        self.save_main_config()
+        self.refresh_sources_list()
+
+        # Update the source config form
+        if hasattr(self, 'source_config_vars') and active_sources:
+            self.source_config_vars['source_url'][0].set(active_sources[0]['url'])
+            self.source_config_vars['article_selector'][0].set(active_sources[0]['selector'])
+
+        self.logger.info(f"Toggled sources: {', '.join(toggled_names)}")
+        ModernPopup.showinfo(self.root,"Sources Updated", "\n".join(toggled_names))
+
+    def activate_all_sources(self):
+        """Activate all sources"""
+        source_urls = self.config.get('source_urls', [])
+        if not source_urls:
+            ModernPopup.showwarning(self.root,"No Sources", "No sources configured. Add a source first.")
+            return
+        for source in source_urls:
+            source['active'] = True
+        if source_urls:
+            self.update_active_source_config(source_urls[0])
+        self.config['source_urls'] = source_urls
+        self.save_config()
+        self.save_main_config()
+        self.refresh_sources_list()
+        self.logger.info(f"Activated all {len(source_urls)} sources")
+        ModernPopup.showinfo(self.root,"Success", f"All {len(source_urls)} sources activated.")
+
+    def deactivate_all_sources(self):
+        """Deactivate all sources"""
+        source_urls = self.config.get('source_urls', [])
+        for source in source_urls:
+            source['active'] = False
+        self.config['source_urls'] = source_urls
+        self.save_config()
+        self.save_main_config()
+        self.refresh_sources_list()
+        self.logger.info("Deactivated all sources")
+        ModernPopup.showinfo(self.root,"Success", "All sources deactivated.")
+
+    def bulk_import_sources(self):
+        """Import multiple sources at once by pasting URLs"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Bulk Import Sources")
+        dialog.geometry("600x500")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+        dialog.geometry(f"+{x}+{y}")
+
+        main_frame = ttk.Frame(dialog, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(main_frame, text="Bulk Import Sources",
+                  font=('TkDefaultFont', 14, 'bold')).pack(anchor=tk.W, pady=(0, 10))
+
+        ttk.Label(main_frame,
+                  text="Paste one URL per line. The app will auto-detect the best CSS selector for each URL.\n"
+                       "URLs without http:// or https:// will be auto-corrected.",
+                  font=('TkDefaultFont', 9), foreground='#444', wraplength=550).pack(anchor=tk.W, pady=(0, 10))
+
+        # Text area for URLs
+        text_frame = ttk.LabelFrame(main_frame, text="URLs (one per line)", padding=5)
+        text_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+
+        url_text = tk.Text(text_frame, wrap=tk.WORD, height=12, font=("Consolas", 10))
+        url_text.pack(fill=tk.BOTH, expand=True)
+
+        # Options
+        options_frame = ttk.Frame(main_frame)
+        options_frame.pack(fill=tk.X, pady=(0, 10))
+
+        auto_activate = tk.BooleanVar(value=True)
+        ttk.Checkbutton(options_frame, text="Set imported sources as active", variable=auto_activate).pack(side=tk.LEFT)
+
+        auto_detect_selector = tk.BooleanVar(value=True)
+        ttk.Checkbutton(options_frame, text="Auto-detect CSS selectors", variable=auto_detect_selector).pack(side=tk.LEFT, padx=(20, 0))
+
+        # Progress
+        progress_var = tk.StringVar(value="")
+        ttk.Label(main_frame, textvariable=progress_var, foreground="#666").pack(anchor=tk.W)
+
+        def do_import():
+            raw = url_text.get("1.0", tk.END).strip()
+            if not raw:
+                ModernPopup.showwarning(self.root,"Empty", "Please paste at least one URL.")
+                return
+
+            urls = [line.strip() for line in raw.splitlines() if line.strip()]
+            if not urls:
+                ModernPopup.showwarning(self.root,"Empty", "No valid URLs found.")
+                return
+
+            source_urls = self.config.get('source_urls', [])
+            existing_urls = {s.get('url', '') for s in source_urls}
+            added = 0
+            skipped = 0
+
+            for i, url in enumerate(urls):
+                progress_var.set(f"Processing {i+1}/{len(urls)}: {url[:50]}...")
+                dialog.update()
+
+                # Normalize URL
+                if not url.startswith(('http://', 'https://')):
+                    url = 'https://' + url
+
+                if url in existing_urls:
+                    skipped += 1
+                    continue
+
+                # Auto-detect selector
+                selector = ""
+                if auto_detect_selector.get():
+                    try:
+                        from auto_blogger.css_selector_extractor import CSSelectorExtractor
+                        extractor = CSSelectorExtractor(self.logger)
+                        result = extractor.analyze_url(url)
+                        if result.get('success') and result.get('selectors'):
+                            selector = result['selectors'][0]['selector']
+                    except Exception as e:
+                        self.logger.debug(f"Auto-detect failed for {url}: {e}")
+
+                if not selector:
+                    selector = "article h2 a"  # Safe default
+
+                # Generate name from domain
+                try:
+                    from urllib.parse import urlparse
+                    domain = urlparse(url).netloc.replace('www.', '')
+                    name = domain.split('.')[0].title()
+                except Exception:
+                    name = f"Source {len(source_urls) + 1}"
+
+                new_source = {
+                    'name': name,
+                    'url': url,
+                    'selector': selector,
+                    'active': auto_activate.get()
+                }
+                source_urls.append(new_source)
+                existing_urls.add(url)
+                added += 1
+
+            self.config['source_urls'] = source_urls
+
+            # Sync first active to legacy fields
+            active_sources = [s for s in source_urls if s.get('active', False)]
+            if active_sources:
+                self.update_active_source_config(active_sources[0])
+
+            self.save_config()
+            self.save_main_config()
+            self.refresh_sources_list()
+
+            progress_var.set("")
+            self.logger.info(f"Bulk import: {added} added, {skipped} skipped (duplicates)")
+            ModernPopup.showinfo(self.root,"Import Complete",
+                                f"Added: {added} source(s)\nSkipped: {skipped} (already exist)\n\n"
+                                f"Tip: Edit sources to refine auto-detected CSS selectors.")
+            dialog.destroy()
+
+        # Buttons
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(fill=tk.X, pady=(10, 0))
+        self._btn(btn_frame, "Import", "download", command=do_import, style="Accent.TButton").pack(side=tk.LEFT, padx=5)
+        self._btn(btn_frame, "Cancel", "xmark", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
 
     def update_active_source_config(self, source):
         """Update the main config with the active source details"""
@@ -2514,7 +3040,7 @@ Log Files:"""
         """Test the selected source URL"""
         selection = self.sources_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a source to test.")
+            ModernPopup.showwarning(self.root,"No Selection", "Please select a source to test.")
             return
         
         # Get the index of selected item
@@ -2593,154 +3119,193 @@ Log Files:"""
         """Show dialog for adding/editing source URL"""
         dialog = tk.Toplevel(self.root)
         dialog.title("Add Source" if source is None else "Edit Source")
-        dialog.geometry("500x350")
+        dialog.geometry("600x450")
         dialog.transient(self.root)
         dialog.grab_set()
-        
+
         # Center the dialog
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
         y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
         dialog.geometry(f"+{x}+{y}")
-        
+
         # Create form
         main_frame = ttk.Frame(dialog, padding=20)
         main_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # Instructions label
         instructions = ttk.Label(main_frame,
-            text="💡 Fill in all fields below. Use '🔍 Auto-Extract Selectors' to automatically detect the right CSS selector for your URL.\n"
-                 "CSS Selector tells the app which HTML elements contain the article links (e.g., 'article h2 a' or '.post-title a').\n"
+            text="Fill in the fields below. Use 'Auto-Extract Selectors' to automatically detect the CSS selector.\n"
+                 "Multiple sources can be active at the same time — articles are fetched from all active sources.\n"
                  "Right-click any field for copy/paste, or use Ctrl+V / Cmd+V.",
-            font=('TkDefaultFont', 8), foreground='#444444', wraplength=480, justify=tk.LEFT)
+            font=('TkDefaultFont', 9), foreground='#444444', wraplength=560, justify=tk.LEFT)
         instructions.grid(row=0, column=0, columnspan=2, pady=(0, 15), sticky=tk.W)
-        
+
         # Name field
         ttk.Label(main_frame, text="Source Name:").grid(row=1, column=0, sticky=tk.W, pady=5)
         name_var = tk.StringVar(value=source.get('name', '') if source else '')
-        name_entry = ttk.Entry(main_frame, textvariable=name_var, width=50)
+        name_entry = ttk.Entry(main_frame, textvariable=name_var, width=55)
         name_entry.grid(row=1, column=1, pady=5, padx=10)
         self.add_entry_context_menu(name_entry)
-        
-        # URL field
+
+        # URL field with auto-name on paste/type
         ttk.Label(main_frame, text="Source URL:").grid(row=2, column=0, sticky=tk.W, pady=5)
         url_var = tk.StringVar(value=source.get('url', '') if source else '')
-        url_entry = ttk.Entry(main_frame, textvariable=url_var, width=50)
+        url_entry = ttk.Entry(main_frame, textvariable=url_var, width=55)
         url_entry.grid(row=2, column=1, pady=5, padx=10)
         self.add_entry_context_menu(url_entry)
-        
+
+        def on_url_change(*args):
+            """Auto-fill name from URL domain if name is empty"""
+            url = url_var.get().strip()
+            if url and not name_var.get().strip():
+                try:
+                    from urllib.parse import urlparse
+                    parsed = urlparse(url if url.startswith('http') else 'https://' + url)
+                    domain = parsed.netloc.replace('www.', '')
+                    name_var.set(domain.split('.')[0].title())
+                except Exception:
+                    pass
+
+        url_var.trace_add('write', on_url_change)
+
         # Selector field
         css_label_frame = ttk.Frame(main_frame)
         css_label_frame.grid(row=3, column=0, sticky=tk.W, pady=5)
         ttk.Label(css_label_frame, text="CSS Selector:").pack(anchor=tk.W)
         ttk.Label(css_label_frame, text="(e.g. article h2 a)", font=("Arial", 8), foreground="#888").pack(anchor=tk.W)
         selector_var = tk.StringVar(value=source.get('selector', '') if source else '')
-        selector_entry = ttk.Entry(main_frame, textvariable=selector_var, width=50)
+        selector_entry = ttk.Entry(main_frame, textvariable=selector_var, width=55)
         selector_entry.grid(row=3, column=1, pady=5, padx=10)
         self.add_entry_context_menu(selector_entry)
-        
+
         # Auto-extract selector button
         auto_extract_frame = ttk.Frame(main_frame)
         auto_extract_frame.grid(row=4, column=1, sticky=tk.W, pady=5)
-        
+
         def auto_extract_selectors():
             """Automatically extract CSS selectors from the URL"""
             url = url_var.get().strip()
             if not url:
-                messagebox.showerror("Error", "Please enter a URL first.")
+                ModernPopup.showerror(self.root,"Error", "Please enter a URL first.")
                 return
-            
             self.show_selector_extraction_dialog(url, selector_var, name_var.get().strip() or "Source")
-        
-        ttk.Button(auto_extract_frame, text="🔍 Auto-Extract Selectors", command=auto_extract_selectors).pack(side=tk.LEFT)
-        ttk.Label(auto_extract_frame, text="← Automatically find CSS selectors from URL", 
+
+        self._btn(auto_extract_frame, "Auto-Extract Selectors", "search", command=auto_extract_selectors).pack(side=tk.LEFT)
+        ttk.Label(auto_extract_frame, text="Finds CSS selectors automatically",
                  font=('TkDefaultFont', 8), foreground='#666666').pack(side=tk.LEFT, padx=(10, 0))
-        
+
         # Active checkbox
-        active_var = tk.BooleanVar(value=source.get('active', False) if source else False)
-        ttk.Checkbutton(main_frame, text="Set as active source", variable=active_var).grid(row=5, column=1, sticky=tk.W, pady=10)
-        
+        active_var = tk.BooleanVar(value=source.get('active', True) if source else True)
+        ttk.Checkbutton(main_frame, text="Set as active source (multiple sources can be active)", variable=active_var).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=10)
+
         # Test button
         test_frame = ttk.Frame(main_frame)
         test_frame.grid(row=6, column=0, columnspan=2, pady=10)
-        
+
         def test_current_config():
             """Test the current configuration in the dialog"""
             name = name_var.get().strip()
             url = url_var.get().strip()
             selector = selector_var.get().strip()
-            
-            if not url or not selector:
-                messagebox.showerror("Error", "URL and CSS Selector are required for testing.")
+
+            if not url:
+                ModernPopup.showerror(self.root,"Error", "URL is required for testing.")
                 return
-            
+
+            # Auto-detect selector if missing
+            if not selector:
+                ModernPopup.showinfo(self.root,"Auto-Detect", "No CSS selector set. Will auto-detect...")
+                auto_extract_selectors()
+                return
+
             self.test_source_configuration(url, selector, name or "Test Source")
-        
-        ttk.Button(test_frame, text="🧪 Test Configuration", command=test_current_config).pack()
-        
+
+        self._btn(test_frame, "Test Configuration", "flask", command=test_current_config).pack()
+
         # Buttons
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=7, column=0, columnspan=2, pady=20)
-        
+
         def save_source():
             name = name_var.get().strip()
             url = url_var.get().strip()
             selector = selector_var.get().strip()
-            
-            if not name or not url or not selector:
-                messagebox.showerror("Error", "All fields are required.")
+
+            # Auto-correct URL protocol
+            if url and not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+                url_var.set(url)
+
+            if not name or not url:
+                ModernPopup.showerror(self.root,"Error", "Name and URL are required.")
                 return
-            
+
+            # If no selector, try auto-detect before giving up
+            if not selector:
+                try:
+                    from auto_blogger.css_selector_extractor import CSSelectorExtractor
+                    extractor = CSSelectorExtractor(self.logger)
+                    result = extractor.analyze_url(url)
+                    if result.get('success') and result.get('selectors'):
+                        selector = result['selectors'][0]['selector']
+                        selector_var.set(selector)
+                        self.logger.info(f"Auto-detected selector: {selector}")
+                    else:
+                        selector = "article h2 a"
+                        selector_var.set(selector)
+                        self.logger.info(f"Using default selector: {selector}")
+                except Exception:
+                    selector = "article h2 a"
+                    selector_var.set(selector)
+
             source_urls = self.config.get('source_urls', [])
-            
+
             new_source = {
                 'name': name,
                 'url': url,
                 'selector': selector,
                 'active': active_var.get()
             }
-            
+
             if index is not None:  # Editing existing source
                 source_urls[index] = new_source
             else:  # Adding new source
                 source_urls.append(new_source)
-            
-            # If this source is set as active, deactivate others
+
+            # Sync first active source to legacy config
             if active_var.get():
-                for i, src in enumerate(source_urls):
-                    if i != (index if index is not None else len(source_urls) - 1):
-                        src['active'] = False
                 self.update_active_source_config(new_source)
-            
+
             self.config['source_urls'] = source_urls
             self.save_config()
-            self.save_main_config()  # Save to blog_config.json for persistence
+            self.save_main_config()
             self.refresh_sources_list()
-            
+
             # Update the source config form if it exists
             if hasattr(self, 'source_config_vars') and active_var.get():
                 self.source_config_vars['source_url'][0].set(url)
                 self.source_config_vars['article_selector'][0].set(selector)
-            
+
             self.logger.info(f"{'Updated' if index is not None else 'Added'} source: {name}")
             dialog.destroy()
-        
-        ttk.Button(button_frame, text="💾 Save", command=save_source, style="Accent.TButton").pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="❌ Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
-        
-        # Focus on name field
-        name_entry.focus()
-        
+
+        self._btn(button_frame, "Save", "save", command=save_source, style="Accent.TButton").pack(side=tk.LEFT, padx=5)
+        self._btn(button_frame, "Cancel", "xmark", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+        # Focus on URL field if adding new, name field if editing
+        if source is None:
+            url_entry.focus()
+        else:
+            name_entry.focus()
+
         # Handle Enter key to save
-        def on_enter(event):
-            save_source()
-        
-        dialog.bind('<Return>', on_enter)
-        dialog.bind('<KP_Enter>', on_enter)
+        dialog.bind('<Return>', lambda e: save_source())
+        dialog.bind('<KP_Enter>', lambda e: save_source())
 
     def test_source_configuration(self, url, selector, name="Source"):
         """Test a specific source configuration"""
-        self.logger.info(f"🔍 Testing {name} configuration...")
+        self.logger.info(f"Testing {name} configuration...")
         self.logger.info(f"URL: {url}")
         self.logger.info(f"Selector: {selector}")
         
@@ -2768,15 +3333,15 @@ Log Files:"""
                         full_url = urljoin(url, href) if not href.startswith('http') else href
                         samples.append(f"• {text}\n  {full_url}")
                 sample_text = "\n\n".join(samples) if samples else "(Could not retrieve sample titles)"
-                self.logger.info(f"✅ {name} test successful! Found {len(articles)} articles.")
+                self.logger.info(f"[OK] {name} test successful! Found {len(articles)} articles.")
                 for s in samples:
                     self.logger.info(f"  {s}")
-                messagebox.showinfo(
+                ModernPopup.showinfo(self.root,
                     "Test Successful",
-                    f"✅ {name} is working!\n\nFound {len(articles)} article links.\n\nSample articles:\n\n{sample_text}"
+                    f"[OK] {name} is working!\n\nFound {len(articles)} article links.\n\nSample articles:\n\n{sample_text}"
                 )
             else:
-                self.logger.warning(f"⚠️ {name}: no articles found with selector '{selector}'")
+                self.logger.warning(f"[!] {name}: no articles found with selector '{selector}'")
                 # Try to give the user a hint by listing common selectors found on the page
                 hint_selectors = ["article h2 a", "h2 a", ".post-title a", ".entry-title a", "h3 a"]
                 found_hints = []
@@ -2785,21 +3350,21 @@ Log Files:"""
                     if count > 0:
                         found_hints.append(f"  '{hint_sel}' → {count} match(es)")
                 hint_text = "\n".join(found_hints) if found_hints else "  (no common article selectors found — try Auto-Extract)"
-                messagebox.showwarning(
+                ModernPopup.showwarning(self.root,
                     "No Articles Found",
-                    f"⚠️ No articles found with selector:\n  {selector}\n\n"
+                    f"[!] No articles found with selector:\n  {selector}\n\n"
                     f"Alternative selectors found on this page:\n{hint_text}\n\n"
-                    f"Tip: Click '🔍 Auto-Extract Selectors' in the Add/Edit Source dialog to automatically find the right selector."
+                    f"Tip: Click 'Auto-Extract Selectors' in the Add/Edit Source dialog to automatically find the right selector."
                 )
                 
         except Exception as e:
-            self.logger.error(f"❌ {name} test failed: {str(e)}")
-            messagebox.showerror("Test Failed", f"Failed to test {name}:\n{str(e)}")
+            self.logger.error(f"[X] {name} test failed: {str(e)}")
+            ModernPopup.showerror(self.root,"Test Failed", f"Failed to test {name}:\n{str(e)}")
 
     def show_selector_extraction_dialog(self, url, selector_var, source_name):
         """Show dialog for automatic CSS selector extraction"""
         if not CSSelectorExtractor:
-            messagebox.showerror("Error", "CSS Selector Extractor not available. Please check installation.")
+            ModernPopup.showerror(self.root,"Error", "CSS Selector Extractor not available. Please check installation.")
             return
         
         # Create dialog
@@ -2823,7 +3388,7 @@ Log Files:"""
         header_frame = ttk.Frame(main_frame)
         header_frame.pack(fill=tk.X, pady=(0, 20))
         
-        ttk.Label(header_frame, text="🔍 Automatic CSS Selector Extraction", 
+        ttk.Label(header_frame, text="Automatic CSS Selector Extraction", 
                  font=('TkDefaultFont', 14, 'bold')).pack(side=tk.LEFT)
         
         # URL display
@@ -2845,7 +3410,7 @@ Log Files:"""
         progress_bar.pack(side=tk.RIGHT, padx=(10, 0))
         
         # Results frame
-        results_frame = ttk.LabelFrame(main_frame, text="📊 Analysis Results", padding=10)
+        results_frame = ttk.LabelFrame(main_frame, text="Analysis Results", padding=10)
         results_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
         
         # Create treeview for selectors
@@ -2876,7 +3441,7 @@ Log Files:"""
         results_frame.grid_columnconfigure(0, weight=1)
         
         # Latest post info
-        latest_frame = ttk.LabelFrame(main_frame, text="🆕 Latest Post Found", padding=10)
+        latest_frame = ttk.LabelFrame(main_frame, text="Latest Post Found", padding=10)
         latest_frame.pack(fill=tk.X, pady=(0, 20))
         
         latest_var = tk.StringVar(value="No analysis performed yet.")
@@ -2889,7 +3454,7 @@ Log Files:"""
         def perform_analysis():
             """Perform the CSS selector analysis"""
             try:
-                progress_var.set("🔍 Analyzing webpage...")
+                progress_var.set("Analyzing webpage...")
                 progress_bar.start()
                 dialog.update()
                 
@@ -2903,7 +3468,7 @@ Log Files:"""
                 progress_bar.stop()
                 
                 if results.get('success'):
-                    progress_var.set(f"✅ Analysis complete! Found {results.get('article_links_count', 0)} article links.")
+                    progress_var.set(f"[OK] Analysis complete! Found {results.get('article_links_count', 0)} article links.")
                     
                     # Clear existing items
                     for item in tree.get_children():
@@ -2940,12 +3505,12 @@ Log Files:"""
                         tree.focus(tree.get_children()[0])
                         
                 else:
-                    progress_var.set(f"❌ Analysis failed: {results.get('error', 'Unknown error')}")
+                    progress_var.set(f"[X] Analysis failed: {results.get('error', 'Unknown error')}")
                     latest_var.set("Analysis failed.")
                     
             except Exception as e:
                 progress_bar.stop()
-                progress_var.set(f"❌ Error during analysis: {str(e)}")
+                progress_var.set(f"[X] Error during analysis: {str(e)}")
                 latest_var.set("Analysis failed.")
                 self.logger.error(f"CSS selector extraction error: {e}")
         
@@ -2953,7 +3518,7 @@ Log Files:"""
             """Use the selected CSS selector"""
             selection = tree.selection()
             if not selection:
-                messagebox.showwarning("No Selection", "Please select a CSS selector from the list.")
+                ModernPopup.showwarning(self.root,"No Selection", "Please select a CSS selector from the list.")
                 return
             
             # Get selected selector
@@ -2964,7 +3529,7 @@ Log Files:"""
             selector_var.set(selected_selector)
             
             # Show confirmation
-            messagebox.showinfo("Selector Applied", f"CSS selector has been set to:\n{selected_selector}")
+            ModernPopup.showinfo(self.root,"Selector Applied", f"CSS selector has been set to:\n{selected_selector}")
             
             # Close dialog
             dialog.destroy()
@@ -2973,7 +3538,7 @@ Log Files:"""
             """Test the selected CSS selector"""
             selection = tree.selection()
             if not selection:
-                messagebox.showwarning("No Selection", "Please select a CSS selector from the list.")
+                ModernPopup.showwarning(self.root,"No Selection", "Please select a CSS selector from the list.")
                 return
             
             # Get selected selector
@@ -2987,10 +3552,10 @@ Log Files:"""
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X)
         
-        ttk.Button(button_frame, text="🔍 Analyze URL", command=perform_analysis).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="🧪 Test Selected", command=test_selected_selector).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="✅ Use Selected", command=use_selected_selector, style="Accent.TButton").pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="❌ Cancel", command=dialog.destroy).pack(side=tk.RIGHT)
+        self._btn(button_frame, "Analyze URL", "search", command=perform_analysis).pack(side=tk.LEFT, padx=(0, 10))
+        self._btn(button_frame, "Test Selected", "flask", command=test_selected_selector).pack(side=tk.LEFT, padx=(0, 10))
+        self._btn(button_frame, "Use Selected", "check", command=use_selected_selector, style="Accent.TButton").pack(side=tk.LEFT, padx=(0, 10))
+        self._btn(button_frame, "Cancel", "xmark", command=dialog.destroy).pack(side=tk.RIGHT)
         
         # Auto-start analysis
         dialog.after(500, perform_analysis)
@@ -3011,7 +3576,9 @@ Log Files:"""
                     # Add paste functionality to Entry widgets when enabled
                     if hasattr(entry, 'winfo_class') and entry.winfo_class() == 'TEntry':
                         self.add_entry_context_menu(entry)
-            self.edit_icon_btn.config(text="💾 Save", command=self.save_source_config)
+            _save_icon = self._icon('save')
+            self.edit_icon_btn.config(text=" Save", command=self.save_source_config,
+                                       image=_save_icon, compound='left') if _save_icon else self.edit_icon_btn.config(text="Save", command=self.save_source_config)
             self.source_btn_frame.grid()
         else:
             # Disable all fields
@@ -3022,7 +3589,9 @@ Log Files:"""
                     entry.config(state='readonly')
                 else:
                     entry.config(state='readonly')
-            self.edit_icon_btn.config(text="✏️ Edit", command=self.toggle_source_edit_mode)
+            _edit_icon = self._icon('pencil')
+            self.edit_icon_btn.config(text=" Edit", command=self.toggle_source_edit_mode,
+                                       image=_edit_icon, compound='left') if _edit_icon else self.edit_icon_btn.config(text="Edit", command=self.toggle_source_edit_mode)
             self.source_btn_frame.grid_remove()
 
     def save_source_config(self):
@@ -3031,7 +3600,7 @@ Log Files:"""
             self.config[key] = var.get()
         self.save_config()
         self.logger.info("Source configuration saved successfully")
-        messagebox.showinfo("Success", "Source configuration saved successfully")
+        ModernPopup.showinfo(self.root,"Success", "Source configuration saved successfully")
         self.toggle_source_edit_mode()
 
     def cancel_source_edit(self):
@@ -3080,7 +3649,7 @@ Log Files:"""
             self.logger.info("Opened GitHub link in browser")
         except Exception as e:
             self.logger.error(f"Error opening GitHub link: {e}")
-            messagebox.showinfo("GitHub", "Visit: https://github.com/AryanVBW")
+            ModernPopup.showinfo(self.root,"GitHub", "Visit: https://github.com/AryanVBW")
         
     def apply_theme(self):
         """Apply a modern theme to the GUI"""
@@ -3138,26 +3707,26 @@ Log Files:"""
         
         # Extract level from message - improved parsing
         message_upper = message.upper()
-        if "ERROR" in message_upper or "❌" in message:
+        if "ERROR" in message_upper or "[X]" in message:
             message_level = "ERROR"
             message_category = "ERROR"
-        elif "WARNING" in message_upper or "WARN" in message_upper or "⚠️" in message:
+        elif "WARNING" in message_upper or "WARN" in message_upper:
             message_level = "WARNING"
             message_category = "WARNING"
-        elif "DEBUG" in message_upper or "🔧" in message:
+        elif "DEBUG" in message_upper:
             message_level = "DEBUG"
             message_category = "DEBUG"
-        elif "INFO" in message_upper or "ℹ️" in message or "✅" in message or "🔄" in message:
+        elif "INFO" in message_upper or "[OK]" in message or "[>>]" in message:
             message_level = "INFO"
             message_category = "INFO"
         
         # Enhanced category detection with better patterns
         lower_message = message.lower()
-        if any(word in lower_message for word in ['automation', 'processing', 'article', 'blog', '🤖', 'extracting', 'paraphrasing', 'generating']):
+        if any(word in lower_message for word in ['automation', 'processing', 'article', 'blog', 'extracting', 'paraphrasing', 'generating']):
             message_category = "AUTOMATION"
-        elif any(word in lower_message for word in ['api', 'request', 'response', 'wordpress', 'endpoint', '🌐', 'post', 'wp-json']):
+        elif any(word in lower_message for word in ['api', 'request', 'response', 'wordpress', 'endpoint', 'post', 'wp-json']):
             message_category = "API"
-        elif any(word in lower_message for word in ['security', 'auth', 'login', 'credential', 'password', '🔒', 'authentication']):
+        elif any(word in lower_message for word in ['security', 'auth', 'login', 'credential', 'password', 'authentication']):
             message_category = "SECURITY"
         elif any(word in lower_message for word in ['webdriver', 'selenium', 'chrome', 'driver', 'browser', 'chromedriver']):
             message_category = "WEBDRIVER"
@@ -3202,13 +3771,13 @@ Log Files:"""
             if hasattr(self, 'status_label'):
                 try:
                     if message_level == "ERROR":
-                        self.status_label.config(text="❌ Error occurred - check logs")
-                    elif "🚀" in message or "starting" in lower_message:
-                        self.status_label.config(text="🔄 Automation running...")
-                    elif "✅" in message or "completed" in lower_message or "success" in lower_message:
-                        self.status_label.config(text="✅ Operation completed")
-                    elif "🔄" in message or "initializing" in lower_message:
-                        self.status_label.config(text="🔄 Processing...")
+                        self.status_label.config(text="[X] Error occurred - check logs")
+                    elif "starting" in lower_message:
+                        self.status_label.config(text="[>>] Automation running...")
+                    elif "completed" in lower_message or "success" in lower_message:
+                        self.status_label.config(text="[OK] Operation completed")
+                    elif "initializing" in lower_message:
+                        self.status_label.config(text="[>>] Processing...")
                 except tk.TclError:
                     pass
         
@@ -3238,11 +3807,11 @@ Log Files:"""
                 self.logger.info(f"Installing {req}...")
                 subprocess.check_call([sys.executable, "-m", "pip", "install", req])
                 
-            messagebox.showinfo("Success", "Requirements installed successfully! Please restart the application.")
+            ModernPopup.showinfo(self.root,"Success", "Requirements installed successfully! Please restart the application.")
             
         except Exception as e:
             self.logger.error(f"Error installing requirements: {e}")
-            messagebox.showerror("Error", f"Failed to install requirements: {e}")
+            ModernPopup.showerror(self.root,"Error", f"Failed to install requirements: {e}")
             
     def _build_wp_session(self, wp_url: str) -> 'requests.Session':
         """Build a requests.Session that can talk to any WordPress site, including
@@ -3284,19 +3853,19 @@ Log Files:"""
                             headers={"Connection": "close"}, allow_redirects=False)
 
             if 'slowAES' in r.text:
-                self.logger.info("🔐 DDoS-Guard protection detected — solving AES challenge...")
+                self.logger.info("DDoS-Guard protection detected — solving AES challenge...")
                 cookie_val = self._solve_aes_challenge(r.text)
                 if cookie_val:
                     from urllib.parse import urlparse
                     domain = urlparse(wp_url).netloc
                     session.cookies.set('__test', cookie_val, domain=domain, path='/')
-                    self.logger.info(f"✅ Challenge solved — __test cookie set")
+                    self.logger.info(f"[OK] Challenge solved — __test cookie set")
                     # Hit the ?i=1 confirmation URL so the server sees the cookie
                     sep = '&' if '?' in probe_url else '?'
                     session.get(f"{probe_url}{sep}i=1", timeout=15, verify=verify,
                                 allow_redirects=True)
                 else:
-                    self.logger.warning("⚠️ Could not solve DDoS-Guard challenge")
+                    self.logger.warning("[!] Could not solve DDoS-Guard challenge")
         except Exception as e:
             self.logger.debug(f"Session probe: {e}")
 
@@ -3349,7 +3918,7 @@ Log Files:"""
                 password = self.password_var.get().strip()
 
                 if not all([wp_url, username, password]):
-                    self.root.after(0, lambda: messagebox.showerror(
+                    self.root.after(0, lambda: ModernPopup.showerror(self.root,
                         "Missing Fields", "Please fill in WordPress URL, Username, and Password."))
                     return
 
@@ -3362,8 +3931,8 @@ Log Files:"""
                 clean_password = password.replace(' ', '')
 
                 self.root.after(0, lambda: self.connection_status.config(
-                    text="🔄 Testing connection...", foreground="blue"))
-                self.logger.info(f"🔌 Testing WordPress connection: {wp_url}")
+                    text="Testing connection...", foreground="blue"))
+                self.logger.info(f"Testing WordPress connection: {wp_url}")
 
                 auth = HTTPBasicAuth(username, clean_password)
 
@@ -3376,16 +3945,16 @@ Log Files:"""
                 try:
                     response = session.get(test_url, auth=auth, timeout=20, verify=verify)
                 except requests.exceptions.SSLError:
-                    self.logger.warning("⚠️ SSL error — retrying without certificate verification")
+                    self.logger.warning("[!] SSL error — retrying without certificate verification")
                     response = session.get(test_url, auth=auth, timeout=20, verify=False)
 
                 # Check if we still got the challenge page instead of JSON
                 if response.status_code == 200 and 'slowAES' in response.text:
                     self.root.after(0, lambda: self.connection_status.config(
-                        text="⚠️ Bot-protection could not be bypassed", foreground="orange"))
-                    self.root.after(0, lambda: messagebox.showwarning(
+                        text="Bot-protection could not be bypassed", foreground="orange"))
+                    self.root.after(0, lambda: ModernPopup.showwarning(self.root,
                         "Bot Protection Active",
-                        "⚠️ The site's DDoS-Guard protection could not be bypassed automatically.\n\n"
+                        "[!] The site's DDoS-Guard protection could not be bypassed automatically.\n\n"
                         "This may happen if the site requires a real browser.\n"
                         "The automation will still attempt to post — try running it and check the logs."))
                     return
@@ -3397,12 +3966,12 @@ Log Files:"""
                     except Exception:
                         post_count = 0
                     self.root.after(0, lambda: self.connection_status.config(
-                        text="✅ Connected successfully", foreground="green"))
+                        text="Connected successfully", foreground="green"))
                     self.root.after(0, lambda: self.connection_indicator.config(foreground="green"))
-                    self.logger.info(f"✅ WordPress connection OK — {post_count} post(s) returned")
-                    self.root.after(0, lambda: messagebox.showinfo(
+                    self.logger.info(f"[OK] WordPress connection OK — {post_count} post(s) returned")
+                    self.root.after(0, lambda: ModernPopup.showinfo(self.root,
                         "Connection Successful",
-                        f"✅ WordPress connection successful!\n\n"
+                        f"[OK] WordPress connection successful!\n\n"
                         f"URL: {wp_url}\n"
                         f"User: {username}\n"
                         f"Posts found: {post_count}\n\n"
@@ -3410,10 +3979,10 @@ Log Files:"""
 
                 elif response.status_code == 401:
                     self.root.after(0, lambda: self.connection_status.config(
-                        text="❌ Authentication failed (401)", foreground="red"))
-                    self.root.after(0, lambda: messagebox.showerror(
+                        text="Authentication failed (401)", foreground="red"))
+                    self.root.after(0, lambda: ModernPopup.showerror(self.root,
                         "Authentication Failed",
-                        "❌ HTTP 401 — Authentication failed.\n\n"
+                        "[X] HTTP 401 — Authentication failed.\n\n"
                         "Please check:\n"
                         "• Username is your WordPress login username\n"
                         "• Password is an Application Password (not your login password)\n"
@@ -3423,10 +3992,10 @@ Log Files:"""
 
                 elif response.status_code == 403:
                     self.root.after(0, lambda: self.connection_status.config(
-                        text="❌ Forbidden (403)", foreground="red"))
-                    self.root.after(0, lambda: messagebox.showerror(
+                        text="Forbidden (403)", foreground="red"))
+                    self.root.after(0, lambda: ModernPopup.showerror(self.root,
                         "Access Forbidden",
-                        "❌ HTTP 403 — Access forbidden.\n\n"
+                        "[X] HTTP 403 — Access forbidden.\n\n"
                         "• WordPress REST API may be disabled\n"
                         "• A security plugin (Wordfence, etc.) may be blocking the request\n"
                         "• The user account may lack the required permissions"))
@@ -3435,8 +4004,8 @@ Log Files:"""
                     status = response.status_code
                     snippet = response.text[:300]
                     self.root.after(0, lambda: self.connection_status.config(
-                        text=f"❌ HTTP {status}", foreground="red"))
-                    self.root.after(0, lambda: messagebox.showwarning(
+                        text=f"HTTP {status}", foreground="red"))
+                    self.root.after(0, lambda: ModernPopup.showwarning(self.root,
                         "Unexpected Response",
                         f"HTTP {status}\n\nResponse preview:\n{snippet}"))
 
@@ -3451,21 +4020,21 @@ Log Files:"""
                 else:
                     detail = f"Could not reach the server.\n\nCheck the URL and your internet connection.\n\n{err[:200]}"
                 self.root.after(0, lambda d=detail: self.connection_status.config(
-                    text="❌ Connection failed", foreground="red"))
-                self.root.after(0, lambda d=detail: messagebox.showerror("Connection Error", f"❌ {d}"))
+                    text="Connection failed", foreground="red"))
+                self.root.after(0, lambda d=detail: ModernPopup.showerror(self.root,"Connection Error", f"[X] {d}"))
                 self.logger.error(f"Connection error: {err}")
 
             except requests.exceptions.Timeout:
                 self.root.after(0, lambda: self.connection_status.config(
-                    text="❌ Timed out", foreground="red"))
-                self.root.after(0, lambda: messagebox.showerror(
-                    "Timeout", "❌ The server did not respond within 20 seconds.\nCheck the URL and try again."))
+                    text="Timed out", foreground="red"))
+                self.root.after(0, lambda: ModernPopup.showerror(self.root,
+                    "Timeout", "[X] The server did not respond within 20 seconds.\nCheck the URL and try again."))
 
             except Exception as e:
                 msg = str(e)
                 self.root.after(0, lambda m=msg: self.connection_status.config(
-                    text=f"❌ {m[:50]}", foreground="red"))
-                self.root.after(0, lambda m=msg: messagebox.showerror("Connection Error", f"❌ {m}"))
+                    text=f"{m[:50]}", foreground="red"))
+                self.root.after(0, lambda m=msg: ModernPopup.showerror(self.root,"Connection Error", f"[X] {m}"))
                 self.logger.error(f"test_connection error: {e}")
 
         threading.Thread(target=_run_test, daemon=True).start()
@@ -3490,13 +4059,13 @@ Log Files:"""
             with open('blog_config.json', 'w') as f:
                 json.dump(self.config, f, indent=4)
             
-            self.logger.info("✅ Configuration saved")
+            self.logger.info("[OK] Configuration saved")
             
             # Initialize automation engine
             self.automation_engine = BlogAutomationEngine(self.config, self.logger)
             
             # Update UI
-            self.connection_status.config(text="Connected ✅", foreground="green")
+            self.connection_status.config(text="Connected", foreground="green")
             
             # Update source URL in automation tab if it exists
             if hasattr(self, 'config_source_url'):
@@ -3511,7 +4080,7 @@ Log Files:"""
         except Exception as e:
             self.logger.error(f"Login failed: {e}")
             self.connection_status.config(text=f"Connection failed: {str(e)}", foreground="red")
-            messagebox.showerror("Login Failed", f"Could not initialize automation engine: {e}")
+            ModernPopup.showerror(self.root,"Login Failed", f"Could not initialize automation engine: {e}")
             
     def save_configuration(self):
         """Save configuration to file"""
@@ -3559,11 +4128,11 @@ Log Files:"""
             self.max_articles_var.set(self.config['max_articles'])
             
             self.logger.info("Configuration saved successfully")
-            messagebox.showinfo("Success", "Configuration saved successfully")
+            ModernPopup.showinfo(self.root,"Success", "Configuration saved successfully")
             
         except Exception as e:
             self.logger.error(f"Error saving configuration: {e}")
-            messagebox.showerror("Error", f"Failed to save configuration: {e}")
+            ModernPopup.showerror(self.root,"Error", f"Failed to save configuration: {e}")
             
     def clear_logs(self):
         """Clear the logs text area"""
@@ -3581,10 +4150,10 @@ Log Files:"""
             if filename:
                 with open(filename, 'w') as f:
                     f.write(self.logs_text.get(1.0, tk.END))
-                messagebox.showinfo("Success", f"Logs saved to {filename}")
+                ModernPopup.showinfo(self.root,"Success", f"Logs saved to {filename}")
                 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save logs: {e}")
+            ModernPopup.showerror(self.root,"Error", f"Failed to save logs: {e}")
             
     def update_step_status(self, step_index, status, details="", elapsed_time=""):
         """Update status of a specific step with color coding and progress bar update"""
@@ -3596,14 +4165,14 @@ Log Files:"""
             step_name = self.process_steps[step_index]
             total_steps = len(self.process_steps)
 
-            status_emojis = {
-                'pending': '⏳',
-                'running': '🔄',
-                'completed': '✅',
-                'error': '❌',
-                'skipped': '⏭️'
+            status_symbols = {
+                'pending': '[...]',
+                'running': '[>>]',
+                'completed': '[OK]',
+                'error': '[X]',
+                'skipped': '[--]'
             }
-            display_status = f"{status_emojis.get(status, '❓')} {status.title()}"
+            display_status = f"{status_symbols.get(status, '[?]')} {status.title()}"
 
             # Update treeview item with color tag
             self.steps_tree.item(item_id, values=(step_name, display_status, details, elapsed_time), tags=(status,))
@@ -3619,20 +4188,20 @@ Log Files:"""
                     if hasattr(self, 'step_counter_label'):
                         self.step_counter_label.config(text=f"Step {step_index + 1} of {total_steps}: {step_name}")
                     if hasattr(self, 'current_task_label'):
-                        self.current_task_label.config(text=f"🔄 {step_name}...")
+                        self.current_task_label.config(text=f"[>>] {step_name}...")
                 elif status == 'completed':
                     self.task_progress['value'] = step_index + 1
                     if hasattr(self, 'step_counter_label'):
-                        self.step_counter_label.config(text=f"Step {step_index + 1} of {total_steps}: {step_name} ✅")
+                        self.step_counter_label.config(text=f"Step {step_index + 1} of {total_steps}: {step_name} [OK]")
                     if hasattr(self, 'current_task_label') and elapsed_time:
-                        self.current_task_label.config(text=f"✅ {step_name} ({elapsed_time})")
+                        self.current_task_label.config(text=f"[OK] {step_name} ({elapsed_time})")
                 elif status == 'error':
                     if hasattr(self, 'current_task_label'):
-                        self.current_task_label.config(text=f"❌ {step_name} failed")
+                        self.current_task_label.config(text=f"[X] {step_name} failed")
                 elif status == 'skipped':
                     self.task_progress['value'] = step_index + 1
                     if hasattr(self, 'current_task_label'):
-                        self.current_task_label.config(text=f"⏭️ {step_name} skipped")
+                        self.current_task_label.config(text=f"[--] {step_name} skipped")
 
             # Update elapsed time display
             if hasattr(self, 'elapsed_label') and self._automation_start_time:
@@ -3646,7 +4215,7 @@ Log Files:"""
     def start_automation(self):
         """Start the automation process"""
         if self.is_running:
-            messagebox.showwarning("Warning", "Automation is already running")
+            ModernPopup.showwarning(self.root,"Warning", "Automation is already running")
             return
         
         # Check if automation engine is initialized
@@ -3654,23 +4223,23 @@ Log Files:"""
             try:
                 # Try to initialize it
                 if self.has_valid_credentials():
-                    self.log_automation_event("🔄 Initializing automation engine...")
+                    self.log_automation_event("[>>] Initializing automation engine...")
                     self.automation_engine = BlogAutomationEngine(self.config, self.logger)
-                    self.log_automation_event("✅ Automation engine initialized successfully")
+                    self.log_automation_event("[OK] Automation engine initialized successfully")
                 else:
-                    self.log_automation_event("❌ Missing credentials for automation", "error")
-                    messagebox.showerror("Error", "Please login first in the Authentication tab")
+                    self.log_automation_event("[X] Missing credentials for automation", "error")
+                    ModernPopup.showerror(self.root,"Error", "Please login first in the Authentication tab")
                     self.notebook.select(self.login_frame)
                     return
             except Exception as e:
-                self.log_automation_event(f"❌ Failed to initialize automation engine: {e}", "error")
-                messagebox.showerror("Error", f"Failed to initialize automation engine: {e}\n\nPlease check your configuration and try again.")
+                self.log_automation_event(f"[X] Failed to initialize automation engine: {e}", "error")
+                ModernPopup.showerror(self.root,"Error", f"Failed to initialize automation engine: {e}\n\nPlease check your configuration and try again.")
                 return
         
         # Get max articles
         max_articles = self.max_articles_var.get()
         if max_articles <= 0:
-            messagebox.showerror("Error", "Please set a valid number of articles")
+            ModernPopup.showerror(self.root,"Error", "Please set a valid number of articles")
             return
         
         # Update UI
@@ -3720,7 +4289,7 @@ Log Files:"""
             max_articles = self.max_articles_var.get()
             
             if use_jupyter_style:
-                self.logger.info("🚀 Using Enhanced Processing (Jupyter Style)")
+                self.logger.info("[>>] Using Enhanced Processing (Jupyter Style)")
                 # Run the Jupyter notebook style automation
                 processed = self.automation_engine.run_automation_jupyter_style(max_articles)
                 self.processed_count = processed
@@ -3728,7 +4297,7 @@ Log Files:"""
                 return
                 
             # Regular automation process
-            self.logger.info("🚀 Using Standard Processing")
+            self.logger.info("[>>] Using Standard Processing")
             
             # Initialize
             self.update_step_status(0, 'running', 'Fetching article links from source...')
@@ -3737,8 +4306,8 @@ Log Files:"""
             article_links = self.automation_engine.get_article_links(limit=20)
             if not article_links:
                 self.update_step_status(0, 'error', 'No article links found - check source URL and selector')
-                self.logger.error(f"❌ Failed to find articles from: {self.automation_engine.config.get('source_url', 'N/A')}")
-                self.logger.error(f"❌ Using selector: {self.automation_engine.config.get('article_selector', 'N/A')}")
+                self.logger.error(f"[X] Failed to find articles from: {self.automation_engine.config.get('source_url', 'N/A')}")
+                self.logger.error(f"[X] Using selector: {self.automation_engine.config.get('article_selector', 'N/A')}")
                 self.automation_completed()
                 return
                 
@@ -3755,9 +4324,9 @@ Log Files:"""
             new_articles = [link for link in article_links if link not in posted_links]
             
             if not new_articles and not force_processing:
-                self.logger.warning("⚠️ All articles have already been processed.")
-                self.logger.info("💡 Enable 'Force Processing' option to reprocess articles.")
-                messagebox.showinfo("No New Articles", 
+                self.logger.warning("[!] All articles have already been processed.")
+                self.logger.info("Tip: Enable 'Force Processing' option to reprocess articles.")
+                ModernPopup.showinfo(self.root,"No New Articles", 
                     "All available articles have already been processed.\n\n"
                     "To reprocess articles, check the 'Force Processing' option in the Automation tab.")
                 self.automation_completed()
@@ -3770,9 +4339,9 @@ Log Files:"""
             self.overall_progress['maximum'] = self.total_articles
             
             if force_processing:
-                self.logger.info(f"🔄 Force processing enabled - reprocessing {self.total_articles} articles")
+                self.logger.info(f"[>>] Force processing enabled - reprocessing {self.total_articles} articles")
             else:
-                self.logger.info(f"✅ Found {len(new_articles)} new articles to process")
+                self.logger.info(f"[OK] Found {len(new_articles)} new articles to process")
             
             # Process each article
             for i, link in enumerate(process_links):
@@ -3805,12 +4374,12 @@ Log Files:"""
             self.automation_completed()
             
         except Exception as e:
-            self.log_automation_event(f"❌ Critical automation error: {e}", "error")
+            self.log_automation_event(f"[X] Critical automation error: {e}", "error")
             self.logger.error(f"Automation error: {e}", exc_info=True)
             
             # Show user-friendly error message
             try:
-                messagebox.showerror(
+                ModernPopup.showerror(self.root,
                     "Automation Error",
                     f"The automation process encountered an error:\n\n{str(e)}\n\n"
                     f"Please check the logs for more details and try again."
@@ -3824,7 +4393,7 @@ Log Files:"""
         """Process a single article with improved error handling and logging"""
         try:
             start_time = time.time()
-            self.log_automation_event(f"🔄 Starting article processing: {article_url}")
+            self.log_automation_event(f"[>>] Starting article processing: {article_url}")
             
             # Step 0: Fetch article links (already done)
             self.update_step_status(0, 'completed', f'URL: {article_url[:50]}...', '')
@@ -3832,27 +4401,27 @@ Log Files:"""
             # Step 1: Extract content
             step_start = time.time()
             self.update_step_status(1, 'running', 'Extracting content with Selenium...')
-            self.log_automation_event("🔍 Initializing content extraction...")
+            self.log_automation_event("Initializing content extraction...")
             
             with self.automation_engine.get_selenium_driver_context() as driver:
                 if not driver:
                     error_msg = 'WebDriver initialization failed'
                     self.update_step_status(1, 'error', error_msg)
-                    self.log_automation_event(f"❌ {error_msg}", "error")
+                    self.log_automation_event(f"[X] {error_msg}", "error")
                     return False
                     
-                self.log_automation_event("✅ WebDriver initialized, extracting content...")
+                self.log_automation_event("[OK] WebDriver initialized, extracting content...")
                 title, content = self.automation_engine.extract_article_with_selenium(driver, article_url)
                 
             if not title or not content:
                 error_msg = f'Content extraction failed - Title: {bool(title)}, Content: {bool(content)}'
                 self.update_step_status(1, 'error', 'Failed to extract content')
-                self.log_automation_event(f"❌ {error_msg}", "error")
+                self.log_automation_event(f"[X] {error_msg}", "error")
                 return False
             
             elapsed = f"{time.time() - step_start:.1f}s"
             self.update_step_status(1, 'completed', f'Title: {title[:50]}...', elapsed)
-            self.log_automation_event(f"✅ Content extracted successfully: '{title[:50]}...' ({len(content)} chars)")
+            self.log_automation_event(f"[OK] Content extracted successfully: '{title[:50]}...' ({len(content)} chars)")
             
             # Step 2: Paraphrase with Gemini
             step_start = time.time()
@@ -4035,7 +4604,7 @@ Log Files:"""
             return True
             
         except Exception as e:
-            self.log_automation_event(f"❌ Error processing article {article_url}: {e}", "error")
+            self.log_automation_event(f"[X] Error processing article {article_url}: {e}", "error")
             self.logger.error(f"Error processing article {article_url}: {e}", exc_info=True)
             
             # Update UI to show error
@@ -4070,7 +4639,7 @@ Log Files:"""
         if hasattr(self, 'step_counter_label'):
             self.step_counter_label.config(text="All steps completed")
         if hasattr(self, 'current_task_label'):
-            self.current_task_label.config(text=f"✅ Automation complete — {self.processed_count} article(s) posted")
+            self.current_task_label.config(text=f"Automation complete — {self.processed_count} article(s) posted")
         if hasattr(self, 'elapsed_label') and self._automation_start_time:
             elapsed = time.time() - self._automation_start_time
             mins, secs = divmod(int(elapsed), 60)
@@ -4083,10 +4652,10 @@ Log Files:"""
         self.log_automation_complete(self.processed_count, error_count)
         
         if self.processed_count > 0:
-            self.logger.info(f"🎉 Automation completed successfully! {self.processed_count} articles processed.")
-            messagebox.showinfo("Success", f"Automation completed!\n\n{self.processed_count} articles were processed and posted to WordPress.")
+            self.logger.info(f"Automation completed successfully! {self.processed_count} articles processed.")
+            ModernPopup.showinfo(self.root,"Success", f"Automation completed!\n\n{self.processed_count} articles were processed and posted to WordPress.")
         else:
-            self.logger.warning("⚠️ No articles were processed.")
+            self.logger.warning("[!] No articles were processed.")
             
             # Provide more detailed error information
             config = getattr(self.automation_engine, 'config', {})
@@ -4095,8 +4664,8 @@ Log Files:"""
             
             error_details = f"""No articles were processed. Possible issues:
 
-🔗 Source URL: {source_url}
-🎯 Article Selector: {selector}
+Source URL: {source_url}
+Article Selector: {selector}
 
 Common solutions for TBR Football:
 • Check if https://tbrfootball.com is accessible in your browser
@@ -4119,7 +4688,7 @@ Debugging steps:
 
 See the Logs tab for more technical details."""
             
-            messagebox.showwarning("No Articles Processed", error_details)
+            ModernPopup.showwarning(self.root,"No Articles Processed", error_details)
             
     # Core automation methods (using automation engine)
     def get_internal_links(self):
@@ -4147,19 +4716,19 @@ See the Logs tab for more technical details."""
     def test_configuration(self):
         """Test the current configuration to help debug issues"""
         if not self.automation_engine:
-            messagebox.showerror("Error", "Automation engine not initialized. Please login first.")
+            ModernPopup.showerror(self.root,"Error", "Automation engine not initialized. Please login first.")
             return
             
         def run_test():
             try:
-                self.logger.info("🔍 Starting configuration test...")
+                self.logger.info("Starting configuration test...")
                 
                 # Test article link extraction
                 self.logger.info("Testing article link extraction...")
                 article_links = self.automation_engine.get_article_links(limit=5)
                 
                 if article_links:
-                    self.logger.info(f"✅ Successfully found {len(article_links)} articles")
+                    self.logger.info(f"[OK] Successfully found {len(article_links)} articles")
                     for i, link in enumerate(article_links):
                         self.logger.info(f"  {i+1}. {link}")
                     
@@ -4169,30 +4738,30 @@ See the Logs tab for more technical details."""
                         if driver:
                             title, content = self.automation_engine.extract_article_with_selenium(driver, article_links[0])
                             if title and content:
-                                self.logger.info(f"✅ Successfully extracted content: {title[:60]}...")
-                                messagebox.showinfo("Test Results", 
-                                    f"✅ Configuration test passed!\n\n"
+                                self.logger.info(f"[OK] Successfully extracted content: {title[:60]}...")
+                                ModernPopup.showinfo(self.root,"Test Results", 
+                                    f"[OK] Configuration test passed!\n\n"
                                     f"Found {len(article_links)} articles\n"
                                     f"Successfully extracted content from: {title[:60]}...\n\n"
                                     f"Your configuration is working correctly!")
                             else:
-                                self.logger.error("❌ Failed to extract content")
-                                messagebox.showwarning("Test Results",
-                                    f"⚠️ Found {len(article_links)} articles but failed to extract content.\n"
+                                self.logger.error("[X] Failed to extract content")
+                                ModernPopup.showwarning(self.root,"Test Results",
+                                    f"[!] Found {len(article_links)} articles but failed to extract content.\n"
                                     f"Check Selenium setup and website structure.")
                         else:
-                            self.logger.error("❌ Failed to initialize WebDriver")
-                            messagebox.showerror("Test Results", 
-                                "❌ Selenium WebDriver failed to initialize.\n"
+                            self.logger.error("[X] Failed to initialize WebDriver")
+                            ModernPopup.showerror(self.root,"Test Results", 
+                                "[X] Selenium WebDriver failed to initialize.\n"
                                 "Please check Selenium installation.")
                 else:
                     config = self.automation_engine.config
                     source_url = config.get('source_url', 'Not configured')
                     selector = config.get('article_selector', 'Not configured')
                     
-                    self.logger.error("❌ No articles found")
-                    messagebox.showerror("Test Results", 
-                        f"❌ Configuration test failed!\n\n"
+                    self.logger.error("[X] No articles found")
+                    ModernPopup.showerror(self.root,"Test Results", 
+                        f"[X] Configuration test failed!\n\n"
                         f"No articles found with current settings:\n"
                         f"• Source URL: {source_url}\n"
                         f"• Selector: {selector}\n\n"
@@ -4202,8 +4771,8 @@ See the Logs tab for more technical details."""
                         f"Check the logs for more details.")
                         
             except Exception as e:
-                self.logger.error(f"❌ Test failed: {e}")
-                messagebox.showerror("Test Results", f"❌ Test failed with error:\n{e}")
+                self.logger.error(f"[X] Test failed: {e}")
+                ModernPopup.showerror(self.root,"Test Results", f"[X] Test failed with error:\n{e}")
         
         # Run test in separate thread to avoid blocking UI
         threading.Thread(target=run_test, daemon=True).start()
@@ -4213,7 +4782,7 @@ See the Logs tab for more technical details."""
         try:
             if os.path.exists("posted_links.json"):
                 # Ask for confirmation
-                confirm = messagebox.askyesno(
+                confirm = ModernPopup.askyesno(self.root,
                     "Confirm Clear History",
                     "Are you sure you want to clear the posted links history?\n\n"
                     "This will allow all articles to be processed again, even if they were processed before.",
@@ -4225,15 +4794,15 @@ See the Logs tab for more technical details."""
                     with open("posted_links.json", "w") as f:
                         json.dump([], f)
                     
-                    self.logger.info("✅ Posted links history cleared")
-                    messagebox.showinfo("Success", "Posted links history has been cleared.")
+                    self.logger.info("[OK] Posted links history cleared")
+                    ModernPopup.showinfo(self.root,"Success", "Posted links history has been cleared.")
                     
                     # Refresh the configuration tab
                     self.notebook.select(self.config_frame)
                     self.create_config_tab()
         except Exception as e:
             self.logger.error(f"Error clearing posted links: {e}")
-            messagebox.showerror("Error", f"Failed to clear posted links: {e}")
+            ModernPopup.showerror(self.root,"Error", f"Failed to clear posted links: {e}")
 
     def has_valid_credentials(self):
         """Check if valid credentials exist in the current domain config"""
@@ -4250,40 +4819,40 @@ See the Logs tab for more technical details."""
     def on_log_level_change(self, event=None):
         """Handle log level combo box change"""
         level = self.log_level_var.get()
-        self.add_log_message(f"🔧 Log level changed to: {level}")
+        self.add_log_message(f"Log level changed to: {level}")
         
     def log_automation_start(self):
         """Log automation start with detailed info"""
-        self.log_automation_event("🚀 Blog automation session started")
-        self.log_automation_event(f"📊 Configuration: Max articles={self.config.get('max_articles', 'N/A')}")
-        self.log_automation_event(f"🌐 Source URL: {self.config.get('source_url', 'N/A')}")
-        self.log_automation_event(f"📝 WordPress URL: {self.config.get('wp_base_url', 'N/A')}")
+        self.log_automation_event("[>>] Blog automation session started")
+        self.log_automation_event(f"Configuration: Max articles={self.config.get('max_articles', 'N/A')}")
+        self.log_automation_event(f"Source URL: {self.config.get('source_url', 'N/A')}")
+        self.log_automation_event(f"WordPress URL: {self.config.get('wp_base_url', 'N/A')}")
         image_source = getattr(self, 'image_source_var', None)
         if image_source:
-            self.log_automation_event(f"🖼️ Image source: {image_source.get()}")
+            self.log_automation_event(f"Image source: {image_source.get()}")
         
         # Also log to main logger for visibility
-        self.logger.info("🚀 Starting blog automation...")
-        self.logger.info(f"📊 Configuration: Max articles={self.config.get('max_articles', 'N/A')}")
-        self.logger.info(f"🌐 Source URL: {self.config.get('source_url', 'N/A')}")
-        self.logger.info(f"📝 WordPress URL: {self.config.get('wp_base_url', 'N/A')}")
+        self.logger.info("[>>] Starting blog automation...")
+        self.logger.info(f"Configuration: Max articles={self.config.get('max_articles', 'N/A')}")
+        self.logger.info(f"Source URL: {self.config.get('source_url', 'N/A')}")
+        self.logger.info(f"WordPress URL: {self.config.get('wp_base_url', 'N/A')}")
         if image_source:
-            self.logger.info(f"🖼️ Image source: {image_source.get()}")
+            self.logger.info(f"Image source: {image_source.get()}")
             
     def log_automation_complete(self, success_count=0, error_count=0):
         """Log automation completion with summary"""
-        self.log_automation_event("🏁 Blog automation session completed")
-        self.log_automation_event(f"✅ Successfully processed: {success_count} articles")
+        self.log_automation_event("Blog automation session completed")
+        self.log_automation_event(f"[OK] Successfully processed: {success_count} articles")
         if error_count > 0:
-            self.log_automation_event(f"❌ Errors encountered: {error_count} articles", "warning")
-        self.log_automation_event("📋 Session summary complete")
+            self.log_automation_event(f"[X] Errors encountered: {error_count} articles", "warning")
+        self.log_automation_event("Session summary complete")
         
         # Also log to main logger
-        self.logger.info("🏁 Blog automation completed!")
-        self.logger.info(f"✅ Successfully processed: {success_count} articles")
+        self.logger.info("Blog automation completed!")
+        self.logger.info(f"[OK] Successfully processed: {success_count} articles")
         if error_count > 0:
-            self.logger.info(f"❌ Errors encountered: {error_count} articles")
-        self.logger.info("📋 Check logs above for detailed information")
+            self.logger.info(f"[X] Errors encountered: {error_count} articles")
+        self.logger.info("Check logs above for detailed information")
 
     def on_config_selected(self, event=None):
         name = self.config_selector_var.get()
@@ -4309,7 +4878,7 @@ See the Logs tab for more technical details."""
             self.config_selector['values'] = self.config_files
             self.config_selector_var.set(name)
             self.on_config_selected()
-            messagebox.showinfo("Configuration Created", f"Configuration '{name}' has been created. You can now edit its settings.")
+            ModernPopup.showinfo(self.root,"Configuration Created", f"Configuration '{name}' has been created. You can now edit its settings.")
 
     def duplicate_config(self):
         name = self.prompt_for_name("Duplicate As:")
@@ -4335,9 +4904,9 @@ See the Logs tab for more technical details."""
     def delete_config(self):
         name = self.active_config_name
         if name == "default":
-            messagebox.showerror("Error", "Cannot delete the default configuration.")
+            ModernPopup.showerror(self.root,"Error", "Cannot delete the default configuration.")
             return
-        if messagebox.askyesno("Delete Configuration", f"Are you sure you want to delete '{name}'?"):
+        if ModernPopup.askyesno(self.root,"Delete Configuration", f"Are you sure you want to delete '{name}'?"):
             path = os.path.join(self.config_dir, f"{name}.json")
             os.remove(path)
             self.config_files = self.get_config_files()
@@ -4383,7 +4952,7 @@ See the Logs tab for more technical details."""
                 json.dump(data, f, indent=2)
         except Exception as e:
             self.logger.error(f"Invalid JSON for {filename}: {e}")
-            messagebox.showerror("Invalid JSON", f"Error in {filename}: {e}")
+            ModernPopup.showerror(self.root,"Invalid JSON", f"Error in {filename}: {e}")
             raise
 
     def save_style_prompt_from_text(self, text):
@@ -4393,7 +4962,7 @@ See the Logs tab for more technical details."""
                 json.dump({"style_prompt": text.strip()}, f, indent=2)
         except Exception as e:
             self.logger.error(f"Error saving style prompt: {e}")
-            messagebox.showerror("Error", f"Failed to save style prompt: {e}")
+            ModernPopup.showerror(self.root,"Error", f"Failed to save style prompt: {e}")
             raise
 
     def set_source_config_default(self):
@@ -4404,7 +4973,7 @@ See the Logs tab for more technical details."""
         current_path = os.path.join(self.config_dir, f"{self.active_config_name}.json")
         shutil.copyfile(current_path, default_path)
         self.logger.info("Current source configuration set as default")
-        messagebox.showinfo("Default Set", "Current source configuration set as default.")
+        ModernPopup.showinfo(self.root,"Default Set", "Current source configuration set as default.")
 
     def extract_domain_from_url(self, url: str) -> str:
         """Extract domain name from WordPress URL for configuration separation"""
@@ -4429,7 +4998,7 @@ See the Logs tab for more technical details."""
             domain_dir = os.path.join(self.base_config_dir, domain)
             if not os.path.exists(domain_dir):
                 os.makedirs(domain_dir, exist_ok=True)
-                self.logger.info(f"📁 Created configuration directory for domain: {domain}")
+                self.logger.info(f"Created configuration directory for domain: {domain}")
             
             self.current_domain = domain
             self.domain_config_dir = domain_dir
@@ -4490,12 +5059,12 @@ See the Logs tab for more technical details."""
                         # Copy existing configuration as template (except default.json)
                         import shutil
                         shutil.copy2(base_file_path, domain_file_path)
-                        self.logger.info(f"📋 Copied template configuration: {filename}")
+                        self.logger.info(f"Copied template configuration: {filename}")
                     else:
                         # Create default configuration
                         with open(domain_file_path, 'w') as f:
                             json.dump(default_content, f, indent=2)
-                        self.logger.info(f"🆕 Created default configuration: {filename}")
+                        self.logger.info(f"Created default configuration: {filename}")
             
             # Create .last_used file
             last_used_path = os.path.join(domain_dir, ".last_used")
@@ -4514,34 +5083,34 @@ See the Logs tab for more technical details."""
     def log_automation_event(self, message: str, level: str = "info"):
         """Log an automation-specific event"""
         if hasattr(self, 'log_manager') and self.log_manager:
-            self.log_manager.log_automation_event(level, f"🤖 {message}")
+            self.log_manager.log_automation_event(level, f"{message}")
         else:
             log_method = getattr(self.logger, level.lower(), self.logger.info)
-            log_method(f"🤖 AUTOMATION: {message}")
+            log_method(f"AUTOMATION: {message}")
         
     def log_api_event(self, message: str, level: str = "info"):
         """Log an API-specific event"""
         if hasattr(self, 'log_manager') and self.log_manager:
-            self.log_manager._log_with_category(level, f"🌐 {message}", "API")
+            self.log_manager._log_with_category(level, f"{message}", "API")
         else:
             log_method = getattr(self.logger, level.lower(), self.logger.info)
-            log_method(f"🌐 API: {message}")
+            log_method(f"API: {message}")
         
     def log_security_event(self, message: str, level: str = "warning"):
         """Log a security-specific event"""
         if hasattr(self, 'log_manager') and self.log_manager:
-            self.log_manager._log_with_category(level, f"🔒 {message}", "SECURITY")
+            self.log_manager._log_with_category(level, f"{message}", "SECURITY")
         else:
             log_method = getattr(self.logger, level.lower(), self.logger.warning)
-            log_method(f"🔒 SECURITY: {message}")
+            log_method(f"SECURITY: {message}")
         
     def log_ui_event(self, message: str, level: str = "debug"):
         """Log a UI-specific event"""
         if hasattr(self, 'log_manager') and self.log_manager:
-            self.log_manager._log_with_category(level, f"🖥️ {message}", "UI")
+            self.log_manager._log_with_category(level, f"{message}", "UI")
         else:
             log_method = getattr(self.logger, level.lower(), self.logger.debug)
-            log_method(f"🖥️ UI: {message}")
+            log_method(f"UI: {message}")
 
 def main():
     """Main function to run the application with global error handling"""
@@ -4557,7 +5126,7 @@ def main():
         # Try to show error dialog if tkinter is available
         try:
             import tkinter.messagebox as messagebox
-            messagebox.showerror(
+            ModernPopup.showerror(self.root,
                 "Application Error", 
                 f"An unexpected error occurred:\n\n{error_msg}\n\n"
                 f"The application will continue running, but some features may not work properly.\n\n"
@@ -4583,11 +5152,11 @@ def main():
             # Method 2: Also set the window icon name for better dock integration
             root.wm_iconname("AUTO Blogger")
             
-            print(f"✅ Application icon set: {icon_path}")
+            print(f"[OK] Application icon set: {icon_path}")
         else:
-            print(f"⚠️ Icon file not found: {icon_path}")
+            print(f"[!] Icon file not found: {icon_path}")
     except Exception as e:
-        print(f"❌ Error setting application icon: {e}")
+        print(f"[X] Error setting application icon: {e}")
         # Fallback: At least set the window icon name
         try:
             root.wm_iconname("AUTO Blogger")
@@ -4608,7 +5177,7 @@ def main():
     # Handle window closing
     def on_closing():
         if app.is_running:
-            if messagebox.askokcancel("Quit", "Automation is running. Are you sure you want to quit?"):
+            if ModernPopup.askyesno(root, "Quit", "Automation is running. Are you sure you want to quit?"):
                 app.stop_requested = True
                 
                 # Finalize logging session
@@ -4616,7 +5185,7 @@ def main():
                     if hasattr(app, 'log_manager'):
                         from log_manager import finalize_logging
                         finalize_logging()
-                        app.logger.info("📋 Logging session finalized on application exit")
+                        app.logger.info("Logging session finalized on application exit")
                 except Exception as e:
                     print(f"Error finalizing logging: {e}")
                 
@@ -4627,7 +5196,7 @@ def main():
                 if hasattr(app, 'log_manager'):
                     from log_manager import finalize_logging
                     finalize_logging()
-                    app.logger.info("📋 Logging session finalized on application exit")
+                    app.logger.info("Logging session finalized on application exit")
             except Exception as e:
                 print(f"Error finalizing logging: {e}")
                 

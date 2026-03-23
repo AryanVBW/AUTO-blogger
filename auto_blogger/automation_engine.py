@@ -159,7 +159,7 @@ class BlogAutomationEngine:
             # No challenge — site is directly accessible
             return True
 
-        self.logger.info("🔐 DDoS-Guard bot-protection detected — solving AES challenge...")
+        self.logger.info("DDoS-Guard bot-protection detected — solving AES challenge...")
 
         # Parse the three hex values from the JS
         m = re.search(
@@ -178,7 +178,7 @@ class BlogAutomationEngine:
                 probe_resp.text,
             )
         if not m:
-            self.logger.warning("⚠️ Could not parse DDoS-Guard challenge values")
+            self.logger.warning("[!] Could not parse DDoS-Guard challenge values")
             return False
 
         key_hex, iv_hex, ct_hex = m.group(1), m.group(2), m.group(3)
@@ -204,12 +204,12 @@ class BlogAutomationEngine:
                 cipher = _AES.new(bytes.fromhex(key_hex), _AES.MODE_CBC, bytes.fromhex(iv_hex))
                 cookie_value = cipher.decrypt(bytes.fromhex(ct_hex)).hex()
             except Exception as e:
-                self.logger.error(f"❌ AES decrypt failed — install 'cryptography' or 'pycryptodome': {e}")
+                self.logger.error(f"[X] AES decrypt failed — install 'cryptography' or 'pycryptodome': {e}")
                 return False
 
         # Set the challenge cookie on the session for all future requests
         session.cookies.set('__test', cookie_value, domain=parsed.netloc, path='/')
-        self.logger.info(f"✅ DDoS-Guard challenge solved (cookie __test={cookie_value[:12]}...)")
+        self.logger.info(f"[OK] DDoS-Guard challenge solved (cookie __test={cookie_value[:12]}...)")
 
         # Confirm by hitting the ?i=1 redirect URL
         try:
@@ -224,7 +224,7 @@ class BlogAutomationEngine:
                 confirm_resp.text.strip().startswith('[') or
                 confirm_resp.text.strip().startswith('{')
             ):
-                self.logger.info("✅ WordPress API is now accessible")
+                self.logger.info("[OK] WordPress API is now accessible")
                 return True
             else:
                 self.logger.debug(f"Confirmation request: HTTP {confirm_resp.status_code}")
@@ -361,7 +361,7 @@ class BlogAutomationEngine:
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    self.logger.debug(f"✅ Successfully loaded {filename}")
+                    self.logger.debug(f"[OK] Successfully loaded {filename}")
                     return data
             except json.JSONDecodeError as e:
                 self.logger.error(f"JSON decode error in {filename}: {e}")
@@ -380,7 +380,7 @@ class BlogAutomationEngine:
         seo_version = self.config.get('seo_plugin_version', 'new')
         
         if seo_version not in ['old', 'new']:
-            self.logger.error(f"❌ Invalid seo_plugin_version: {seo_version}. Must be 'old' or 'new'")
+            self.logger.error(f"[X] Invalid seo_plugin_version: {seo_version}. Must be 'old' or 'new'")
             return False
             
         # Check WordPress credentials
@@ -388,10 +388,10 @@ class BlogAutomationEngine:
         missing_fields = [field for field in required_fields if not self.config.get(field)]
         
         if missing_fields:
-            self.logger.error(f"❌ Missing WordPress credentials: {', '.join(missing_fields)}")
+            self.logger.error(f"[X] Missing WordPress credentials: {', '.join(missing_fields)}")
             return False
             
-        self.logger.info(f"✅ SEO configuration validated - using {seo_version} AIOSEO format")
+        self.logger.info(f"[OK] SEO configuration validated - using {seo_version} AIOSEO format")
         return True
 
     def prepare_seo_data(self, seo_title: str, meta_description: str, 
@@ -410,7 +410,7 @@ class BlogAutomationEngine:
         seo_plugin_version = self.config.get('seo_plugin_version', 'new')
         
         # Log SEO data being prepared for debugging
-        self.logger.debug(f"🔧 Preparing SEO data - Version: {seo_plugin_version}")
+        self.logger.debug(f"Preparing SEO data - Version: {seo_plugin_version}")
         self.logger.debug(f"   Title: {seo_title[:50]}..." if len(seo_title) > 50 else f"   Title: {seo_title}")
         self.logger.debug(f"   Description: {meta_description[:50]}..." if len(meta_description) > 50 else f"   Description: {meta_description}")
         self.logger.debug(f"   Focus keyphrase: {focus_keyphrase}")
@@ -497,22 +497,22 @@ class BlogAutomationEngine:
         
         for attempt in range(max_retries):
             try:
-                self.logger.info(f"🔧 Using {seo_version} AIOSEO format (v{'2.7.1' if seo_version == 'old' else '4.7.3+'}) for SEO metadata (attempt {attempt + 1}/{max_retries})")
+                self.logger.info(f"Using {seo_version} AIOSEO format (v{'2.7.1' if seo_version == 'old' else '4.7.3+'}) for SEO metadata (attempt {attempt + 1}/{max_retries})")
                 
                 _session = self._create_wp_session()
                 update_resp = _session.post(f"{posts_url}/{post_id}", auth=auth, json=seo_data, timeout=15)
                 update_resp.raise_for_status()
 
-                self.logger.info(f"✅ {seo_version.title()} AIOSEO SEO metadata updated successfully")
+                self.logger.info(f"[OK] {seo_version.title()} AIOSEO SEO metadata updated successfully")
                 return True
                 
             except requests.exceptions.Timeout:
-                self.logger.warning(f"⚠️ SEO update timeout (attempt {attempt + 1}/{max_retries})")
+                self.logger.warning(f"[!] SEO update timeout (attempt {attempt + 1}/{max_retries})")
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)  # Exponential backoff
                     
             except requests.exceptions.HTTPError as e:
-                self.logger.warning(f"⚠️ HTTP error updating SEO metadata (attempt {attempt + 1}/{max_retries}): {e}")
+                self.logger.warning(f"[!] HTTP error updating SEO metadata (attempt {attempt + 1}/{max_retries}): {e}")
                 if hasattr(e, 'response') and e.response is not None:
                     self.logger.warning(f"Response status: {e.response.status_code}")
                     self.logger.warning(f"Response text: {e.response.text[:500]}")
@@ -520,11 +520,11 @@ class BlogAutomationEngine:
                     time.sleep(2 ** attempt)
                     
             except Exception as e:
-                self.logger.warning(f"⚠️ Unexpected error updating SEO metadata (attempt {attempt + 1}/{max_retries}): {e}")
+                self.logger.warning(f"[!] Unexpected error updating SEO metadata (attempt {attempt + 1}/{max_retries}): {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)
         
-        self.logger.error(f"❌ Failed to update SEO metadata after {max_retries} attempts")
+        self.logger.error(f"[X] Failed to update SEO metadata after {max_retries} attempts")
         return False
 
     def load_posted_links(self) -> Set[str]:
@@ -567,16 +567,16 @@ class BlogAutomationEngine:
         try:
             # Check if Selenium is available
             if not SELENIUM_AVAILABLE:
-                self.logger.error("❌ Selenium not available. Please install selenium and webdriver-manager")
+                self.logger.error("[X] Selenium not available. Please install selenium and webdriver-manager")
                 yield None
                 return
             
-            self.logger.info("🔄 Initializing Chrome WebDriver...")
+            self.logger.info("[>>] Initializing Chrome WebDriver...")
             
             # Install ChromeDriver with permission fix
             try:
                 driver_path = ChromeDriverManager().install()
-                self.logger.info(f"📁 ChromeDriver installed at: {driver_path}")
+                self.logger.info(f"ChromeDriver installed at: {driver_path}")
                 
                 # Ensure ChromeDriver is executable (fix for macOS permissions)
                 import stat
@@ -584,14 +584,14 @@ class BlogAutomationEngine:
                 try:
                     current_permissions = os.stat(driver_path).st_mode
                     os.chmod(driver_path, current_permissions | stat.S_IEXEC)
-                    self.logger.info("✅ ChromeDriver permissions updated")
+                    self.logger.info("[OK] ChromeDriver permissions updated")
                 except Exception as perm_error:
-                    self.logger.warning(f"⚠️ Could not update ChromeDriver permissions: {perm_error}")
+                    self.logger.warning(f"[!] Could not update ChromeDriver permissions: {perm_error}")
                 
                 service = Service(driver_path)
             except Exception as e:
-                self.logger.error(f"❌ Failed to install ChromeDriver: {e}")
-                self.logger.info("💡 Try running: pip install --upgrade webdriver-manager")
+                self.logger.error(f"[X] Failed to install ChromeDriver: {e}")
+                self.logger.info("Tip: Try running: pip install --upgrade webdriver-manager")
                 yield None
                 return
             
@@ -633,258 +633,363 @@ class BlogAutomationEngine:
             driver_instance = webdriver.Chrome(service=service, options=options)
             driver_instance.set_page_load_timeout(30)
             
-            self.logger.info("✅ Chrome WebDriver initialized successfully")
+            self.logger.info("[OK] Chrome WebDriver initialized successfully")
             yield driver_instance
             
         except WebDriverException as e:
-            self.logger.error(f"❌ WebDriver error: {e}")
-            self.logger.info("💡 Troubleshooting tips:")
+            self.logger.error(f"[X] WebDriver error: {e}")
+            self.logger.info("Tip: Troubleshooting tips:")
             self.logger.info("   • Ensure Chrome browser is installed")
             self.logger.info("   • Check internet connection for ChromeDriver download")
             self.logger.info("   • Try updating Chrome browser")
             yield None
             
         except Exception as e:
-            self.logger.error(f"❌ Unexpected error initializing WebDriver: {e}")
+            self.logger.error(f"[X] Unexpected error initializing WebDriver: {e}")
             self.logger.exception("Full error details:")
             yield None
             
         finally:
             if driver_instance:
                 try:
-                    self.logger.debug("🔄 Closing WebDriver...")
+                    self.logger.debug("[>>] Closing WebDriver...")
                     driver_instance.quit()
-                    self.logger.debug("✅ WebDriver closed successfully")
+                    self.logger.debug("[OK] WebDriver closed successfully")
                 except Exception as e:
-                    self.logger.warning(f"⚠️ Error closing WebDriver: {e}")
+                    self.logger.warning(f"[!] Error closing WebDriver: {e}")
 
-    def get_latest_article_link(self) -> Optional[str]:
-        """Fetches the most recent article link"""
-        try:
-            source_url = self.config.get('source_url', '')
-            selector = self.config.get('article_selector', '')
-            
-            resp = requests.get(source_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-            resp.raise_for_status()
-            
-            soup = BeautifulSoup(resp.content, "html.parser")
-            tag = soup.select_one(selector)
-            
-            if not tag or not tag.get("href"):
-                self.logger.warning(f"⚠️ No link found with selector '{selector}' on {source_url}")
-                return None
+    # Rotating user-agent pool for better anti-bot evasion
+    _USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0",
+    ]
 
-            return urljoin(source_url, tag["href"])
-            
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"❌ Error fetching page {source_url}: {e}")
+    def _get_fetch_headers(self) -> Dict[str, str]:
+        """Get realistic browser headers with a rotated user-agent"""
+        import random
+        return {
+            "User-Agent": random.choice(self._USER_AGENTS),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Cache-Control": "max-age=0",
+        }
+
+    def _fetch_page_with_retry(self, url: str, max_retries: int = 3) -> Optional[requests.Response]:
+        """Fetch a page with retry logic, rotating user-agents, and HTTP/HTTPS fallback"""
+        last_error = None
+        for attempt in range(1, max_retries + 1):
+            headers = self._get_fetch_headers()
+            try:
+                self.logger.debug(f"Fetch attempt {attempt}/{max_retries}: {url}")
+                resp = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
+                resp.raise_for_status()
+                return resp
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                self.logger.debug(f"Attempt {attempt} failed for {url}: {e}")
+                if attempt < max_retries:
+                    time.sleep(1.5 * attempt)  # Progressive backoff
+
+        # Try protocol fallback
+        if url.startswith('https://'):
+            fallback_url = url.replace('https://', 'http://', 1)
+        elif url.startswith('http://'):
+            fallback_url = url.replace('http://', 'https://', 1)
+        else:
+            self.logger.error(f"[X] All {max_retries} fetch attempts failed for {url}: {last_error}")
             return None
 
-    def get_article_links(self, limit: int = 10) -> List[str]:
-        """Get multiple article links from source"""
         try:
-            source_url = self.config.get('source_url', '')
-            selector = self.config.get('article_selector', '')
-            
-            if not source_url:
-                self.logger.error("❌ No source URL configured")
-                return []
-                
-            if not selector:
-                self.logger.error("❌ No article selector configured")
-                return []
-            
-            self.logger.info(f"🔗 Fetching articles from: {source_url}")
-            self.logger.info(f"🎯 Using selector: {selector}")
-            
-            # Add headers to mimic a real browser
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.5",
-                "Accept-Encoding": "gzip, deflate",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1"
-            }
-            
-            resp = requests.get(source_url, headers=headers, timeout=15)
+            self.logger.debug(f"Trying protocol fallback: {fallback_url}")
+            resp = requests.get(fallback_url, headers=self._get_fetch_headers(), timeout=20, allow_redirects=True)
             resp.raise_for_status()
-            
-            self.logger.info(f"✅ Successfully fetched page (Status: {resp.status_code})")
-            
-            soup = BeautifulSoup(resp.content, "html.parser")
-            tags = soup.select(selector)
-            
-            self.logger.info(f"🔍 Found {len(tags)} elements matching selector")
-            
-            if len(tags) == 0:
-                # Try generic alternative selectors that work on most CMS/blog sites
-                alternative_selectors = [
-                    "article h2 a",
-                    "article h3 a",
-                    "article h1 a",
-                    ".post-title a",
-                    ".entry-title a",
-                    ".article-title a",
-                    ".post h2 a",
-                    ".post h3 a",
-                    "h2 a",
-                    "h3 a",
-                    ".card-title a",
-                    ".blog-title a",
-                    ".news-title a",
-                    "[class*='title'] a",
-                    "[class*='post'] h2 a",
-                    "[class*='article'] h2 a",
-                    "[class*='news'] h2 a",
-                    "main h2 a",
-                    "main h3 a",
-                ]
+            return resp
+        except requests.exceptions.RequestException:
+            self.logger.error(f"[X] All fetch attempts (including fallback) failed for {url}: {last_error}")
+            return None
 
-                self.logger.warning(f"⚠️ No articles found with selector '{selector}', trying generic alternatives...")
-
-                # Extract base domain for relative URL filtering
-                from urllib.parse import urlparse
-                parsed_source = urlparse(source_url)
-                base_domain = parsed_source.netloc
-
-                for alt_selector in alternative_selectors:
-                    alt_tags = soup.select(alt_selector)
-                    if alt_tags:
-                        valid_tags = []
-                        for tag in alt_tags:
-                            href = tag.get("href", "")
-                            text = tag.get_text().strip()
-                            # Accept links that are internal (same domain or relative) and have meaningful text
-                            if href and len(text) > 15 and (
-                                href.startswith("/") or
-                                base_domain in href or
-                                (href.startswith("http") and base_domain in href)
-                            ):
-                                valid_tags.append(tag)
-
-                        if valid_tags:
-                            self.logger.info(f"✅ Found {len(valid_tags)} articles with alternative selector: {alt_selector}")
-                            tags = valid_tags
-                            break
-                        else:
-                            self.logger.debug(f"Selector '{alt_selector}' found {len(alt_tags)} links but none passed validation")
-
-                if not tags:
-                    # FINAL FALLBACK: Fetch ALL links from the page and intelligently identify articles
-                    self.logger.warning("⚠️ No articles found with any specific selector — scanning all page links...")
-
-                    all_links = soup.find_all('a', href=True)
-                    self.logger.info(f"🔍 Total links found on page: {len(all_links)}")
-
-                    # Patterns that commonly appear in article URLs
-                    article_url_patterns = [
-                        r'/\d{4}/\d{2}/',         # Date-based: /2024/03/
-                        r'/\d{4}/\d{2}/\d{2}/',   # Full date: /2024/03/15/
-                        r'/post/',
-                        r'/article/',
-                        r'/news/',
-                        r'/blog/',
-                        r'/story/',
-                        r'/read/',
-                        r'/p/',
-                    ]
-
-                    # Patterns to exclude (navigation, utility pages)
-                    exclude_patterns = [
-                        r'javascript:', r'mailto:', r'#$', r'/tag/', r'/tags/',
-                        r'/category/', r'/categories/', r'/author/', r'/authors/',
-                        r'/page/\d+', r'/search/', r'/login', r'/register',
-                        r'/contact', r'/about', r'/privacy', r'/terms',
-                        r'\.(css|js|png|jpg|jpeg|gif|pdf|zip|xml|json)$'
-                    ]
-
-                    candidate_links = []
-                    for link in all_links:
-                        href = link.get("href", "")
-                        text = link.get_text().strip()
-
-                        # Skip if no text or too short (navigation links)
-                        if not text or len(text) < 20:
-                            continue
-
-                        # Skip external links to different domains
-                        if href.startswith("http") and base_domain not in href:
-                            continue
-
-                        # Skip excluded patterns
-                        skip = False
-                        for pat in exclude_patterns:
-                            if re.search(pat, href, re.IGNORECASE):
-                                skip = True
-                                break
-                        if skip:
-                            continue
-
-                        # Score this link by how article-like it looks
-                        score = 0
-                        for pat in article_url_patterns:
-                            if re.search(pat, href, re.IGNORECASE):
-                                score += 2
-                        if len(text) > 30:
-                            score += 1
-                        if len(text) > 60:
-                            score += 1
-                        # Relative paths from same domain are good candidates
-                        if href.startswith("/"):
-                            score += 1
-
-                        if score > 0:
-                            candidate_links.append((score, link))
-
-                    # Sort by score descending and take best ones
-                    candidate_links.sort(key=lambda x: x[0], reverse=True)
-
-                    if candidate_links:
-                        tags = [link for _, link in candidate_links]
-                        self.logger.info(f"✅ Smart fallback identified {len(tags)} potential article links from full page scan")
-                        # Log top candidates for debugging
-                        for score, link in candidate_links[:5]:
-                            self.logger.debug(f"  Candidate (score={score}): {link.get('href', '')} — {link.get_text().strip()[:60]}")
-                    else:
-                        self.logger.error("❌ Could not find any article links on this page")
-                        # Log page structure for debugging
-                        containers = soup.find_all(['article', 'div', 'section'], class_=True, limit=5)
-                        for i, container in enumerate(containers):
-                            classes = ' '.join(container.get('class', []))
-                            container_links = container.find_all('a', href=True)
-                            self.logger.debug(f"Container {i+1} [{classes}]: {len(container_links)} links")
-                        return []
-            
-            links = []
-            for i, tag in enumerate(tags):
-                href = tag.get("href")
-                if href:
-                    # Handle relative URLs
-                    if href.startswith('/'):
-                        full_url = urljoin(source_url, href)
-                    elif href.startswith('http'):
-                        full_url = href
-                    else:
-                        full_url = urljoin(source_url, href)
-                    
-                    # Validate URL and avoid duplicates
-                    if full_url not in links and self.is_valid_article_url(full_url):
-                        links.append(full_url)
-                        self.logger.debug(f"Added article {len(links)}: {full_url}")
-                        
-                if len(links) >= limit:
-                    break
-            
-            self.logger.info(f"✅ Successfully extracted {len(links)} article links")
-            return links
-            
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"❌ Network error fetching article links: {e}")
-            return []
+    def _fetch_page_with_selenium(self, url: str) -> Optional[str]:
+        """Fetch page HTML using Selenium for JS-rendered sites"""
+        if not SELENIUM_AVAILABLE:
+            self.logger.debug("Selenium not available for JS fallback")
+            return None
+        try:
+            self.logger.info(f"Using Selenium to fetch JS-rendered page: {url}")
+            with self.get_selenium_driver_context() as driver:
+                driver.get(url)
+                WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
+                )
+                # Give JS a moment to render dynamic content
+                time.sleep(2)
+                html = driver.page_source
+                self.logger.info(f"[OK] Selenium fetched {len(html)} chars of HTML")
+                return html
         except Exception as e:
-            self.logger.error(f"❌ Error fetching article links: {e}")
+            self.logger.warning(f"[!] Selenium fetch failed for {url}: {e}")
+            return None
+
+    def get_active_sources(self) -> List[Dict]:
+        """Get all active source configurations. Returns list of {url, selector, name} dicts."""
+        source_urls = self.config.get('source_urls', [])
+        active_sources = [s for s in source_urls if s.get('active', False)]
+
+        # Fallback to legacy single-source config
+        if not active_sources:
+            url = self.config.get('source_url', '')
+            selector = self.config.get('article_selector', '')
+            if url and selector:
+                active_sources = [{'name': 'Default Source', 'url': url, 'selector': selector, 'active': True}]
+
+        return active_sources
+
+    def get_latest_article_link(self) -> Optional[str]:
+        """Fetches the most recent article link from any active source"""
+        active_sources = self.get_active_sources()
+        if not active_sources:
+            self.logger.error("[X] No active sources configured")
+            return None
+
+        for source in active_sources:
+            try:
+                source_url = source['url']
+                selector = source['selector']
+
+                resp = self._fetch_page_with_retry(source_url, max_retries=2)
+                if not resp:
+                    continue
+
+                soup = BeautifulSoup(resp.content, "html.parser")
+                tag = soup.select_one(selector)
+
+                if tag and tag.get("href"):
+                    return urljoin(source_url, tag["href"])
+                else:
+                    self.logger.debug(f"No link found with selector '{selector}' on {source_url}")
+            except Exception as e:
+                self.logger.debug(f"Error fetching from source {source.get('name', '')}: {e}")
+                continue
+
+        self.logger.warning("[!] No article link found from any active source")
+        return None
+
+    def _extract_links_from_soup(self, soup: BeautifulSoup, selector: str, source_url: str, limit: int) -> List[str]:
+        """Extract article links from parsed HTML using selector with multi-level fallback.
+
+        Returns a list of validated, deduplicated article URLs.
+        """
+        from urllib.parse import urlparse
+        parsed_source = urlparse(source_url)
+        base_domain = parsed_source.netloc
+
+        tags = soup.select(selector)
+        self.logger.info(f"Found {len(tags)} elements matching selector '{selector}'")
+
+        if len(tags) == 0:
+            # Level 2: Generic CMS/blog alternative selectors
+            alternative_selectors = [
+                "article h2 a", "article h3 a", "article h1 a",
+                ".post-title a", ".entry-title a", ".article-title a",
+                ".post h2 a", ".post h3 a", "h2 a", "h3 a",
+                ".card-title a", ".blog-title a", ".news-title a",
+                "[class*='title'] a", "[class*='post'] h2 a",
+                "[class*='article'] h2 a", "[class*='news'] h2 a",
+                "main h2 a", "main h3 a",
+                # CMS-specific selectors
+                ".wp-block-post-title a",           # WordPress Gutenberg
+                ".gh-card-link",                     # Ghost CMS
+                ".post-feed .post-card a",           # Ghost themes
+                ".postArticle-readMore a",           # Medium
+                ".post-preview a",                   # Substack
+                "[data-testid='post-preview-title'] a",  # Substack new
+                ".story-link",                       # Various news sites
+                ".headline a", ".headlines a",
+                ".teaser a", ".teaser__link",
+                ".listing__item a",
+                "a[data-link-name='article']",
+                ".river-item a",
+            ]
+
+            self.logger.warning(f"[!] No articles found with selector '{selector}', trying alternatives...")
+
+            for alt_selector in alternative_selectors:
+                alt_tags = soup.select(alt_selector)
+                if alt_tags:
+                    valid_tags = []
+                    for tag in alt_tags:
+                        href = tag.get("href", "")
+                        text = tag.get_text().strip()
+                        if href and len(text) > 10 and (
+                            href.startswith("/") or
+                            base_domain in href or
+                            (href.startswith("http") and base_domain in href)
+                        ):
+                            valid_tags.append(tag)
+
+                    if valid_tags:
+                        self.logger.info(f"[OK] Found {len(valid_tags)} articles with alternative selector: {alt_selector}")
+                        tags = valid_tags
+                        break
+
+        if not tags:
+            # Level 3: Smart link scanning — score ALL links on page
+            self.logger.warning("[!] No articles found with any selector — scanning all page links...")
+
+            all_links = soup.find_all('a', href=True)
+            self.logger.info(f"Total links found on page: {len(all_links)}")
+
+            article_url_patterns = [
+                r'/\d{4}/\d{2}/',
+                r'/\d{4}/\d{2}/\d{2}/',
+                r'/post/', r'/article/', r'/news/',
+                r'/blog/', r'/story/', r'/read/', r'/p/',
+            ]
+
+            exclude_patterns = [
+                r'javascript:', r'mailto:', r'#$', r'/tag/', r'/tags/',
+                r'/category/', r'/categories/', r'/author/', r'/authors/',
+                r'/page/\d+', r'/search/', r'/login', r'/register',
+                r'/contact', r'/about', r'/privacy', r'/terms',
+                r'\.(css|js|png|jpg|jpeg|gif|pdf|zip|xml|json)$'
+            ]
+
+            candidate_links = []
+            for link in all_links:
+                href = link.get("href", "")
+                text = link.get_text().strip()
+
+                if not text or len(text) < 15:
+                    continue
+                if href.startswith("http") and base_domain not in href:
+                    continue
+
+                skip = False
+                for pat in exclude_patterns:
+                    if re.search(pat, href, re.IGNORECASE):
+                        skip = True
+                        break
+                if skip:
+                    continue
+
+                score = 0
+                for pat in article_url_patterns:
+                    if re.search(pat, href, re.IGNORECASE):
+                        score += 2
+                if len(text) > 30:
+                    score += 1
+                if len(text) > 60:
+                    score += 1
+                if href.startswith("/"):
+                    score += 1
+                # Boost links inside article/main containers
+                parent_tags = [p.name for p in link.parents if p.name][:4]
+                if 'article' in parent_tags or 'main' in parent_tags:
+                    score += 2
+
+                if score > 0:
+                    candidate_links.append((score, link))
+
+            candidate_links.sort(key=lambda x: x[0], reverse=True)
+
+            if candidate_links:
+                tags = [link for _, link in candidate_links]
+                self.logger.info(f"[OK] Smart fallback identified {len(tags)} potential article links")
+                for score, link in candidate_links[:5]:
+                    self.logger.debug(f"  Candidate (score={score}): {link.get('href', '')} — {link.get_text().strip()[:60]}")
+            else:
+                self.logger.error("[X] Could not find any article links on this page")
+                return []
+
+        # Deduplicate and validate
+        links = []
+        seen = set()
+        for tag in tags:
+            href = tag.get("href")
+            if not href:
+                continue
+            full_url = urljoin(source_url, href)
+            if full_url not in seen and self.is_valid_article_url(full_url):
+                seen.add(full_url)
+                links.append(full_url)
+                self.logger.debug(f"Added article {len(links)}: {full_url}")
+            if len(links) >= limit:
+                break
+
+        return links
+
+    def get_article_links(self, limit: int = 10) -> List[str]:
+        """Get article links from ALL active sources with Selenium fallback for JS sites.
+
+        Distributes the limit across active sources evenly, then merges results.
+        """
+        active_sources = self.get_active_sources()
+        if not active_sources:
+            self.logger.error("[X] No active sources configured")
             return []
+
+        # Distribute limit across sources
+        per_source_limit = max(limit, 10)  # Fetch enough per source, dedupe later
+        all_links = []
+        seen_urls = set()
+
+        for source in active_sources:
+            source_url = source.get('url', '')
+            selector = source.get('selector', '')
+            source_name = source.get('name', source_url)
+
+            if not source_url or not selector:
+                self.logger.warning(f"[!] Skipping source '{source_name}': missing URL or selector")
+                continue
+
+            self.logger.info(f"Fetching articles from: {source_name} ({source_url})")
+            self.logger.info(f"Using selector: {selector}")
+
+            try:
+                # Step 1: Try requests (fast)
+                resp = self._fetch_page_with_retry(source_url)
+                soup = None
+                if resp:
+                    self.logger.info(f"[OK] Successfully fetched page (Status: {resp.status_code})")
+                    soup = BeautifulSoup(resp.content, "html.parser")
+                    links = self._extract_links_from_soup(soup, selector, source_url, per_source_limit)
+                else:
+                    links = []
+
+                # Step 2: If no links found, try Selenium for JS-rendered pages
+                if not links and SELENIUM_AVAILABLE:
+                    self.logger.info(f"[>>] Trying Selenium fallback for {source_name}...")
+                    html = self._fetch_page_with_selenium(source_url)
+                    if html:
+                        soup = BeautifulSoup(html, "html.parser")
+                        links = self._extract_links_from_soup(soup, selector, source_url, per_source_limit)
+
+                # Add unique links
+                for link in links:
+                    if link not in seen_urls:
+                        seen_urls.add(link)
+                        all_links.append(link)
+
+                self.logger.info(f"[OK] Got {len(links)} articles from {source_name}")
+
+            except Exception as e:
+                self.logger.error(f"[X] Error fetching from source '{source_name}': {e}")
+                continue
+
+        # Trim to requested limit
+        result = all_links[:limit]
+        self.logger.info(f"[OK] Total: {len(result)} article links from {len(active_sources)} source(s)")
+        return result
 
     def is_valid_article_url(self, url: str) -> bool:
         """Check if URL looks like a valid article URL — works for any website"""
@@ -929,14 +1034,14 @@ class BlogAutomationEngine:
     def extract_article_with_selenium(self, driver: 'webdriver.Chrome', url: str, timeout: int = 15) -> Tuple[Optional[str], Optional[str]]:
         """Extract article content using Selenium with improved error handling"""
         if not driver:
-            self.logger.error("❌ No WebDriver provided for content extraction")
+            self.logger.error("[X] No WebDriver provided for content extraction")
             return None, None
             
         if not url:
-            self.logger.error("❌ No URL provided for content extraction")
+            self.logger.error("[X] No URL provided for content extraction")
             return None, None
 
-        self.logger.info(f"🔄 Extracting content from: {url}")
+        self.logger.info(f"[>>] Extracting content from: {url}")
         
         try:
             # Navigate to the page
@@ -945,7 +1050,7 @@ class BlogAutomationEngine:
             
             # Wait for page to load
             wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-            self.logger.debug("✅ Page loaded successfully")
+            self.logger.debug("[OK] Page loaded successfully")
 
             # Extract title with multiple selectors
             title = None
@@ -956,13 +1061,13 @@ class BlogAutomationEngine:
                     title_el = driver.find_element(By.CSS_SELECTOR, selector)
                     if title_el and title_el.text.strip():
                         title = title_el.text.strip()
-                        self.logger.debug(f"✅ Title found with selector: {selector}")
+                        self.logger.debug(f"[OK] Title found with selector: {selector}")
                         break
                 except:
                     continue
             
             if not title:
-                self.logger.warning("⚠️ Could not extract title from page")
+                self.logger.warning("[!] Could not extract title from page")
                 title = "Untitled Article"
 
             # Extract content with multiple strategies
@@ -984,19 +1089,19 @@ class BlogAutomationEngine:
                         content_texts = [p.text.strip() for p in paras if p.text.strip() and len(p.text.strip()) > 20]
                         if content_texts:
                             content = "\n\n".join(content_texts)
-                            self.logger.debug(f"✅ Content found with selector: {selector} ({len(content_texts)} paragraphs)")
+                            self.logger.debug(f"[OK] Content found with selector: {selector} ({len(content_texts)} paragraphs)")
                             break
                 except Exception as e:
                     self.logger.debug(f"Selector {selector} failed: {e}")
                     continue
             
             if not content:
-                self.logger.warning("⚠️ Could not extract meaningful content from page")
+                self.logger.warning("[!] Could not extract meaningful content from page")
                 # Try to get any text content as fallback
                 try:
                     body = driver.find_element(By.TAG_NAME, "body")
                     content = body.text[:1000] + "..." if len(body.text) > 1000 else body.text
-                    self.logger.info("ℹ️ Using fallback content extraction")
+                    self.logger.info("Using fallback content extraction")
                 except:
                     content = "Content extraction failed"
 
@@ -1032,7 +1137,7 @@ class BlogAutomationEngine:
                         social_embeds.append(outer_html)
 
                 if social_embeds:
-                    self.logger.info(f"✅ Found {len(social_embeds)} social media embed(s)")
+                    self.logger.info(f"[OK] Found {len(social_embeds)} social media embed(s)")
                     # Append social embeds to the content
                     if content:
                         content = content + "\n\n" + "\n\n".join(social_embeds)
@@ -1044,24 +1149,24 @@ class BlogAutomationEngine:
 
             # Validate extracted content
             if title and content and len(content) > 100:
-                self.logger.info(f"✅ Successfully extracted: '{title[:50]}...' ({len(content)} chars)")
+                self.logger.info(f"[OK] Successfully extracted: '{title[:50]}...' ({len(content)} chars)")
                 return title, content
             else:
-                self.logger.warning(f"⚠️ Extracted content may be incomplete: title={bool(title)}, content_length={len(content) if content else 0}")
+                self.logger.warning(f"[!] Extracted content may be incomplete: title={bool(title)}, content_length={len(content) if content else 0}")
                 return title, content
 
         except TimeoutException:
-            self.logger.error(f"❌ Page load timeout ({timeout}s) for {url}")
-            self.logger.info("💡 Try increasing timeout or check if the website is accessible")
+            self.logger.error(f"[X] Page load timeout ({timeout}s) for {url}")
+            self.logger.info("Tip: Try increasing timeout or check if the website is accessible")
             return None, None
             
         except WebDriverException as e:
-            self.logger.error(f"❌ WebDriver error during extraction: {e}")
-            self.logger.info("💡 This might be due to page structure changes or network issues")
+            self.logger.error(f"[X] WebDriver error during extraction: {e}")
+            self.logger.info("Tip: This might be due to page structure changes or network issues")
             return None, None
             
         except Exception as e:
-            self.logger.error(f"❌ Unexpected error during content extraction: {e}")
+            self.logger.error(f"[X] Unexpected error during content extraction: {e}")
             self.logger.exception("Full error details:")
             return None, None
 
@@ -1232,14 +1337,14 @@ HEADLINE:
             # Apply sentence case specifically for the headline
             final_headline = self.sentence_case(processed_headline_raw)
 
-            self.logger.info(f"✅ Gemini paraphrasing completed - Title: {final_headline[:50]}...")
+            self.logger.info(f"[OK] Gemini paraphrasing completed - Title: {final_headline[:50]}...")
             return processed_html, final_headline
 
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"❌ Gemini API request error: {e}")
+            self.logger.error(f"[X] Gemini API request error: {e}")
             raise
         except Exception as e:
-            self.logger.error(f"❌ Error in Gemini paraphrasing: {e}")
+            self.logger.error(f"[X] Error in Gemini paraphrasing: {e}")
             return article_html, original_title
 
     def inject_internal_links(self, content: str) -> str:
@@ -1449,14 +1554,14 @@ Article Content:
             return seo_title, meta_description
 
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"❌ Gemini API request error: {e}")
+            self.logger.error(f"[X] Gemini API request error: {e}")
             # Fallback generation
             seo_title = title[:59] if len(title) > 59 else title
             clean_content = re.sub(r'<[^>]+>', '', content)
             meta_desc = clean_content[:157] + "..." if len(clean_content) > 157 else clean_content
             return seo_title, meta_desc
         except Exception as e:
-            self.logger.error(f"❌ Error in SEO generation: {e}")
+            self.logger.error(f"[X] Error in SEO generation: {e}")
             # Fallback generation
             seo_title = title[:59] if len(title) > 59 else title
             clean_content = re.sub(r'<[^>]+>', '', content)
@@ -1630,24 +1735,24 @@ Article Content:
     def process_complete_article_jupyter(self, url: str) -> Optional[Dict]:
         """Complete article processing pipeline using Jupyter notebook implementation"""
         try:
-            self.logger.info(f"🔗 Processing article: {url}")
+            self.logger.info(f"Processing article: {url}")
             
             # Extract article content using Selenium
             with self.get_selenium_driver_context() as driver:
                 if not driver:
-                    self.logger.error("❌ Selenium driver could not be initialized")
+                    self.logger.error("[X] Selenium driver could not be initialized")
                     return None
 
                 title, content = self.extract_article_with_selenium(driver, url)
                 if not title or not content:
-                    self.logger.warning("⚠️ Failed to extract title/content")
+                    self.logger.warning("[!] Failed to extract title/content")
                     return None
 
                 # Gemini paraphrasing - enhanced version
                 try:
                     paraphrased_content, paraphrased_title = self.gemini_paraphrase_content_and_title(title, content)
                 except Exception as e:
-                    self.logger.warning(f"⚠️ Gemini paraphrasing failed: {e}")
+                    self.logger.warning(f"[!] Gemini paraphrasing failed: {e}")
                     return None
 
                 # Internal + external link injection
@@ -1683,7 +1788,7 @@ Article Content:
                 }
 
         except Exception as e:
-            self.logger.error(f"❌ Error processing article: {e}")
+            self.logger.error(f"[X] Error processing article: {e}")
             return None
 
     def detect_categories_jupyter(self, content: str, title: str = "") -> List[str]:
@@ -1706,54 +1811,62 @@ Article Content:
         return self.detect_categories_jupyter(text, "")
 
     def run_automation_jupyter_style(self, max_articles: int = 2) -> int:
-        """Run the complete automation pipeline using Jupyter notebook implementation"""
+        """Run the complete automation pipeline, pulling from all active sources.
+
+        Fetches articles from every active source, then processes them
+        in round-robin order so content is diverse across sources.
+        """
         processed = 0
         posted_links = self.load_posted_links()
 
         try:
-            # Get article links from source
-            article_links = self.get_article_links(limit=10)
+            active_sources = self.get_active_sources()
+            source_count = len(active_sources) if active_sources else 0
+            self.logger.info(f"Active sources: {source_count}")
+
+            # Get article links — this already pulls from all active sources
+            article_links = self.get_article_links(limit=max(max_articles * 3, 10))
             if not article_links:
-                self.logger.error("❌ No article links found")
+                self.logger.error("[X] No article links found from any source")
                 return 0
 
-            self.logger.info(f"✅ Found {len(article_links)} article links")
+            self.logger.info(f"[OK] Found {len(article_links)} article links across {source_count} source(s)")
 
             for link in article_links:
                 if link in posted_links:
-                    self.logger.info(f"⏩ Skipping already posted article: {link}")
+                    self.logger.info(f"Skipping already posted article: {link}")
                     continue
 
                 # Process the complete article using Jupyter notebook methods
                 article_data = self.process_complete_article_jupyter(link)
                 if not article_data:
-                    self.logger.warning(f"⚠️ Failed to process article: {link}")
+                    self.logger.warning(f"[!] Failed to process article: {link}")
                     continue
 
                 # Post to WordPress with all the enhanced data
                 post_id = self.post_to_wordpress_jupyter_style(article_data)
-                
+
                 if post_id:
-                    self.logger.info(f"✅ Draft post created with ID: {post_id}")
+                    self.logger.info(f"[OK] Draft post created with ID: {post_id}")
                     posted_links.add(link)
                     self.save_posted_links(posted_links)
                     processed += 1
                 else:
-                    self.logger.error(f"❌ Failed to post article for: {link}")
+                    self.logger.error(f"[X] Failed to post article for: {link}")
 
                 if processed >= max_articles:
-                    self.logger.info(f"✅ Reached target of {max_articles} articles. Ending.")
+                    self.logger.info(f"[OK] Reached target of {max_articles} articles. Ending.")
                     break
 
             if processed == 0:
-                self.logger.warning("⚠️ No new articles were posted")
+                self.logger.warning("[!] No new articles were posted")
             else:
-                self.logger.info(f"🎉 Total new articles posted: {processed}")
+                self.logger.info(f"Total new articles posted: {processed} (from {source_count} source(s))")
 
             return processed
 
         except Exception as e:
-            self.logger.error(f"❌ Error in automation pipeline: {e}")
+            self.logger.error(f"[X] Error in automation pipeline: {e}")
             return processed
 
     def post_to_wordpress_jupyter_style(self, article_data: Dict) -> Optional[int]:
@@ -1765,7 +1878,7 @@ Article Content:
             password = self.config.get('wp_password', '')
             
             if not all([wp_base_url, username, password]):
-                self.logger.error("❌ WordPress credentials not properly configured")
+                self.logger.error("[X] WordPress credentials not properly configured")
                 return None
 
             password = self._normalize_wp_password(password)
@@ -1850,7 +1963,7 @@ Article Content:
 
             post_id = post_resp.json().get("id")
             if not post_id:
-                self.logger.error("❌ Post created but ID not returned")
+                self.logger.error("[X] Post created but ID not returned")
                 return None
 
             # Set SEO metadata (if AIOSEO plugin is available)
@@ -1874,16 +1987,16 @@ Article Content:
                 _seo_session = self._create_wp_session()
                 update_resp = _seo_session.post(f"{posts_url}/{post_id}", auth=auth, json=aioseo_data, timeout=15)
                 update_resp.raise_for_status()
-                self.logger.info("✅ SEO metadata updated successfully")
+                self.logger.info("[OK] SEO metadata updated successfully")
                 
             except Exception as e:
-                self.logger.warning(f"⚠️ Failed to update SEO metadata: {e}")
+                self.logger.warning(f"[!] Failed to update SEO metadata: {e}")
 
-            self.logger.info(f"✅ WordPress draft post created (ID: {post_id})")
+            self.logger.info(f"[OK] WordPress draft post created (ID: {post_id})")
             return post_id
 
         except Exception as e:
-            self.logger.error(f"❌ Error posting to WordPress: {e}")
+            self.logger.error(f"[X] Error posting to WordPress: {e}")
             return None
 
     def generate_tags_fallback(self, content: str) -> list:
@@ -2183,7 +2296,7 @@ Article Content:
     def search_getty_images(self, query: str, num_results: int = 5) -> List[Dict[str, str]]:
         """Search for editorial images - now uses reliable sports image sources"""
         try:
-            self.logger.info(f"🔍 Searching for editorial sports images for: {query}")
+            self.logger.info(f"Searching for editorial sports images for: {query}")
             
             # Since Getty Images blocks scraping, we'll use a more reliable approach
             # with high-quality sports image sources that are readily available
@@ -2192,22 +2305,22 @@ Article Content:
             images = self.get_reliable_sports_images(query, num_results)
             
             if images:
-                self.logger.info(f"✅ Found {len(images)} editorial sports images for '{query}'")
+                self.logger.info(f"[OK] Found {len(images)} editorial sports images for '{query}'")
             else:
-                self.logger.warning(f"⚠️ No sports images found for '{query}', using fallback")
+                self.logger.warning(f"[!] No sports images found for '{query}', using fallback")
                 images = self.get_fallback_getty_images(query, num_results)
                 
             return images
             
         except Exception as e:
-            self.logger.error(f"❌ Error searching for editorial images: {e}")
+            self.logger.error(f"[X] Error searching for editorial images: {e}")
             # Always return fallback images
             return self.get_fallback_getty_images(query, num_results)
 
     def get_reliable_sports_images(self, query: str, num_results: int = 5) -> List[Dict[str, str]]:
         """Get high-quality sports images from reliable sources"""
         try:
-            self.logger.info(f"🏆 Getting reliable sports images for: {query}")
+            self.logger.info(f"Getting reliable sports images for: {query}")
             
             # Create realistic sports images using reliable services
             images = []
@@ -2225,7 +2338,7 @@ Article Content:
             return images[:num_results]
             
         except Exception as e:
-            self.logger.error(f"❌ Error getting reliable sports images: {e}")
+            self.logger.error(f"[X] Error getting reliable sports images: {e}")
             return []
 
     def search_unsplash_sports(self, query: str, num_results: int = 3) -> List[Dict[str, str]]:
@@ -2234,7 +2347,7 @@ Article Content:
             # Unsplash has a public API for accessing high-quality images
             # Using their Source API which doesn't require API keys for basic usage
             
-            self.logger.info(f"📷 Searching Unsplash for sports images: {query}")
+            self.logger.info(f"Searching Unsplash for sports images: {query}")
             
             # Extract sports-related keywords from query
             sports_keywords = self.extract_sports_keywords(query)
@@ -2260,11 +2373,11 @@ Article Content:
                     "is_fallback": False
                 })
             
-            self.logger.info(f"✅ Generated {len(images)} Unsplash sports images")
+            self.logger.info(f"[OK] Generated {len(images)} Unsplash sports images")
             return images
             
         except Exception as e:
-            self.logger.error(f"❌ Error searching Unsplash: {e}")
+            self.logger.error(f"[X] Error searching Unsplash: {e}")
             return []
 
     def extract_sports_keywords(self, query: str) -> List[str]:
@@ -2288,7 +2401,7 @@ Article Content:
     def get_themed_placeholder_images(self, query: str, num_results: int = 2) -> List[Dict[str, str]]:
         """Get themed placeholder images for sports content"""
         try:
-            self.logger.info(f"🎨 Creating themed placeholder images for: {query}")
+            self.logger.info(f"Creating themed placeholder images for: {query}")
             
             # Create themed placeholder images using Picsum with sports-like IDs
             images = []
@@ -2316,17 +2429,17 @@ Article Content:
                     "is_fallback": True
                 })
             
-            self.logger.info(f"✅ Created {len(images)} themed placeholder images")
+            self.logger.info(f"[OK] Created {len(images)} themed placeholder images")
             return images
             
         except Exception as e:
-            self.logger.error(f"❌ Error creating themed placeholders: {e}")
+            self.logger.error(f"[X] Error creating themed placeholders: {e}")
             return []
             
     def get_fallback_getty_images(self, query: str, num_results: int = 3) -> List[Dict[str, str]]:
         """Generate fallback high-quality sports images when search fails"""
         try:
-            self.logger.info(f"🔄 Generating fallback sports images for: {query}")
+            self.logger.info(f"[>>] Generating fallback sports images for: {query}")
             
             # Use reliable image sources for fallback
             images = []
@@ -2356,11 +2469,11 @@ Article Content:
                     "is_fallback": True
                 })
             
-            self.logger.info(f"✅ Generated {len(images)} high-quality fallback images")
+            self.logger.info(f"[OK] Generated {len(images)} high-quality fallback images")
             return images
             
         except Exception as e:
-            self.logger.error(f"❌ Error generating fallback images: {e}")
+            self.logger.error(f"[X] Error generating fallback images: {e}")
             # Last resort: create simple placeholder
             return [{
                 "id": "emergency_fallback",
@@ -2378,7 +2491,7 @@ Article Content:
         try:
             gemini_api_key = self.config.get('gemini_api_key', '')
             if not gemini_api_key:
-                self.logger.warning("⚠️ Gemini API key not available for Getty search optimization")
+                self.logger.warning("[!] Gemini API key not available for Getty search optimization")
                 return title
             
             # Clean content for analysis
@@ -2422,14 +2535,14 @@ Your response (search terms only):
                 search_terms = re.sub(r'[^\w\s,]', '', search_terms)  # Remove special chars except commas
                 search_terms = search_terms.replace('\n', ', ').replace('  ', ' ')
                 
-                self.logger.info(f"🤖 Gemini suggested search terms: {search_terms}")
+                self.logger.info(f"AUTOMATION: Gemini suggested search terms: {search_terms}")
                 return search_terms
             else:
-                self.logger.warning(f"⚠️ Gemini API error: {response.status_code}")
+                self.logger.warning(f"[!] Gemini API error: {response.status_code}")
                 return title
                 
         except Exception as e:
-            self.logger.error(f"❌ Error generating Getty search terms with Gemini: {e}")
+            self.logger.error(f"[X] Error generating Getty search terms with Gemini: {e}")
             return title
 
     def download_getty_image(self, image_url: str, filename: str) -> Optional[bytes]:
@@ -2453,26 +2566,26 @@ Your response (search terms only):
             content_type = response.headers.get('content-type', '').lower()
             content_length = len(response.content)
             
-            self.logger.info(f"📄 Response - Type: {content_type}, Size: {content_length} bytes")
+            self.logger.info(f"Response - Type: {content_type}, Size: {content_length} bytes")
             
             # Check if it's a valid image
             if (content_type.startswith('image/') and content_length > 1000) or content_length > 50000:
-                self.logger.info(f"✅ Successfully downloaded image ({content_length} bytes)")
+                self.logger.info(f"[OK] Successfully downloaded image ({content_length} bytes)")
                 return response.content
             else:
-                self.logger.warning(f"⚠️ Downloaded content may not be a valid image")
+                self.logger.warning(f"[!] Downloaded content may not be a valid image")
                 # If the download seems suspicious, try fallback
                 return self.download_fallback_placeholder_image()
                 
         except Exception as e:
-            self.logger.error(f"❌ Error downloading image: {e}")
+            self.logger.error(f"[X] Error downloading image: {e}")
             # Always try fallback on any error
             return self.download_fallback_placeholder_image()
 
     def download_fallback_placeholder_image(self) -> Optional[bytes]:
         """Download a reliable fallback placeholder image"""
         try:
-            self.logger.info("🔄 Downloading reliable fallback placeholder image...")
+            self.logger.info("[>>] Downloading reliable fallback placeholder image...")
             
             # Use multiple fallback sources in order of preference
             fallback_urls = [
@@ -2484,25 +2597,25 @@ Your response (search terms only):
             
             for url in fallback_urls:
                 try:
-                    self.logger.info(f"🔄 Trying fallback URL: {url}")
+                    self.logger.info(f"[>>] Trying fallback URL: {url}")
                     
                     response = requests.get(url, timeout=15, allow_redirects=True)
                     response.raise_for_status()
                     
                     if len(response.content) > 1000:  # Reasonable image size
-                        self.logger.info(f"✅ Downloaded fallback image ({len(response.content)} bytes)")
+                        self.logger.info(f"[OK] Downloaded fallback image ({len(response.content)} bytes)")
                         return response.content
                         
                 except Exception as e:
-                    self.logger.warning(f"⚠️ Fallback URL failed: {e}")
+                    self.logger.warning(f"[!] Fallback URL failed: {e}")
                     continue
             
             # If all fallbacks fail, create a minimal placeholder
-            self.logger.error("❌ All fallback URLs failed, creating minimal placeholder")
+            self.logger.error("[X] All fallback URLs failed, creating minimal placeholder")
             return self.create_minimal_placeholder_image()
                 
         except Exception as e:
-            self.logger.error(f"❌ Error in fallback download: {e}")
+            self.logger.error(f"[X] Error in fallback download: {e}")
             return self.create_minimal_placeholder_image()
 
     def create_minimal_placeholder_image(self) -> Optional[bytes]:
@@ -2514,17 +2627,17 @@ Your response (search terms only):
             
             image_data = base64.b64decode(minimal_png_b64)
             
-            self.logger.info("✅ Created minimal placeholder image")
+            self.logger.info("[OK] Created minimal placeholder image")
             return image_data
             
         except Exception as e:
-            self.logger.error(f"❌ Failed to create minimal placeholder: {e}")
+            self.logger.error(f"[X] Failed to create minimal placeholder: {e}")
             return None
 
     def add_openai_image_to_content(self, content: str, title: str, custom_prompt: str = None) -> str:
         """Add OpenAI generated image to content"""
         try:
-            self.logger.info("🎨 Adding OpenAI generated image to content...")
+            self.logger.info("Adding OpenAI generated image to content...")
             
             # Load OpenAI image configuration
             openai_config = self.load_openai_image_config()
@@ -2562,20 +2675,20 @@ Your response (search terms only):
                     # Fallback: add at the beginning
                     content = image_html + content
                 
-                self.logger.info("✅ OpenAI image added to content successfully")
+                self.logger.info("[OK] OpenAI image added to content successfully")
                 return content
             else:
-                self.logger.warning("⚠️ Failed to generate OpenAI image")
+                self.logger.warning("[!] Failed to generate OpenAI image")
                 return content
                 
         except Exception as e:
-            self.logger.error(f"❌ Error adding OpenAI image to content: {e}")
+            self.logger.error(f"[X] Error adding OpenAI image to content: {e}")
             return content
     
     def add_getty_image_to_content(self, content: str, title: str, topic_keywords: List[str] = None) -> str:
         """Add Getty Images to content"""
         try:
-            self.logger.info("📷 Adding Getty Images to content...")
+            self.logger.info("Adding Getty Images to content...")
             
             # Generate search terms using Gemini AI
             search_terms = self.generate_getty_search_terms_with_gemini(title, content)
@@ -2617,17 +2730,17 @@ Your response (search terms only):
                         # Fallback: add at the beginning
                         content = image_html + content
                     
-                    self.logger.info("✅ Getty image added to content successfully")
+                    self.logger.info("[OK] Getty image added to content successfully")
                     return content
                 else:
-                    self.logger.warning("⚠️ Failed to get Getty embed code")
+                    self.logger.warning("[!] Failed to get Getty embed code")
                     return content
             else:
-                self.logger.warning("⚠️ No Getty images found")
+                self.logger.warning("[!] No Getty images found")
                 return content
                 
         except Exception as e:
-            self.logger.error(f"❌ Error adding Getty image to content: {e}")
+            self.logger.error(f"[X] Error adding Getty image to content: {e}")
             return content
     
     def load_openai_image_config(self) -> Dict:
@@ -2648,7 +2761,7 @@ Your response (search terms only):
                     "prompt_suffix": "Make it look like a professional sports photograph with dramatic lighting and composition."
                 }
         except Exception as e:
-            self.logger.error(f"❌ Error loading OpenAI config: {e}")
+            self.logger.error(f"[X] Error loading OpenAI config: {e}")
             return {}
     
     def create_openai_image_prompt(self, title: str, content: str, config: Dict, custom_prompt: str = None) -> str:
@@ -2669,7 +2782,7 @@ Your response (search terms only):
             return prompt.strip()
             
         except Exception as e:
-            self.logger.error(f"❌ Error creating OpenAI prompt: {e}")
+            self.logger.error(f"[X] Error creating OpenAI prompt: {e}")
             return title
     
     def generate_openai_image(self, prompt: str, config: Dict) -> Optional[str]:
@@ -2677,7 +2790,7 @@ Your response (search terms only):
         try:
             openai_api_key = self.config.get('openai_api_key', '')
             if not openai_api_key:
-                self.logger.warning("⚠️ OpenAI API key not available")
+                self.logger.warning("[!] OpenAI API key not available")
                 return None
             
             from openai import OpenAI
@@ -2692,14 +2805,14 @@ Your response (search terms only):
             
             if response.data:
                 image_url = response.data[0].url
-                self.logger.info(f"✅ OpenAI image generated: {image_url}")
+                self.logger.info(f"[OK] OpenAI image generated: {image_url}")
                 return image_url
             else:
-                self.logger.warning("⚠️ No image data received from OpenAI")
+                self.logger.warning("[!] No image data received from OpenAI")
                 return None
                 
         except Exception as e:
-            self.logger.error(f"❌ Error generating OpenAI image: {e}")
+            self.logger.error(f"[X] Error generating OpenAI image: {e}")
             return None
     
     def get_getty_embed_code(self, image_id: str, title: str) -> str:
@@ -2709,13 +2822,13 @@ Your response (search terms only):
             embed_code = f'<iframe src="https://embed.gettyimages.com/embed/{image_id}" width="594" height="396" frameborder="0" scrolling="no"></iframe>'
             return embed_code
         except Exception as e:
-            self.logger.error(f"❌ Error creating Getty embed code: {e}")
+            self.logger.error(f"[X] Error creating Getty embed code: {e}")
             return ""
 
     def generate_and_upload_featured_image(self, title: str, content: str, post_id: int) -> Optional[int]:
         """Generate OpenAI featured image and upload to WordPress"""
         try:
-            self.logger.info(f"🎨 Generating OpenAI featured image for post {post_id}")
+            self.logger.info(f"Generating OpenAI featured image for post {post_id}")
             
             # Load OpenAI image configuration
             openai_config = self.load_openai_image_config()
@@ -2727,7 +2840,7 @@ Your response (search terms only):
             image_url = self.generate_openai_image(image_prompt, openai_config)
             
             if not image_url:
-                self.logger.error("❌ Failed to generate OpenAI image")
+                self.logger.error("[X] Failed to generate OpenAI image")
                 return None
             
             # Download the generated image
@@ -2740,21 +2853,21 @@ Your response (search terms only):
             success = self.upload_featured_image_to_wordpress(image_data, post_id, f"AI Generated: {title}")
             
             if success:
-                self.logger.info(f"✅ OpenAI featured image uploaded and set for post {post_id}")
+                self.logger.info(f"[OK] OpenAI featured image uploaded and set for post {post_id}")
                 # Return a media ID (we'll need to modify upload_featured_image_to_wordpress to return it)
                 return post_id  # Temporary return value
             else:
-                self.logger.error("❌ Failed to upload OpenAI featured image")
+                self.logger.error("[X] Failed to upload OpenAI featured image")
                 return None
                 
         except Exception as e:
-            self.logger.error(f"❌ Error in generate_and_upload_featured_image: {e}")
+            self.logger.error(f"[X] Error in generate_and_upload_featured_image: {e}")
             return None
 
     def upload_featured_image_to_wordpress(self, image_data: bytes, post_id: int, title: str = "Featured Image") -> Optional[int]:
         """Upload image data to WordPress and set as featured image"""
         try:
-            self.logger.info(f"📤 Uploading featured image to WordPress for post {post_id}")
+            self.logger.info(f"Uploading featured image to WordPress for post {post_id}")
             
             # Prepare the image file for upload
             files = {
@@ -2767,7 +2880,7 @@ Your response (search terms only):
             password = self.config.get('wp_password', '')
             
             if not all([wp_base_url, username, password]):
-                self.logger.error("❌ WordPress credentials not properly configured")
+                self.logger.error("[X] WordPress credentials not properly configured")
                 return None
 
             from requests.auth import HTTPBasicAuth
@@ -2791,7 +2904,7 @@ Your response (search terms only):
                 media_data = response.json()
                 media_id = media_data['id']
                 
-                self.logger.info(f"✅ Image uploaded successfully, media ID: {media_id}")
+                self.logger.info(f"[OK] Image uploaded successfully, media ID: {media_id}")
                 
                 # Set as featured image for the post
                 post_url = f"{wp_base_url}/posts/{post_id}"
@@ -2805,17 +2918,17 @@ Your response (search terms only):
                 )
                 
                 if update_response.status_code == 200:
-                    self.logger.info(f"✅ Featured image set successfully for post {post_id}")
+                    self.logger.info(f"[OK] Featured image set successfully for post {post_id}")
                     return media_id
                 else:
-                    self.logger.error(f"❌ Failed to set featured image: {update_response.status_code}")
+                    self.logger.error(f"[X] Failed to set featured image: {update_response.status_code}")
                     return None
             else:
-                self.logger.error(f"❌ Failed to upload image: {response.status_code} - {response.text}")
+                self.logger.error(f"[X] Failed to upload image: {response.status_code} - {response.text}")
                 return None
                 
         except Exception as e:
-            self.logger.error(f"❌ Error uploading featured image: {e}")
+            self.logger.error(f"[X] Error uploading featured image: {e}")
             return None
 
     def post_to_wordpress_with_seo(self, title: str, content: str, categories: list, tags: list,
@@ -2877,7 +2990,7 @@ Your response (search terms only):
                     seo_section += f"<p><strong>Keywords:</strong> {keywords_str}</p>\n"
                 
                 final_content = content + seo_section
-                self.logger.info("✅ SEO details appended to blog content (Old Plugin mode)")
+                self.logger.info("[OK] SEO details appended to blog content (Old Plugin mode)")
             
             # Create excerpt from final content
             clean_content = re.sub(r'<[^>]+>', '', final_content).strip()
@@ -2961,7 +3074,7 @@ Your response (search terms only):
 
             post_id = post_resp.json().get("id")
             if not post_id:
-                self.logger.error("❌ Post created but ID not returned")
+                self.logger.error("[X] Post created but ID not returned")
                 return None, None
 
             # Set SEO metadata using improved methods
@@ -2973,15 +3086,15 @@ Your response (search terms only):
                 seo_success = self.update_seo_metadata_with_retry(posts_url, post_id, seo_data, auth)
                 
                 if not seo_success:
-                    self.logger.warning("⚠️ SEO metadata update failed, but post was created successfully")
+                    self.logger.warning("[!] SEO metadata update failed, but post was created successfully")
                 
             except Exception as e:
-                self.logger.error(f"❌ Unexpected error in SEO metadata handling: {e}")
+                self.logger.error(f"[X] Unexpected error in SEO metadata handling: {e}")
                 self.logger.debug(f"SEO data that failed: {seo_data if 'seo_data' in locals() else 'Not prepared'}")
 
-            self.logger.info(f"✅ WordPress draft post created (ID: {post_id})")
+            self.logger.info(f"[OK] WordPress draft post created (ID: {post_id})")
             return post_id, title
 
         except Exception as e:
-            self.logger.error(f"❌ Error posting to WordPress: {e}")
+            self.logger.error(f"[X] Error posting to WordPress: {e}")
             return None, None
